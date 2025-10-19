@@ -1,0 +1,35 @@
+# Rust
+/backend/target/
+/backend/Cargo.lock
+
+# Node
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env.local
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+
+# Logs
+*.log
+npm-debug.log*
+
+# Memory Bank
+memory-bank/

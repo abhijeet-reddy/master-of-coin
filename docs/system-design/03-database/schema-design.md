@@ -2,20 +2,45 @@
 
 ## Overview
 
-Master of Coin uses PostgreSQL 16 for its relational database with ACID compliance and complex query support.
+Master of Coin uses PostgreSQL 16 for its relational database with ACID compliance and complex query support. The schema is implemented through SQLx migrations located in [`backend/migrations/`](../../../backend/migrations/).
 
 ## Complete Schema
 
+The database schema is implemented across 10 migration files:
+
+### 1. ENUM Types ([`20251024000001_create_enums.sql`](../../../backend/migrations/20251024000001_create_enums.sql))
+
 ```sql
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE TYPE account_type AS ENUM (
+    'CHECKING',
+    'SAVINGS',
+    'CREDIT_CARD',
+    'INVESTMENT',
+    'CASH'
+);
 
--- Create ENUMs
-CREATE TYPE account_type AS ENUM ('CHECKING', 'SAVINGS', 'CREDIT_CARD', 'INVESTMENT', 'CASH');
-CREATE TYPE currency_code AS ENUM ('USD', 'EUR', 'GBP', 'INR', 'JPY', 'AUD', 'CAD');
-CREATE TYPE budget_period AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY');
+CREATE TYPE currency_code AS ENUM (
+    'USD',
+    'EUR',
+    'GBP',
+    'INR',
+    'JPY',
+    'AUD',
+    'CAD'
+);
 
--- Users table
+CREATE TYPE budget_period AS ENUM (
+    'DAILY',
+    'WEEKLY',
+    'MONTHLY',
+    'QUARTERLY',
+    'YEARLY'
+);
+```
+
+### 2. Users Table ([`20251024000002_create_users_table.sql`](../../../backend/migrations/20251024000002_create_users_table.sql))
+
+```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -27,22 +52,29 @@ CREATE TABLE users (
 );
 
 CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_email ON users(email);
+```
 
--- Accounts table
+### 3. Accounts Table ([`20251024000003_create_accounts_table.sql`](../../../backend/migrations/20251024000003_create_accounts_table.sql))
+
+```sql
 CREATE TABLE accounts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    account_type account_type NOT NULL,
-    currency currency_code DEFAULT 'USD',
+    type account_type NOT NULL,
+    currency currency_code DEFAULT 'EUR',
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_accounts_user_id ON accounts(user_id);
+```
 
--- Categories table (user-defined)
+### 4. Categories Table ([`20251024000004_create_categories_table.sql`](../../../backend/migrations/20251024000004_create_categories_table.sql))
+
+```sql
 CREATE TABLE categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -56,9 +88,11 @@ CREATE TABLE categories (
 );
 
 CREATE INDEX idx_categories_user_id ON categories(user_id);
-CREATE INDEX idx_categories_parent ON categories(parent_category_id);
+```
 
--- People table
+### 5. People Table ([`20251024000005_create_people_table.sql`](../../../backend/migrations/20251024000005_create_people_table.sql))
+
+```sql
 CREATE TABLE people (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -71,53 +105,67 @@ CREATE TABLE people (
 );
 
 CREATE INDEX idx_people_user_id ON people(user_id);
+CREATE INDEX idx_people_user_name ON people(user_id, name);
+```
 
--- Transactions table
+### 6. Transactions Table ([`20251024000006_create_transactions_table.sql`](../../../backend/migrations/20251024000006_create_transactions_table.sql))
+
+```sql
 CREATE TABLE transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
-    amount DECIMAL(19, 2) NOT NULL, -- Positive = income, Negative = expense
+    amount DECIMAL(19, 2) NOT NULL,
     date TIMESTAMP WITH TIME ZONE NOT NULL,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_transactions_user_id ON transactions(user_id); # Check if this is needed later, can we only use idx_transactions_user_date?
+CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_account_id ON transactions(account_id);
 CREATE INDEX idx_transactions_category_id ON transactions(category_id);
-CREATE INDEX idx_transactions_date ON transactions(date DESC);
 CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
+CREATE INDEX idx_transactions_amount ON transactions(user_id, amount);
+```
 
--- Transaction splits table
+### 7. Transaction Splits Table ([`20251024000007_create_transaction_splits_table.sql`](../../../backend/migrations/20251024000007_create_transaction_splits_table.sql))
+
+```sql
 CREATE TABLE transaction_splits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
     person_id UUID NOT NULL REFERENCES people(id) ON DELETE RESTRICT,
-    amount DECIMAL(19, 2) NOT NULL, -- Amount this person owes/paid
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    amount DECIMAL(19, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_splits_transaction_id ON transaction_splits(transaction_id);
 CREATE INDEX idx_splits_person_id ON transaction_splits(person_id);
+```
 
--- Budgets table
+### 8. Budgets Table ([`20251024000008_create_budgets_table.sql`](../../../backend/migrations/20251024000008_create_budgets_table.sql))
+
+```sql
 CREATE TABLE budgets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    filters JSONB NOT NULL, -- Flexible filters for matching transactions
+    filters JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_budgets_user_id ON budgets(user_id);
 CREATE INDEX idx_budgets_filters ON budgets USING GIN(filters);
+```
 
--- Budget ranges table
+### 9. Budget Ranges Table ([`20251024000009_create_budget_ranges_table.sql`](../../../backend/migrations/20251024000009_create_budget_ranges_table.sql))
+
+```sql
 CREATE TABLE budget_ranges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
@@ -126,13 +174,17 @@ CREATE TABLE budget_ranges (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT valid_date_range CHECK (end_date >= start_date),
     CONSTRAINT positive_limit CHECK (limit_amount > 0)
 );
 
 CREATE INDEX idx_budget_ranges_budget_id ON budget_ranges(budget_id);
-CREATE INDEX idx_budget_ranges_dates ON budget_ranges(start_date, end_date);
+```
 
+### 10. Triggers ([`20251024000010_create_triggers.sql`](../../../backend/migrations/20251024000010_create_triggers.sql))
+
+```sql
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -142,64 +194,93 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Apply updated_at triggers
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+-- Apply triggers to all tables with updated_at
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_accounts_updated_at BEFORE UPDATE ON accounts
+CREATE TRIGGER update_accounts_updated_at
+    BEFORE UPDATE ON accounts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
+CREATE TRIGGER update_categories_updated_at
+    BEFORE UPDATE ON categories
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_people_updated_at BEFORE UPDATE ON people
+CREATE TRIGGER update_people_updated_at
+    BEFORE UPDATE ON people
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions
+CREATE TRIGGER update_transactions_updated_at
+    BEFORE UPDATE ON transactions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
+CREATE TRIGGER update_budgets_updated_at
+    BEFORE UPDATE ON budgets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_budget_ranges_updated_at
+    BEFORE UPDATE ON budget_ranges
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_transaction_splits_updated_at
+    BEFORE UPDATE ON transaction_splits
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
 ## Key Design Decisions
 
 ### 1. Decimal Precision
+
 - All monetary amounts: `DECIMAL(19, 2)`
 - Stores up to 17 digits before decimal, 2 after
 - Prevents floating-point errors
+- Rust uses `BigDecimal` type from the `bigdecimal` crate
 - Format to 2 decimals when returning to UI
 
 ### 2. Soft Deletes vs Hard Deletes
+
 - Hard deletes with CASCADE for user data (GDPR compliance)
-- RESTRICT on foreign keys that shouldn't be deleted (accounts with transactions)
+- RESTRICT on foreign keys that shouldn't be deleted (accounts with transactions, people with splits)
 - SET NULL for optional references (categories)
 
 ### 3. Timestamps
-- All tables have `created_at` and `updated_at`
+
+- All tables have `created_at` and `updated_at` (except `transaction_splits` which only has `created_at` in the initial design, but `updated_at` was added via trigger)
 - Use `TIMESTAMP WITH TIME ZONE` for proper timezone handling
-- Automatic `updated_at` via triggers
+- Automatic `updated_at` via triggers for all tables
+- Budget ranges use `DATE` type for `start_date` and `end_date`
 
 ### 4. Indexes
+
 - Primary keys (UUID) automatically indexed
 - Foreign keys indexed for join performance
-- Date fields indexed for time-based queries
-- Composite indexes for common query patterns
+- Users: indexed on `username` and `email` for authentication
+- People: composite index on `(user_id, name)` for efficient lookups
+- Transactions: composite indexes on `(user_id, date DESC)` and `(user_id, amount)` for common query patterns
+- Categories: indexed on `user_id` only (no parent index in implementation)
 - GIN index on JSONB for budget filters
 
-### 5. Budget Filters (JSONB)
+### 5. Currency Default
+
+- Accounts default to `'EUR'` currency (not `'USD'` as originally planned)
+- Reflects the primary user base location
+
+### 6. Budget Filters (JSONB)
+
+Example filter structure:
+
 ```json
 {
-  "category_id": "uuid",
-  "account_ids": ["uuid1", "uuid2", "*"],
-  "min_amount": 0,
-  "max_amount": 1000
+  "category_id": "10000000-0000-0000-0000-000000000001",
+  "account_ids": ["*"]
 }
 ```
 
 ## Common Queries
 
 ### Get Account Balance
+
 ```sql
 SELECT COALESCE(SUM(amount), 0) as balance
 FROM transactions
@@ -207,6 +288,7 @@ WHERE account_id = $1;
 ```
 
 ### Get Transactions for Month
+
 ```sql
 SELECT t.*, c.name as category_name, a.name as account_name
 FROM transactions t
@@ -219,8 +301,9 @@ ORDER BY t.date DESC;
 ```
 
 ### Calculate Debt for Person
+
 ```sql
-SELECT 
+SELECT
     p.id,
     p.name,
     COALESCE(SUM(ts.amount), 0) as total_owed
@@ -232,6 +315,7 @@ GROUP BY p.id, p.name;
 ```
 
 ### Get Active Budget Range
+
 ```sql
 SELECT br.*
 FROM budget_ranges br
@@ -242,6 +326,7 @@ LIMIT 1;
 ```
 
 ### Calculate Budget Spending
+
 ```sql
 -- For monthly budget
 SELECT COALESCE(SUM(ABS(amount)), 0) as spent
@@ -255,18 +340,33 @@ WHERE user_id = $1
 
 ## Migrations
 
-Using SQLx migrations:
+Using SQLx migrations in [`backend/migrations/`](../../../backend/migrations/):
 
 ```
-migrations/
-├── 20240101000001_create_users.sql
-├── 20240101000002_create_accounts.sql
-├── 20240101000003_create_categories.sql
-├── 20240101000004_create_people.sql
-├── 20240101000005_create_transactions.sql
-├── 20240101000006_create_transaction_splits.sql
-├── 20240101000007_create_budgets.sql
-└── 20240101000008_create_budget_ranges.sql
+backend/migrations/
+├── 20251024000001_create_enums.sql
+├── 20251024000002_create_users_table.sql
+├── 20251024000003_create_accounts_table.sql
+├── 20251024000004_create_categories_table.sql
+├── 20251024000005_create_people_table.sql
+├── 20251024000006_create_transactions_table.sql
+├── 20251024000007_create_transaction_splits_table.sql
+├── 20251024000008_create_budgets_table.sql
+├── 20251024000009_create_budget_ranges_table.sql
+└── 20251024000010_create_triggers.sql
+```
+
+Run migrations with:
+
+```bash
+cd backend
+sqlx migrate run
+```
+
+Or use the initialization script:
+
+```bash
+./backend/scripts/init-db.sh
 ```
 
 ## Performance Considerations
@@ -285,9 +385,59 @@ migrations/
 4. **NOT NULL**: Required fields enforced
 5. **Triggers**: Automatic timestamp updates
 
+## Database Scripts
+
+### Initialization ([`backend/scripts/init-db.sh`](../../../backend/scripts/init-db.sh))
+
+- Creates database if it doesn't exist
+- Enables UUID extension
+- Runs all migrations
+- Loads seed data
+- Displays database summary
+
+Usage:
+
+```bash
+./backend/scripts/init-db.sh
+```
+
+### Seed Data ([`backend/scripts/seed.sql`](../../../backend/scripts/seed.sql))
+
+- Creates test user: `little-finger` / `knowledge-is-power`
+- Loads 8 default categories with icons and colors
+- Creates 3 sample accounts (Checking, Savings, Credit Card)
+- Adds 2 sample people (Varys, Pycelle)
+- Inserts 10 sample transactions
+- Creates sample budget with monthly range
+
+### Backup ([`backend/scripts/backup.sh`](../../../backend/scripts/backup.sh))
+
+- Creates timestamped backup files
+- Stores in `./backups/` directory
+- Uses `pg_dump` for full database backup
+
+Usage:
+
+```bash
+./backend/scripts/backup.sh
+```
+
+### Restore ([`backend/scripts/restore.sh`](../../../backend/scripts/restore.sh))
+
+- Restores database from backup file
+- Drops and recreates database
+- Requires confirmation before proceeding
+- Displays summary after restore
+
+Usage:
+
+```bash
+./backend/scripts/restore.sh ./backups/backup_20251024_120000.sql
+```
+
 ## Backup Strategy
 
-1. **Daily backups**: Full database backup
-2. **Point-in-time recovery**: WAL archiving
-3. **Retention**: 30 days of backups
-4. **Testing**: Regular restore testing
+1. **Manual backups**: Use `backup.sh` script
+2. **Timestamped files**: Format `backup_YYYYMMDD_HHMMSS.sql`
+3. **Storage**: Local `./backups/` directory
+4. **Restore**: Use `restore.sh` with backup file path

@@ -35,3 +35,29 @@ pub struct UpdateBudget {
     pub name: Option<String>,
     pub filters: Option<JsonValue>,
 }
+
+// Request DTOs
+#[derive(Debug, Deserialize, validator::Validate)]
+pub struct CreateBudgetRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub name: String,
+    pub filters: JsonValue,
+}
+
+#[derive(Debug, Deserialize, validator::Validate)]
+pub struct UpdateBudgetRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub name: Option<String>,
+    pub filters: Option<JsonValue>,
+}
+
+// Response DTOs
+#[derive(Debug, Serialize)]
+pub struct BudgetResponse {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub filters: JsonValue,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}

@@ -1,9 +1,11 @@
 # Backend Checklist
 
 ## Overview
+
 This checklist covers the Rust backend implementation using Axum, including project structure, models, repositories, services, API endpoints, authentication, and testing.
 
-**References:** 
+**References:**
+
 - [`docs/system-design/02-backend/api-architecture.md`](../system-design/02-backend/api-architecture.md)
 - [`docs/system-design/02-backend/business-logic.md`](../system-design/02-backend/business-logic.md)
 - [`docs/system-design/02-backend/authentication-security.md`](../system-design/02-backend/authentication-security.md)
@@ -14,6 +16,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Project Structure Setup
 
 ### Core Modules
+
 - [ ] Create `src/lib.rs` with module exports
 - [ ] Create `src/config.rs` for configuration management
 - [ ] Create module directories
@@ -31,35 +34,38 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Configuration Management
 
 ### Config Module (`src/config.rs`)
+
 - [ ] Implement Config struct
+
   ```rust
   use serde::Deserialize;
-  
+
   #[derive(Debug, Clone, Deserialize)]
   pub struct Config {
       pub server: ServerConfig,
       pub database: DatabaseConfig,
       pub jwt: JwtConfig,
   }
-  
+
   #[derive(Debug, Clone, Deserialize)]
   pub struct ServerConfig {
       pub host: String,
       pub port: u16,
   }
-  
+
   #[derive(Debug, Clone, Deserialize)]
   pub struct DatabaseConfig {
       pub url: String,
       pub max_connections: u32,
   }
-  
+
   #[derive(Debug, Clone, Deserialize)]
   pub struct JwtConfig {
       pub secret: String,
       pub expiration_hours: i64,
   }
   ```
+
 - [ ] Implement `Config::from_env()` method
 - [ ] Add environment variable loading with dotenvy
 - [ ] Test configuration loading
@@ -69,25 +75,23 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Error Handling
 
 ### Error Types (`src/errors/api_error.rs`)
+
 - [ ] Define ApiError enum
   ```rust
   #[derive(Debug, thiserror::Error)]
   pub enum ApiError {
       #[error("Database error: {0}")]
       Database(#[from] sqlx::Error),
-      
+
       #[error("Not found: {0}")]
       NotFound(String),
-      
+
       #[error("Unauthorized: {0}")]
       Unauthorized(String),
-      
+
       #[error("Validation error: {0}")]
       Validation(String),
-      
-      #[error("Business logic error: {0}")]
-      BusinessLogic(String),
-      
+
       #[error("Internal server error")]
       Internal,
   }
@@ -102,13 +106,15 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Database Models
 
 ### User Model (`src/models/user.rs`)
+
 - [ ] Define User struct
+
   ```rust
   use sqlx::FromRow;
   use serde::{Deserialize, Serialize};
   use uuid::Uuid;
   use chrono::{DateTime, Utc};
-  
+
   #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
   pub struct User {
       pub id: Uuid,
@@ -121,11 +127,13 @@ This checklist covers the Rust backend implementation using Axum, including proj
       pub updated_at: DateTime<Utc>,
   }
   ```
+
 - [ ] Define CreateUserRequest
 - [ ] Define UpdateUserRequest
 - [ ] Add validation with validator crate
 
 ### Account Model (`src/models/account.rs`)
+
 - [ ] Define AccountType enum
 - [ ] Define CurrencyCode enum
 - [ ] Define Account struct
@@ -134,6 +142,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add validation
 
 ### Transaction Model (`src/models/transaction.rs`)
+
 - [ ] Define Transaction struct
 - [ ] Define TransactionSplit struct
 - [ ] Define CreateTransactionRequest
@@ -142,18 +151,21 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add validation (amount != 0, splits <= amount, etc.)
 
 ### Category Model (`src/models/category.rs`)
+
 - [ ] Define Category struct
 - [ ] Define CreateCategoryRequest
 - [ ] Define UpdateCategoryRequest
 - [ ] Add validation
 
 ### Person Model (`src/models/person.rs`)
+
 - [ ] Define Person struct
 - [ ] Define CreatePersonRequest
 - [ ] Define UpdatePersonRequest
 - [ ] Add validation
 
 ### Budget Model (`src/models/budget.rs`)
+
 - [ ] Define BudgetPeriod enum
 - [ ] Define Budget struct
 - [ ] Define BudgetRange struct
@@ -167,6 +179,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Repository Layer
 
 ### User Repository (`src/repositories/user_repo.rs`)
+
 - [ ] Implement `create_user()`
 - [ ] Implement `find_by_id()`
 - [ ] Implement `find_by_username()`
@@ -176,6 +189,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Account Repository (`src/repositories/account_repo.rs`)
+
 - [ ] Implement `create_account()`
 - [ ] Implement `find_by_id()`
 - [ ] Implement `list_by_user()`
@@ -185,6 +199,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Transaction Repository (`src/repositories/transaction_repo.rs`)
+
 - [ ] Implement `create_transaction()`
 - [ ] Implement `find_by_id()`
 - [ ] Implement `list_by_user()` with filters
@@ -197,6 +212,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Category Repository (`src/repositories/category_repo.rs`)
+
 - [ ] Implement `create_category()`
 - [ ] Implement `find_by_id()`
 - [ ] Implement `list_by_user()`
@@ -205,6 +221,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Person Repository (`src/repositories/person_repo.rs`)
+
 - [ ] Implement `create_person()`
 - [ ] Implement `find_by_id()`
 - [ ] Implement `list_by_user()`
@@ -213,6 +230,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Budget Repository (`src/repositories/budget_repo.rs`)
+
 - [ ] Implement `create_budget()`
 - [ ] Implement `find_by_id()`
 - [ ] Implement `list_by_user()`
@@ -228,6 +246,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Service Layer
 
 ### Transaction Service (`src/services/transaction_service.rs`)
+
 - [ ] Implement `create_transaction()` with split handling
 - [ ] Implement `get_transaction()`
 - [ ] Implement `list_transactions()` with filters
@@ -238,6 +257,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Account Service (`src/services/account_service.rs`)
+
 - [ ] Implement `create_account()`
 - [ ] Implement `get_account()` with balance
 - [ ] Implement `list_accounts()` with balances
@@ -246,6 +266,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Budget Service (`src/services/budget_service.rs`)
+
 - [ ] Implement `create_budget()`
 - [ ] Implement `get_budget()` with current spending
 - [ ] Implement `list_budgets()` with status
@@ -257,12 +278,14 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add unit tests
 
 ### Debt Service (`src/services/debt_service.rs`)
+
 - [ ] Implement `calculate_debt_for_person()`
 - [ ] Implement `get_all_debts_for_user()`
 - [ ] Implement `settle_debt()`
 - [ ] Add unit tests
 
 ### Analytics Service (`src/services/analytics_service.rs`)
+
 - [ ] Implement `calculate_net_worth()`
 - [ ] Implement `get_spending_trend()`
 - [ ] Implement `get_category_breakdown()`
@@ -275,11 +298,13 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Authentication
 
 ### Password Hashing (`src/auth/password.rs`)
+
 - [ ] Implement `hash_password()` with Argon2
+
   ```rust
   use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
   use argon2::password_hash::{SaltString, rand_core::OsRng};
-  
+
   pub fn hash_password(password: &str) -> Result<String, ApiError> {
       let salt = SaltString::generate(&mut OsRng);
       let argon2 = Argon2::default();
@@ -289,10 +314,12 @@ This checklist covers the Rust backend implementation using Axum, including proj
       Ok(hash.to_string())
   }
   ```
+
 - [ ] Implement `verify_password()`
 - [ ] Add tests
 
 ### JWT Handling (`src/auth/jwt.rs`)
+
 - [ ] Define Claims struct
   ```rust
   #[derive(Debug, Serialize, Deserialize)]
@@ -309,6 +336,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add tests
 
 ### Auth Middleware (`src/api/middleware/auth.rs`)
+
 - [ ] Implement `require_auth` middleware
   ```rust
   pub async fn require_auth<B>(
@@ -331,6 +359,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## API Handlers
 
 ### Auth Handlers (`src/api/handlers/auth.rs`)
+
 - [ ] Implement `register()` endpoint
   - [ ] Validate input
   - [ ] Check username/email uniqueness
@@ -347,6 +376,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add tests
 
 ### Transaction Handlers (`src/api/handlers/transactions.rs`)
+
 - [ ] Implement `list()` - GET /transactions
 - [ ] Implement `create()` - POST /transactions
 - [ ] Implement `get()` - GET /transactions/:id
@@ -357,6 +387,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add tests
 
 ### Account Handlers (`src/api/handlers/accounts.rs`)
+
 - [ ] Implement `list()` - GET /accounts
 - [ ] Implement `create()` - POST /accounts
 - [ ] Implement `get()` - GET /accounts/:id
@@ -365,6 +396,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add tests
 
 ### Budget Handlers (`src/api/handlers/budgets.rs`)
+
 - [ ] Implement `list()` - GET /budgets
 - [ ] Implement `create()` - POST /budgets
 - [ ] Implement `get()` - GET /budgets/:id
@@ -374,6 +406,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add tests
 
 ### People Handlers (`src/api/handlers/people.rs`)
+
 - [ ] Implement `list()` - GET /people
 - [ ] Implement `create()` - POST /people
 - [ ] Implement `get()` - GET /people/:id
@@ -384,6 +417,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add tests
 
 ### Category Handlers (`src/api/handlers/categories.rs`)
+
 - [ ] Implement `list()` - GET /categories
 - [ ] Implement `create()` - POST /categories
 - [ ] Implement `update()` - PUT /categories/:id
@@ -391,6 +425,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Add tests
 
 ### Dashboard Handler (`src/api/handlers/dashboard.rs`)
+
 - [ ] Implement `get_summary()` - GET /dashboard
 - [ ] Aggregate data from multiple services
 - [ ] Use parallel queries
@@ -402,6 +437,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## API Routes
 
 ### Route Configuration (`src/api/routes.rs`)
+
 - [ ] Create `api_routes()` function
 - [ ] Define auth routes (public)
   ```rust
@@ -428,6 +464,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Application State
 
 ### AppState (`src/lib.rs`)
+
 - [ ] Define AppState struct
   ```rust
   #[derive(Clone)]
@@ -444,6 +481,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Main Application
 
 ### Server Setup (`src/main.rs`)
+
 - [ ] Initialize tracing/logging
   ```rust
   tracing_subscriber::fmt()
@@ -473,21 +511,25 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Middleware
 
 ### Logging Middleware (`src/api/middleware/logging.rs`)
+
 - [ ] Add request ID generation
 - [ ] Log request details
 - [ ] Log response status and duration
 - [ ] Use tracing spans
 
 ### CORS Middleware
+
 - [ ] Configure CORS with tower-http
+
   ```rust
   use tower_http::cors::{CorsLayer, Any};
-  
+
   let cors = CorsLayer::new()
       .allow_origin(Any)
       .allow_methods(Any)
       .allow_headers(Any);
   ```
+
 - [ ] Restrict origins for production
 
 ---
@@ -495,6 +537,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Testing
 
 ### Unit Tests
+
 - [ ] Test all repository methods
 - [ ] Test all service methods
 - [ ] Test authentication functions
@@ -502,6 +545,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Test validation logic
 
 ### Integration Tests (`tests/`)
+
 - [ ] Create test database setup
 - [ ] Test auth endpoints
   - [ ] Register user
@@ -519,6 +563,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [ ] Test error responses
 
 ### Test Utilities
+
 - [ ] Create test database helper
 - [ ] Create test user helper
 - [ ] Create mock data generators
@@ -529,12 +574,14 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Documentation
 
 ### API Documentation
+
 - [ ] Add doc comments to all public functions
 - [ ] Document error cases
 - [ ] Document validation rules
 - [ ] Create API examples
 
 ### Code Documentation
+
 - [ ] Document complex business logic
 - [ ] Add module-level documentation
 - [ ] Document architectural decisions
@@ -544,12 +591,14 @@ This checklist covers the Rust backend implementation using Axum, including proj
 ## Performance Optimization
 
 ### Database Optimization
+
 - [ ] Use prepared statements (SQLx does this)
 - [ ] Implement connection pooling
 - [ ] Add database query logging
 - [ ] Profile slow queries
 
 ### Caching (Optional)
+
 - [ ] Add Redis connection (if using)
 - [ ] Cache dashboard data
 - [ ] Cache user sessions

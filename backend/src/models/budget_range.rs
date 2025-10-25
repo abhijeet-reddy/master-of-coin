@@ -34,3 +34,36 @@ pub struct UpdateBudgetRange {
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
 }
+
+// Request DTOs
+#[derive(Debug, Deserialize, validator::Validate)]
+pub struct CreateBudgetRangeRequest {
+    pub budget_id: Uuid,
+    #[validate(range(min = 0.01))]
+    pub limit_amount: f64,
+    pub period: BudgetPeriod,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+}
+
+#[derive(Debug, Deserialize, validator::Validate)]
+pub struct UpdateBudgetRangeRequest {
+    #[validate(range(min = 0.01))]
+    pub limit_amount: Option<f64>,
+    pub period: Option<BudgetPeriod>,
+    pub start_date: Option<NaiveDate>,
+    pub end_date: Option<NaiveDate>,
+}
+
+// Response DTOs
+#[derive(Debug, Serialize)]
+pub struct BudgetRangeResponse {
+    pub id: Uuid,
+    pub budget_id: Uuid,
+    pub limit_amount: String, // BigDecimal as string for JSON
+    pub period: BudgetPeriod,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}

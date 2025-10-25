@@ -11,6 +11,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: React with functional components and hooks
 
 **Justification**:
+
 - Specified requirement
 - Mature ecosystem with excellent tooling
 - Strong TypeScript support
@@ -18,6 +19,7 @@ This document details the technology selections for Master of Coin, with justifi
 - Excellent performance with concurrent features
 
 **Key Libraries**:
+
 ```json
 {
   "react": "^18.2.0",
@@ -31,6 +33,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: Chakra UI v2
 
 **Justification**:
+
 - **Accessibility-first**: WCAG compliant components out of the box
 - **Composable**: Build complex components from simple primitives
 - **Themeable**: Powerful theming system with design tokens
@@ -42,6 +45,7 @@ This document details the technology selections for Master of Coin, with justifi
 - **Active community**: Well-maintained, regular updates
 
 **Why Chakra UI for Finance App**:
+
 - Clean, modern aesthetic perfect for financial dashboards
 - Flexible theming for custom branding
 - Excellent form components with validation
@@ -50,6 +54,7 @@ This document details the technology selections for Master of Coin, with justifi
 - Better customization for unique financial UI needs
 
 **Components for Finance App**:
+
 - Table component (will need enhancement or use TanStack Table)
 - Form components (Input, Select, NumberInput)
 - Card and Box for layouts
@@ -59,6 +64,7 @@ This document details the technology selections for Master of Coin, with justifi
 - Tabs for navigation
 
 **Additional Libraries Needed**:
+
 - **TanStack Table**: For advanced data tables with sorting, filtering, pagination
 - **React DatePicker**: For date range selection (Chakra doesn't include one)
 
@@ -79,6 +85,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: Recharts
 
 **Justification**:
+
 - **React-native**: Built specifically for React, uses React components
 - **Declarative**: Fits React's component model perfectly
 - **Responsive**: Works well on different screen sizes
@@ -88,6 +95,7 @@ This document details the technology selections for Master of Coin, with justifi
 - **Active development**: Regular updates
 
 **Chart Types Needed**:
+
 - Line charts: Spending trends over time
 - Bar charts: Category comparisons
 - Pie charts: Budget distribution
@@ -95,9 +103,11 @@ This document details the technology selections for Master of Coin, with justifi
 - Composed charts: Multiple metrics
 
 **Alternative Considered**: Chart.js with react-chartjs-2
+
 - Rejected: Less React-native, more imperative API
 
 **Alternative Considered**: Victory
+
 - Rejected: Larger bundle size, more complex API
 
 ```json
@@ -113,6 +123,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Justification**:
 
 **React Query for Server State**:
+
 - Automatic caching and invalidation
 - Background refetching
 - Optimistic updates
@@ -121,12 +132,14 @@ This document details the technology selections for Master of Coin, with justifi
 - Reduces boilerplate significantly
 
 **Context API for Client State**:
+
 - Built-in, no extra dependencies
 - Perfect for authentication state
 - Simple for small-scale apps
 - Meets the "simple hooks" requirement
 
 **Why Not Redux/Zustand**:
+
 - Overkill for 1-2 users
 - More boilerplate
 - Server state better handled by React Query
@@ -144,6 +157,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: React Router v6
 
 **Justification**:
+
 - Industry standard for React SPAs
 - Declarative routing
 - Nested routes support
@@ -162,6 +176,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: React Hook Form
 
 **Justification**:
+
 - Minimal re-renders (performance)
 - Built with hooks (matches requirement)
 - Excellent validation support
@@ -170,6 +185,7 @@ This document details the technology selections for Master of Coin, with justifi
 - TypeScript support
 
 **Alternative Considered**: Formik
+
 - Rejected: More re-renders, larger bundle
 
 ```json
@@ -185,6 +201,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: date-fns
 
 **Justification**:
+
 - Lightweight (tree-shakeable)
 - Immutable
 - TypeScript support
@@ -192,9 +209,11 @@ This document details the technology selections for Master of Coin, with justifi
 - Simple API
 
 **Alternative Considered**: Moment.js
+
 - Rejected: Large bundle, mutable, deprecated
 
 **Alternative Considered**: Day.js
+
 - Considered: Smaller, but date-fns has better TypeScript support
 
 ```json
@@ -208,6 +227,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: Axios
 
 **Justification**:
+
 - Automatic JSON transformation
 - Interceptors for auth tokens
 - Request/response transformation
@@ -225,6 +245,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: Vite
 
 **Justification**:
+
 - Extremely fast development server
 - Fast production builds
 - Built-in TypeScript support
@@ -244,6 +265,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: Vitest + React Testing Library
 
 **Justification**:
+
 - Vitest: Fast, Vite-native, Jest-compatible API
 - RTL: Best practices for React testing
 - User-centric testing approach
@@ -264,6 +286,7 @@ This document details the technology selections for Master of Coin, with justifi
 **Choice**: Axum web framework
 
 **Justification**:
+
 - **Modern**: Built on tokio, hyper, and tower
 - **Type-safe**: Leverages Rust's type system
 - **Performance**: Excellent for high transaction volume
@@ -273,11 +296,13 @@ This document details the technology selections for Master of Coin, with justifi
 - **Active development**: Backed by Tokio team
 
 **Alternative Considered**: Actix-web
+
 - Also excellent, slightly more mature
 - More complex API
 - Axum chosen for cleaner code
 
 **Alternative Considered**: Rocket
+
 - Rejected: Less async-native, smaller ecosystem
 
 ```toml
@@ -288,28 +313,57 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 ```
 
-### Database Driver: SQLx
+### Database ORM: Diesel
 
-**Choice**: SQLx
+**Choice**: Diesel ORM
 
 **Justification**:
-- **Compile-time checked queries**: Catches SQL errors at compile time
-- **Async-native**: Built for tokio
-- **Type-safe**: Strong typing for queries
-- **No ORM overhead**: Direct SQL control
-- **PostgreSQL support**: Excellent Postgres integration
-- **Migrations**: Built-in migration support
 
-**Alternative Considered**: Diesel
-- Rejected: Sync-only (blocking), less async-friendly
-- Good ORM but we prefer SQL control
+- **Type-safe query builder**: Compile-time guarantees without raw SQL
+- **Zero-cost abstractions**: No runtime overhead
+- **Excellent PostgreSQL support**: Full feature support
+- **Migrations**: Built-in migration system with CLI
+- **Schema generation**: Automatic schema.rs generation
+- **Custom types**: Strong support for PostgreSQL enums
+- **Mature ecosystem**: Well-established, extensive documentation
+- **Compile-time validation**: Catches errors before runtime
 
-**Alternative Considered**: SeaORM
-- Considered: Good async ORM, but SQLx gives more control
+**Trade-offs**:
+
+- **Synchronous**: Requires `tokio::task::spawn_blocking` for async contexts
+- **Learning curve**: Query builder syntax vs raw SQL
+- **Migration effort**: Requires updating from SQLx (4-7 hours)
+
+**Why Diesel Over SQLx**:
+
+- **Type safety**: Query builder provides stronger compile-time guarantees
+- **Maintainability**: Less prone to SQL injection, easier refactoring
+- **Developer experience**: Better IDE support and error messages
+- **Custom types**: Superior enum handling for our 5 custom types
+- **No production code yet**: Perfect time to migrate with minimal effort
+
+**Migration Status**: See [`docs/database/sqlx-to-diesel-migration-plan.md`](../../database/sqlx-to-diesel-migration-plan.md)
 
 ```toml
 [dependencies]
-sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
+diesel = { version = "2.1", features = ["postgres", "uuid", "chrono", "numeric"] }
+diesel_migrations = "2.1"
+```
+
+**Async Integration**:
+
+```rust
+// Use spawn_blocking for database operations in async handlers
+use tokio::task;
+
+async fn get_user(pool: &DbPool, id: Uuid) -> Result<User, Error> {
+    let pool = pool.clone();
+    task::spawn_blocking(move || {
+        let mut conn = pool.get()?;
+        users::table.find(id).first(&mut conn)
+    })
+    .await?
+}
 ```
 
 ### Authentication: jsonwebtoken
@@ -317,6 +371,7 @@ sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chro
 **Choice**: jsonwebtoken crate
 
 **Justification**:
+
 - Industry standard JWT implementation
 - Secure and well-tested
 - Simple API
@@ -332,6 +387,7 @@ jsonwebtoken = "9.2"
 **Choice**: argon2
 
 **Justification**:
+
 - Winner of Password Hashing Competition
 - Resistant to GPU attacks
 - Configurable memory hardness
@@ -347,6 +403,7 @@ argon2 = "0.5"
 **Choice**: serde with serde_json
 
 **Justification**:
+
 - De facto standard in Rust
 - Excellent performance
 - Derive macros for easy use
@@ -363,6 +420,7 @@ serde_json = "1.0"
 **Choice**: validator crate
 
 **Justification**:
+
 - Derive-based validation
 - Common validators (email, length, range)
 - Custom validators support
@@ -378,6 +436,7 @@ validator = { version = "0.16", features = ["derive"] }
 **Choice**: thiserror for library errors, anyhow for application errors
 
 **Justification**:
+
 - **thiserror**: Custom error types with derive macro
 - **anyhow**: Context and error chaining
 - Standard pattern in Rust ecosystem
@@ -393,6 +452,7 @@ anyhow = "1.0"
 **Choice**: tracing + tracing-subscriber
 
 **Justification**:
+
 - Structured logging
 - Async-aware
 - Excellent for debugging
@@ -409,6 +469,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 **Choice**: config crate
 
 **Justification**:
+
 - Multiple source support (env, files, etc.)
 - Type-safe configuration
 - Environment-specific configs
@@ -423,6 +484,7 @@ config = "0.13"
 **Choice**: uuid crate
 
 **Justification**:
+
 - Standard UUID implementation
 - Multiple UUID versions
 - Serde support
@@ -437,6 +499,7 @@ uuid = { version = "1.6", features = ["serde", "v4"] }
 **Choice**: chrono
 
 **Justification**:
+
 - Comprehensive date/time handling
 - Timezone support
 - SQLx integration
@@ -454,6 +517,7 @@ chrono = { version = "0.4", features = ["serde"] }
 **Choice**: PostgreSQL 16
 
 **Justification**:
+
 - **ACID compliance**: Critical for financial data
 - **JSON support**: Flexible for transaction metadata
 - **Complex queries**: Excellent for aggregations and analytics
@@ -465,17 +529,20 @@ chrono = { version = "0.4", features = ["serde"] }
 - **CTEs**: Complex analytical queries
 
 **Why Not MongoDB**:
+
 - Financial data needs ACID guarantees
 - Complex relationships (accounts, transactions, people)
 - Need for complex aggregations and joins
 - Schema validation important
 
 **Why Not SQLite**:
+
 - Limited concurrent writes
 - No built-in replication
 - Less suitable for production
 
 **Docker Image**:
+
 ```yaml
 postgres:16-alpine
 ```
@@ -485,6 +552,7 @@ postgres:16-alpine
 **Choice**: Redis 7
 
 **Justification**:
+
 - **Dashboard caching**: Cache expensive aggregations
 - **Session storage**: Optional session management
 - **Fast**: In-memory performance
@@ -492,11 +560,13 @@ postgres:16-alpine
 - **Optional**: Can start without it, add later
 
 **When to Add**:
+
 - Dashboard queries become slow
 - Multiple concurrent users
 - Complex aggregations needed frequently
 
 **Docker Image**:
+
 ```yaml
 redis:7-alpine
 ```
@@ -508,12 +578,14 @@ redis:7-alpine
 **Choice**: Axum with tower-http static file serving
 
 **Justification**:
+
 - **Simpler deployment**: One less container
 - **Sufficient performance**: For 1-2 users, Rust is fast enough
 - **Easier development**: Single server to manage
 - **Less complexity**: Fewer moving parts
 
 **Implementation**:
+
 ```rust
 use tower_http::services::ServeDir;
 
@@ -527,18 +599,21 @@ let app = Router::new()
 **Choice**: Nginx
 
 **When to Use**:
+
 - More than 5 concurrent users
 - Need advanced caching
 - Want rate limiting
 - Need SSL termination separate from app
 
 **Justification**:
+
 - Industry standard
 - Excellent static file performance
 - Advanced features (caching, compression, rate limiting)
 - Can add later without code changes
 
 **Docker Image**:
+
 ```yaml
 nginx:alpine
 ```
@@ -550,6 +625,7 @@ nginx:alpine
 **Choice**: Cloudflare Tunnel for secure access
 
 **Justification**:
+
 - **No port forwarding**: No need to expose ports on your router
 - **Zero-trust security**: Built-in authentication and access control
 - **Automatic HTTPS**: Free SSL/TLS certificates
@@ -560,6 +636,7 @@ nginx:alpine
 - **Access control**: Can restrict by email, IP, or other criteria
 
 **How It Works**:
+
 1. Cloudflared container runs alongside your app
 2. Creates secure tunnel to Cloudflare's edge network
 3. Your domain points to Cloudflare
@@ -567,6 +644,7 @@ nginx:alpine
 5. No inbound ports needed on your firewall
 
 **Configuration**:
+
 ```yaml
 # docker-compose.yml
 cloudflared:
@@ -578,6 +656,7 @@ cloudflared:
 ```
 
 **Benefits for Master of Coin**:
+
 - Access from anywhere securely
 - No complex networking setup
 - Professional HTTPS setup
@@ -586,6 +665,7 @@ cloudflared:
 - Mobile access included
 
 **Setup Steps**:
+
 1. Create Cloudflare account (free)
 2. Add your domain to Cloudflare
 3. Create tunnel in Cloudflare dashboard
@@ -594,9 +674,11 @@ cloudflared:
 6. Deploy with Docker Compose
 
 **Alternative Considered**: Traditional port forwarding + Let's Encrypt
+
 - Rejected: Less secure, requires static IP, manual cert renewal, exposes ports
 
 **Alternative Considered**: Tailscale
+
 - Considered: Good for VPN access, but Cloudflare Tunnel better for web apps
 
 ## Development Tools
@@ -606,6 +688,7 @@ cloudflared:
 **Choice**: TypeScript 5+
 
 **Justification**:
+
 - Type safety for React components
 - Better IDE support
 - Catches errors at compile time
@@ -616,6 +699,7 @@ cloudflared:
 **Choice**: ESLint with TypeScript plugin + Prettier
 
 **Justification**:
+
 - Code quality enforcement
 - Consistent formatting
 - Catches common errors
@@ -625,6 +709,7 @@ cloudflared:
 **Choice**: Docker with Docker Compose
 
 **Justification**:
+
 - Consistent environments
 - Easy deployment
 - Isolated services
@@ -632,23 +717,24 @@ cloudflared:
 
 ## Summary of Key Decisions
 
-| Category | Technology | Primary Reason |
-|----------|-----------|----------------|
-| Frontend Framework | React 18 | Requirement, modern patterns |
-| UI Library | Chakra UI | Composable, accessible, themeable |
-| Charts | Recharts | React-native, lightweight |
-| State Management | React Query + Context | Server/client state separation |
-| Backend Framework | Axum | Modern, type-safe, performant |
-| Database | PostgreSQL 16 | ACID, complex queries, JSON |
-| ORM/Query | SQLx | Compile-time safety, async |
-| Cache | Redis (optional) | Dashboard performance |
-| Static Files | Axum (serves all) | Simplicity for 1-2 users |
-| Deployment | Docker Compose + Cloudflare Tunnel | Secure access, no port exposure |
-| Networking | Cloudflare Tunnel | Zero-trust access, HTTPS |
+| Category           | Technology                         | Primary Reason                                   |
+| ------------------ | ---------------------------------- | ------------------------------------------------ |
+| Frontend Framework | React 18                           | Requirement, modern patterns                     |
+| UI Library         | Chakra UI                          | Composable, accessible, themeable                |
+| Charts             | Recharts                           | React-native, lightweight                        |
+| State Management   | React Query + Context              | Server/client state separation                   |
+| Backend Framework  | Axum                               | Modern, type-safe, performant                    |
+| Database           | PostgreSQL 16                      | ACID, complex queries, JSON                      |
+| ORM/Query          | Diesel                             | Type-safe query builder, compile-time validation |
+| Cache              | Redis (optional)                   | Dashboard performance                            |
+| Static Files       | Axum (serves all)                  | Simplicity for 1-2 users                         |
+| Deployment         | Docker Compose + Cloudflare Tunnel | Secure access, no port exposure                  |
+| Networking         | Cloudflare Tunnel                  | Zero-trust access, HTTPS                         |
 
 ## Bundle Size Considerations
 
 ### Frontend (Estimated Production Build)
+
 - React + React DOM: ~140 KB
 - Chakra UI + Emotion: ~120-150 KB
 - Recharts: ~100 KB
@@ -663,16 +749,19 @@ This is excellent for a financial application with rich features. Chakra UI prov
 ## Performance Targets
 
 ### Frontend
+
 - First Contentful Paint: < 1.5s
 - Time to Interactive: < 3s
 - Lighthouse Score: > 90
 
 ### Backend
+
 - API Response Time: < 100ms (p95)
 - Database Query Time: < 50ms (p95)
 - Concurrent Requests: 100+ (more than enough for 1-2 users)
 
 ### Database
+
 - Transaction Insert: < 10ms
 - Dashboard Query: < 200ms
 - Search Query: < 100ms

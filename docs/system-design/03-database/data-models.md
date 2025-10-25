@@ -2,7 +2,9 @@
 
 ## Overview
 
-All data models are implemented in Rust using SQLx for database interaction. Models are located in [`backend/src/models/`](../../../backend/src/models/).
+All data models are implemented in Rust using **Diesel ORM** for database interaction. Models are located in [`backend/src/models/`](../../../backend/src/models/).
+
+**Migration Status**: Currently migrating from SQLx to Diesel. See [`docs/database/sqlx-to-diesel-migration-plan.md`](../../database/sqlx-to-diesel-migration-plan.md) for details.
 
 ## Core Models
 
@@ -10,11 +12,13 @@ All data models are implemented in Rust using SQLx for database interaction. Mod
 
 ```rust
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::users;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = users)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -26,15 +30,17 @@ pub struct User {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateUser {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = users)]
+pub struct NewUser {
     pub username: String,
     pub email: String,
-    pub password: String,
+    pub password_hash: String,
     pub name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = users)]
 pub struct UpdateUser {
     pub username: Option<String>,
     pub email: Option<String>,
@@ -44,19 +50,28 @@ pub struct UpdateUser {
 
 **Key Features:**
 
+- `Queryable` derive for reading from database
+- `Insertable` derive for creating new records
+- `AsChangeset` derive for updates
 - Password hash is excluded from serialization with `#[serde(skip_serializing)]`
-- Separate DTOs for create and update operations
+- Separate structs for query, insert, and update operations
 
 ### Account ([`backend/src/models/account.rs`](../../../backend/src/models/account.rs))
 
 ```rust
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
+use diesel::deserialize::{self, FromSql};
+use diesel::serialize::{self, ToSql, Output};
+use diesel::pg::Pg;
+use diesel::sql_types::Text;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::accounts;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "account_type", rename_all = "SCREAMING_SNAKE_CASE")]
+// Custom Diesel type implementation for AccountType
+#[derive(Debug, Clone, Serialize, Deserialize, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Text)]
 pub enum AccountType {
     Checking,
     Savings,
@@ -65,24 +80,41 @@ pub enum AccountType {
     Cash,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "currency_code", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum CurrencyCode {
-    Usd,
-    Eur,
-    Gbp,
-    Inr,
-    Jpy,
-    Aud,
-    Cad,
+impl ToSql<Text, Pg> for AccountType {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
+        let value = match self {
+            AccountType::Checking => "CHECKING",
+            AccountType::Savings => "SAVINGS",
+            AccountType::CreditCard => "CREDIT_CARD",
+            AccountType::Investment => "INVESTMENT",
+            AccountType::Cash => "CASH",
+        };
+        out.write_all(value.as_bytes())?;
+        Ok(serialize::IsNull::No)
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+impl FromSql<Text, Pg> for AccountType {
+    fn from_sql(bytes: diesel::pg::PgValue) -> deserialize::Result<Self> {
+        match bytes.as_bytes() {
+            b"CHECKING" => Ok(AccountType::Checking),
+            b"SAVINGS" => Ok(AccountType::Savings),
+            b"CREDIT_CARD" => Ok(AccountType::CreditCard),
+            b"INVESTMENT" => Ok(AccountType::Investment),
+            b"CASH" => Ok(AccountType::Cash),
+            _ => Err("Unrecognized enum variant".into()),
+        }
+    }
+}
+
+// Similar implementation for CurrencyCode...
+
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = accounts)]
 pub struct Account {
     pub id: Uuid,
     pub user_id: Uuid,
     pub name: String,
-    #[sqlx(rename = "type")]
     pub account_type: AccountType,
     pub currency: CurrencyCode,
     pub notes: Option<String>,
@@ -90,28 +122,23 @@ pub struct Account {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateAccount {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = accounts)]
+pub struct NewAccount {
+    pub user_id: Uuid,
     pub name: String,
     pub account_type: AccountType,
-    pub currency: Option<CurrencyCode>,
-    pub notes: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateAccount {
-    pub name: Option<String>,
-    pub account_type: Option<AccountType>,
-    pub currency: Option<CurrencyCode>,
+    pub currency: CurrencyCode,
     pub notes: Option<String>,
 }
 ```
 
 **Key Features:**
 
-- ENUMs map to PostgreSQL ENUM types with `#[sqlx(type_name)]`
+- Custom Diesel type implementations for PostgreSQL ENUMs
+- `ToSql` and `FromSql` traits for enum serialization
 - `SCREAMING_SNAKE_CASE` matches database enum values
-- Field renamed from `type` to `account_type` with `#[sqlx(rename = "type")]`
+- `Queryable` for reading, `Insertable` for creating
 - Currency is strongly typed as `CurrencyCode` enum
 
 ### Category ([`backend/src/models/category.rs`](../../../backend/src/models/category.rs))
@@ -410,11 +437,13 @@ All models follow a consistent DTO (Data Transfer Object) pattern:
 - `Create*`: Input for creating new records (no ID, timestamps)
 - `Update*`: Input for updating records (all fields optional)
 
-### SQLx Integration
+### Diesel Integration
 
-- `#[derive(FromRow)]`: Automatic mapping from database rows
-- `#[sqlx(type_name)]`: Maps Rust enums to PostgreSQL ENUMs
-- `#[sqlx(rename)]`: Handles SQL reserved keywords
+- `#[derive(Queryable)]`: Automatic mapping from database rows
+- `#[derive(Insertable)]`: For creating new records
+- `#[derive(AsChangeset)]`: For updating existing records
+- `#[diesel(table_name = ...)]`: Links struct to database table
+- Custom `ToSql`/`FromSql` implementations: Maps Rust enums to PostgreSQL ENUMs
 - `#[serde(skip_serializing)]`: Excludes sensitive fields from API responses
 
 ### Type Safety

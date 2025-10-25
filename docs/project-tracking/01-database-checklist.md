@@ -4,7 +4,47 @@
 
 This checklist covers PostgreSQL database setup, schema implementation, migrations, and initial data seeding for Master of Coin.
 
-**Reference:** [`docs/system-design/03-database/schema-design.md`](../system-design/03-database/schema-design.md)
+**References:**
+
+- [`docs/system-design/03-database/schema-design.md`](../system-design/03-database/schema-design.md)
+- [`docs/database/sqlx-to-diesel-migration-plan.md`](../database/sqlx-to-diesel-migration-plan.md) - **Diesel Migration Plan**
+
+**ORM Decision:** ✅ **Diesel** (migrating from SQLx)
+
+---
+
+## 🔄 SQLx to Diesel Migration
+
+**Status:** Required before backend repository implementation
+**Estimated Time:** 4-7 hours
+**Detailed Plan:** [`docs/database/sqlx-to-diesel-migration-plan.md`](../database/sqlx-to-diesel-migration-plan.md)
+
+### Migration Overview
+
+- [ ] **Phase 1:** Setup & Dependencies (1 hour)
+  - [ ] Install Diesel CLI: `cargo install diesel_cli --no-default-features --features postgres`
+  - [ ] Remove SQLx from Cargo.toml
+  - [ ] Add Diesel dependencies
+  - [ ] Initialize Diesel: `diesel setup`
+- [ ] **Phase 2:** Migration Files (30 min)
+  - [ ] Convert existing SQL migrations to Diesel format
+  - [ ] Generate schema: `diesel migration run && diesel print-schema > src/schema.rs`
+- [ ] **Phase 3:** Database Connection (30 min)
+  - [ ] Rewrite `src/db/mod.rs` with Diesel connection pool (r2d2)
+  - [ ] Update migration runner for Diesel
+- [ ] **Phase 4:** Custom Type Implementations (2-3 hours)
+  - [ ] Implement Diesel custom types for all 5 enums
+- [ ] **Phase 5:** Model Definitions (1-2 hours)
+  - [ ] Update all 8 model files with Diesel derives
+- [ ] **Phase 6:** SQLx Cleanup (30 min)
+  - [ ] Remove all SQLx imports and derives
+  - [ ] Update error handling
+  - [ ] Verify no SQLx references remain
+- [ ] **Phase 7:** Testing & Validation (1 hour)
+  - [ ] Verify compilation and migrations
+  - [ ] Test custom type serialization
+
+**See detailed migration plan for complete step-by-step instructions.**
 
 ---
 
@@ -80,21 +120,26 @@ All database scripts are located in [`backend/scripts/`](../../backend/scripts/)
 
 ---
 
-## SQLx Migration Setup
+## Migration Tool Setup
 
-### SQLx CLI Installation
+### Current: SQLx (To Be Replaced)
 
-- [x] Install SQLx CLI
-  ```bash
-  cargo install sqlx-cli --no-default-features --features postgres
-  ```
-- [x] Verify: `sqlx --version`
-
-### Migration Directory Setup
-
-- [x] Navigate to backend directory: `cd backend`
-- [x] Migrations directory already exists: `backend/migrations/`
+- [x] SQLx CLI installed
+- [x] Migrations directory exists: `backend/migrations/`
 - [x] Migrations run automatically via Docker or `make db-migrate`
+
+### Target: Diesel
+
+- [ ] Install Diesel CLI
+  ```bash
+  cargo install diesel_cli --no-default-features --features postgres
+  ```
+- [ ] Verify: `diesel --version`
+- [ ] Initialize Diesel: `diesel setup` (creates `diesel.toml`)
+- [ ] Convert migrations to Diesel format (up.sql/down.sql pairs)
+- [ ] Generate schema: `diesel migration run && diesel print-schema > src/schema.rs`
+
+**Note:** Existing SQL migrations can be reused with minimal changes. Diesel uses up.sql/down.sql pairs instead of single migration files.
 
 ---
 
@@ -487,49 +532,41 @@ The [`backend/scripts/seed.sql`](../../backend/scripts/seed.sql) includes:
 
 ## Database Connection Testing
 
-### SQLx Connection Pool
+### Current: SQLx Connection Pool (To Be Replaced)
 
-- [x] Create `backend/src/db/mod.rs` (connection pool implementation)
-- [x] Implement connection pool setup
+- [x] SQLx connection pool implemented in `backend/src/db/mod.rs`
+- [x] Connection tests passing
+
+### Target: Diesel Connection Pool
+
+- [ ] Rewrite `backend/src/db/mod.rs` with Diesel
 
   ```rust
-  use sqlx::postgres::PgPoolOptions;
-  use sqlx::PgPool;
+  use diesel::pg::PgConnection;
+  use diesel::r2d2::{self, ConnectionManager, Pool};
+  use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
-  pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
-      PgPoolOptions::new()
-          .max_connections(5)
-          .connect(database_url)
-          .await
+  pub type DbPool = Pool<ConnectionManager<PgConnection>>;
+  pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+
+  pub fn create_pool(database_url: &str, max_connections: u32) -> Result<DbPool, r2d2::Error> {
+      let manager = ConnectionManager::<PgConnection>::new(database_url);
+      Pool::builder()
+          .max_size(max_connections)
+          .build(manager)
+  }
+
+  pub fn run_migrations(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
+      let mut conn = pool.get()?;
+      conn.run_pending_migrations(MIGRATIONS)?;
+      Ok(())
   }
   ```
 
-### Test Connection
+- [ ] Update connection tests for Diesel
+- [ ] Use `tokio::task::spawn_blocking` for async contexts
 
-- [x] Create test in `backend/src/db/mod.rs`
-
-  ```rust
-  #[cfg(test)]
-  mod tests {
-      use super::*;
-
-      #[tokio::test]
-      async fn test_database_connection() {
-          let pool = create_pool(&std::env::var("DATABASE_URL").unwrap())
-              .await
-              .expect("Failed to create pool");
-
-          let result: (i64,) = sqlx::query_as("SELECT 1")
-              .fetch_one(&pool)
-              .await
-              .expect("Failed to execute query");
-
-          assert_eq!(result.0, 1);
-      }
-  }
-  ```
-
-- [x] Run test: `cargo test test_database_connection`
+**Note:** Diesel is synchronous, so database operations in async handlers need `spawn_blocking`.
 
 ---
 
@@ -631,16 +668,36 @@ The [`backend/scripts/seed.sql`](../../backend/scripts/seed.sql) includes:
 
 ## Completion Checklist
 
+### Database Setup (Completed)
+
 - [x] PostgreSQL 16 installed and running
 - [x] Database created with UUID extension
 - [x] All 10 migrations created and executed
 - [x] All tables, indexes, and triggers verified
 - [x] Seed data created and loaded
-- [x] Connection pool implemented and tested
 - [x] Query performance analyzed
 - [x] Backup/restore scripts created and tested
 - [x] Database documentation completed
 
-**Estimated Time:** 3-5 hours
+### Migration to Diesel (Required)
 
-**Next Steps:** Proceed to [`02-backend-checklist.md`](02-backend-checklist.md)
+- [ ] Diesel CLI installed
+- [ ] Diesel initialized (`diesel.toml` created)
+- [ ] Migrations converted to Diesel format
+- [ ] Schema generated (`src/schema.rs`)
+- [ ] Connection pool rewritten for Diesel
+- [ ] Custom enum types implemented
+- [ ] All model files updated with Diesel derives
+- [ ] SQLx completely removed from codebase
+- [ ] Migration tests passing
+- [ ] Connection tests passing with Diesel
+
+**Estimated Time:**
+
+- Original database setup: 3-5 hours ✅
+- Diesel migration: 4-7 hours ⏳
+
+**Next Steps:**
+
+1. Complete Diesel migration (see [`docs/database/sqlx-to-diesel-migration-plan.md`](../database/sqlx-to-diesel-migration-plan.md))
+2. Proceed to [`02-backend-checklist.md`](02-backend-checklist.md)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This checklist covers the Rust backend implementation using Axum, including project structure, models, repositories, services, API endpoints, authentication, and testing.
+This checklist covers the Rust backend implementation using Axum with **Diesel ORM**, including project structure, models, repositories, services, API endpoints, authentication, and testing.
 
 **References:**
 
@@ -10,6 +10,29 @@ This checklist covers the Rust backend implementation using Axum, including proj
 - [`docs/system-design/02-backend/business-logic.md`](../system-design/02-backend/business-logic.md)
 - [`docs/system-design/02-backend/authentication-security.md`](../system-design/02-backend/authentication-security.md)
 - [`docs/system-design/04-api/api-specification.md`](../system-design/04-api/api-specification.md)
+- [`docs/database/sqlx-to-diesel-migration-plan.md`](../database/sqlx-to-diesel-migration-plan.md) - **Diesel Migration Plan**
+
+**ORM Decision:** ✅ **Diesel** (type-safe query builder, compile-time guarantees)
+
+---
+
+## 🔄 SQLx to Diesel Migration
+
+**Status:** Required before repository implementation
+**Estimated Time:** 4-7 hours
+
+**Complete migration details are in the database checklist:**
+
+- See [`01-database-checklist.md`](01-database-checklist.md) - Migration Overview section
+- See [`docs/database/sqlx-to-diesel-migration-plan.md`](../database/sqlx-to-diesel-migration-plan.md) - Detailed migration plan
+
+**Key Changes for Backend:**
+
+- Replace SQLx connection pool with Diesel's r2d2 pool
+- Update all model derives from SQLx to Diesel
+- Implement custom types for enums
+- Update error handling from `sqlx::Error` to `diesel::result::Error`
+- Use `tokio::task::spawn_blocking` for database operations in async contexts
 
 ---
 
@@ -76,12 +99,13 @@ This checklist covers the Rust backend implementation using Axum, including proj
 
 ### Error Types (`src/errors/api_error.rs`)
 
-- [ ] Define ApiError enum
+- [ ] Define ApiError enum (using Diesel)
+
   ```rust
   #[derive(Debug, thiserror::Error)]
   pub enum ApiError {
       #[error("Database error: {0}")]
-      Database(#[from] sqlx::Error),
+      Database(#[from] diesel::result::Error),
 
       #[error("Not found: {0}")]
       NotFound(String),
@@ -96,6 +120,7 @@ This checklist covers the Rust backend implementation using Axum, including proj
       Internal,
   }
   ```
+
 - [ ] Implement `IntoResponse` for ApiError
 - [ ] Create ErrorResponse struct
 - [ ] Add error logging with tracing
@@ -107,15 +132,17 @@ This checklist covers the Rust backend implementation using Axum, including proj
 
 ### User Model (`src/models/user.rs`)
 
-- [ ] Define User struct
+- [ ] Define User struct (using Diesel)
 
   ```rust
-  use sqlx::FromRow;
+  use diesel::prelude::*;
   use serde::{Deserialize, Serialize};
   use uuid::Uuid;
   use chrono::{DateTime, Utc};
+  use crate::schema::users;
 
-  #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+  #[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+  #[diesel(table_name = users)]
   pub struct User {
       pub id: Uuid,
       pub username: String,
@@ -125,6 +152,15 @@ This checklist covers the Rust backend implementation using Axum, including proj
       pub name: String,
       pub created_at: DateTime<Utc>,
       pub updated_at: DateTime<Utc>,
+  }
+
+  #[derive(Debug, Insertable)]
+  #[diesel(table_name = users)]
+  pub struct NewUser {
+      pub username: String,
+      pub email: String,
+      pub password_hash: String,
+      pub name: String,
   }
   ```
 
@@ -465,14 +501,21 @@ This checklist covers the Rust backend implementation using Axum, including proj
 
 ### AppState (`src/lib.rs`)
 
-- [ ] Define AppState struct
+- [ ] Define AppState struct (using Diesel)
+
   ```rust
+  use diesel::r2d2::{self, ConnectionManager};
+  use diesel::PgConnection;
+
+  pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
   #[derive(Clone)]
   pub struct AppState {
-      pub db: PgPool,
+      pub db: DbPool,
       pub config: Config,
   }
   ```
+
 - [ ] Implement helper methods for services
 - [ ] Add to router state
 
@@ -592,10 +635,11 @@ This checklist covers the Rust backend implementation using Axum, including proj
 
 ### Database Optimization
 
-- [ ] Use prepared statements (SQLx does this)
-- [ ] Implement connection pooling
-- [ ] Add database query logging
+- [ ] Use prepared statements (Diesel does this automatically)
+- [ ] Implement connection pooling with r2d2
+- [ ] Add database query logging with Diesel's logging
 - [ ] Profile slow queries
+- [ ] Use `tokio::task::spawn_blocking` for database operations in async contexts
 
 ### Caching (Optional)
 

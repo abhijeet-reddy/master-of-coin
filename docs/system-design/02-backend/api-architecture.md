@@ -2,7 +2,9 @@
 
 ## Overview
 
-Master of Coin backend is built with Rust using the Axum web framework, providing a high-performance, type-safe REST API.
+Master of Coin backend is built with Rust using the Axum web framework and **Diesel ORM**, providing a high-performance, type-safe REST API.
+
+**Database Layer**: Migrating from SQLx to Diesel ORM. See [`docs/database/sqlx-to-diesel-migration-plan.md`](../../database/sqlx-to-diesel-migration-plan.md) for migration details.
 
 ## Project Structure
 
@@ -87,34 +89,34 @@ use tower_http::trace::TraceLayer;
 async fn main() -> Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
-    
+
     // Load configuration
     let config = Config::from_env()?;
-    
+
     // Setup database pool
     let db_pool = setup_database(&config).await?;
-    
+
     // Build application state
     let app_state = AppState {
         db: db_pool,
         config: config.clone(),
     };
-    
+
     // Build router
     let app = Router::new()
         .nest("/api/v1", api_routes())
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(app_state);
-    
+
     // Start server
     let addr = format!("{}:{}", config.host, config.port);
     tracing::info!("Starting server on {}", addr);
-    
+
     Server::bind(&addr.parse()?)
         .serve(app.into_make_service())
         .await?;
-    
+
     Ok(())
 }
 ```
@@ -131,7 +133,7 @@ pub fn api_routes() -> Router<AppState> {
         .route("/auth/register", post(handlers::auth::register))
         .route("/auth/login", post(handlers::auth::login))
         .route("/auth/refresh", post(handlers::auth::refresh))
-        
+
         // Protected routes
         .nest("/", protected_routes())
 }
@@ -140,28 +142,28 @@ fn protected_routes() -> Router<AppState> {
     Router::new()
         // Dashboard
         .route("/dashboard", get(handlers::dashboard::get_summary))
-        
+
         // Transactions
         .route("/transactions", get(handlers::transactions::list))
         .route("/transactions", post(handlers::transactions::create))
         .route("/transactions/:id", get(handlers::transactions::get))
         .route("/transactions/:id", put(handlers::transactions::update))
         .route("/transactions/:id", delete(handlers::transactions::delete))
-        
+
         // Accounts
         .route("/accounts", get(handlers::accounts::list))
         .route("/accounts", post(handlers::accounts::create))
         .route("/accounts/:id", get(handlers::accounts::get))
         .route("/accounts/:id", put(handlers::accounts::update))
         .route("/accounts/:id", delete(handlers::accounts::delete))
-        
+
         // Budgets
         .route("/budgets", get(handlers::budgets::list))
         .route("/budgets", post(handlers::budgets::create))
         .route("/budgets/:id", get(handlers::budgets::get))
         .route("/budgets/:id", put(handlers::budgets::update))
         .route("/budgets/:id", delete(handlers::budgets::delete))
-        
+
         // People
         .route("/people", get(handlers::people::list))
         .route("/people", post(handlers::people::create))
@@ -169,13 +171,13 @@ fn protected_routes() -> Router<AppState> {
         .route("/people/:id", put(handlers::people::update))
         .route("/people/:id", delete(handlers::people::delete))
         .route("/people/:id/debts", get(handlers::people::get_debts))
-        
+
         // Categories (user-defined)
         .route("/categories", get(handlers::categories::list))
         .route("/categories", post(handlers::categories::create))
         .route("/categories/:id", put(handlers::categories::update))
         .route("/categories/:id", delete(handlers::categories::delete))
-        
+
         // Apply auth middleware to all protected routes
         .layer(middleware::from_fn_with_state(
             app_state.clone(),
@@ -202,7 +204,7 @@ pub async fn list(
         .transaction_service
         .list_transactions(user.id, params)
         .await?;
-    
+
     Ok(Json(transactions))
 }
 
@@ -213,13 +215,13 @@ pub async fn create(
 ) -> Result<Json<Transaction>, ApiError> {
     // Validate
     payload.validate()?;
-    
+
     // Create transaction
     let transaction = state
         .transaction_service
         .create_transaction(user.id, payload)
         .await?;
-    
+
     Ok(Json(transaction))
 }
 
@@ -232,7 +234,7 @@ pub async fn get(
         .transaction_service
         .get_transaction(user.id, id)
         .await?;
-    
+
     Ok(Json(transaction))
 }
 ```
@@ -260,19 +262,19 @@ pub async fn require_auth<B>(
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
         .ok_or(StatusCode::UNAUTHORIZED)?;
-    
+
     // Verify JWT
     let claims = state
         .auth_service
         .verify_token(token)
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
-    
+
     // Add user to request extensions
     req.extensions_mut().insert(AuthUser {
         id: claims.user_id,
         email: claims.email,
     });
-    
+
     Ok(next.run(req).await)
 }
 ```
@@ -299,17 +301,17 @@ pub struct ErrorResponse {
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
     #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
-    
+    Database(#[from] diesel::result::Error),
+
     #[error("Not found: {0}")]
     NotFound(String),
-    
+
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
-    
+
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     #[error("Internal server error")]
     Internal,
 }
@@ -334,13 +336,13 @@ impl IntoResponse for ApiError {
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", "Internal server error")
             }
         };
-        
+
         let body = Json(ErrorResponse {
             error: error_type.to_string(),
             message: message.to_string(),
             details: None,
         });
-        
+
         (status, body).into_response()
     }
 }
@@ -350,9 +352,14 @@ impl IntoResponse for ApiError {
 
 ```rust
 // lib.rs
+use diesel::r2d2::{self, ConnectionManager};
+use diesel::PgConnection;
+
+pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
 #[derive(Clone)]
 pub struct AppState {
-    pub db: PgPool,
+    pub db: DbPool,
     pub config: Config,
 }
 
@@ -360,11 +367,11 @@ impl AppState {
     pub fn transaction_service(&self) -> TransactionService {
         TransactionService::new(self.db.clone())
     }
-    
+
     pub fn account_service(&self) -> AccountService {
         AccountService::new(self.db.clone())
     }
-    
+
     // ... other services
 }
 ```
@@ -411,7 +418,8 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
+diesel = { version = "2.1", features = ["postgres", "uuid", "chrono", "numeric"] }
+diesel_migrations = "2.1"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -445,14 +453,43 @@ chrono = { version = "0.4", features = ["serde"] }
 reqwest = "0.11"
 ```
 
+## Database Operations in Async Context
+
+Since Diesel is synchronous, database operations in async handlers require `tokio::task::spawn_blocking`:
+
+```rust
+use tokio::task;
+
+pub async fn get_transaction(
+    pool: &DbPool,
+    user_id: Uuid,
+    transaction_id: Uuid,
+) -> Result<Transaction, ApiError> {
+    let pool = pool.clone();
+
+    task::spawn_blocking(move || {
+        use crate::schema::transactions::dsl::*;
+        let mut conn = pool.get()?;
+
+        transactions
+            .filter(id.eq(transaction_id))
+            .filter(user_id.eq(user_id))
+            .first(&mut conn)
+    })
+    .await
+    .map_err(|_| ApiError::Internal)?
+}
+```
+
 ## Summary
 
 - ✅ Clean layered architecture (API → Service → Repository)
-- ✅ Type-safe with Rust
-- ✅ Async/await with Tokio
+- ✅ Type-safe with Rust and Diesel ORM
+- ✅ Async/await with Tokio (using `spawn_blocking` for database)
 - ✅ JWT authentication
 - ✅ Structured error handling
 - ✅ Middleware for cross-cutting concerns
 - ✅ Configuration management
 - ✅ Logging and tracing
 - ✅ RESTful API design
+- ✅ Compile-time query validation with Diesel

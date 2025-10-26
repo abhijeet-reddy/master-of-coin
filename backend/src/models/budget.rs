@@ -1,20 +1,13 @@
 use chrono::{DateTime, Utc};
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "budget_period", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum BudgetPeriod {
-    Daily,
-    Weekly,
-    Monthly,
-    Quarterly,
-    Yearly,
-}
+use crate::schema::budgets;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+#[diesel(table_name = budgets)]
 pub struct Budget {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -22,6 +15,14 @@ pub struct Budget {
     pub filters: JsonValue,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = budgets)]
+pub struct NewBudget<'a> {
+    pub user_id: Uuid,
+    pub name: &'a str,
+    pub filters: JsonValue,
 }
 
 #[derive(Debug, Deserialize)]

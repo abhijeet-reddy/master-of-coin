@@ -9,6 +9,7 @@ This document defines the core business rules and logic for Master of Coin's fin
 ### Transaction Creation Rules
 
 1. **Basic Transaction**
+
    - Must have: title, amount, date, account_id, user_id
    - Amount can be positive (income) or negative (expense)
    - Date cannot be in the future (configurable)
@@ -33,14 +34,14 @@ pub struct SplitCalculation {
 impl SplitCalculation {
     pub fn calculate(transaction_amount: Decimal, splits: Vec<Split>) -> Result<Self> {
         let total_splits: Decimal = splits.iter().map(|s| s.amount).sum();
-        
+
         // Validation
         if total_splits > transaction_amount {
             return Err(BusinessError::SplitsExceedTotal);
         }
-        
+
         let user_share = transaction_amount - total_splits;
-        
+
         Ok(Self {
             transaction_amount,
             splits,
@@ -75,18 +76,24 @@ pub enum AccountType {
 
 ### Account Balance Calculation
 
-```rust
-pub async fn calculate_balance(account_id: Uuid) -> Result<Decimal> {
-    // Sum all transactions for this account
-    let balance = sqlx::query_scalar!(
-        r#"
-        SELECT COALESCE(SUM(amount), 0) as balance
-        FROM transactions
-        WHERE account_id = $1
-        "#,
-        account_id
-    )
-    .fetch_one(&pool)
+````rust
+pub async fn calculate_balance(pool: &DbPool, account_id: Uuid) -> Result<Decimal> {
+    use crate::schema::transactions::dsl::*;
+    use diesel::prelude::*;
+    use tokio::task;
+
+    let pool = pool.clone();
+    task::spawn_blocking(move || {
+        let mut conn = pool.get()?;
+
+        // Sum all transactions for this account
+        let balance: Option<BigDecimal> = transactions
+            .filter(account_id.eq(account_id))
+            .select(diesel::dsl::sum(amount))
+            .first(&mut conn)?;
+
+        Ok(balance.unwrap_or(BigDecimal::from(0)))
+    })
 
 ### Budget Model - Ranges with Periods
 
@@ -119,21 +126,22 @@ pub struct BudgetRange {
     pub end_date: Date,            // When this range ends
     pub created_at: DateTime<Utc>,
 }
-```
+````
 
 **Example: Food Budget evolving over time**
+
 ```
 Budget: "Food Budget" (filters: category = "Food")
-  Range 1: 
+  Range 1:
     - Applicable: Jan 2025 - Dec 2025
     - Limit: €100 per MONTH
     - Period: Monthly
-  
+
   Range 2:
-    - Applicable: Jan 2026 - Dec 2026  
+    - Applicable: Jan 2026 - Dec 2026
     - Limit: €150 per MONTH (increased for inflation)
     - Period: Monthly
-  
+
   Range 3:
     - Applicable: Jun 2026 - Aug 2026
     - Limit: €50 per WEEK (tighter control during summer)
@@ -141,15 +149,18 @@ Budget: "Food Budget" (filters: category = "Food")
 ```
 
 **Calculation Logic:**
+
 - For a given date, find the active range (date falls within start_date and end_date)
 - Apply the limit based on the period (daily/weekly/monthly/etc.)
 - Example: If today is July 15, 2026, use Range 3 (€50/week)
 
-    .await?;
-    
-    Ok(balance)
-}
-```
+      .await?;
+
+      Ok(balance)
+
+  }
+
+````
 
 ### Account Rules
 
@@ -186,13 +197,13 @@ impl BudgetStatus {
     pub fn calculate(limit: Decimal, spent: Decimal) -> Self {
         let remaining = limit - spent;
         let percentage = (spent / limit * Decimal::from(100)).to_f64().unwrap_or(0.0);
-        
+
         let status = match percentage {
             p if p < 80.0 => BudgetHealth::Good,
             p if p <= 100.0 => BudgetHealth::Warning,
             _ => BudgetHealth::Exceeded,
         };
-        
+
         Self {
             limit,
             spent,
@@ -202,7 +213,7 @@ impl BudgetStatus {
         }
     }
 }
-```
+````
 
 ### Budget Rules
 
@@ -217,14 +228,15 @@ Budgets use flexible JSON filters to match transactions. Wildcards are supported
 
 ```json
 {
-  "category_id": "uuid",           // Optional: specific category
+  "category_id": "uuid", // Optional: specific category
   "account_ids": ["uuid1", "uuid2"], // Optional: specific accounts, or ["*"] for all
-  "min_amount": 0,                 // Optional: minimum transaction amount
-  "max_amount": 1000               // Optional: maximum transaction amount
+  "min_amount": 0, // Optional: minimum transaction amount
+  "max_amount": 1000 // Optional: maximum transaction amount
 }
 ```
 
 **Wildcard Support:**
+
 - `account_ids: ["*"]` - Matches ALL accounts
 - `category_id: null` - Matches transactions without category
 - Empty filters `{}` - Matches ALL transactions (useful for total spending budget)
@@ -245,10 +257,10 @@ pub struct DebtSummary {
 pub async fn calculate_debt(user_id: Uuid, person_id: Uuid) -> Result<DebtSummary> {
     // Get all splits where this person is involved
     let splits = get_splits_for_person(user_id, person_id).await?;
-    
+
     let mut owed_to_me = Decimal::ZERO;
     let mut i_owe = Decimal::ZERO;
-    
+
     for split in splits {
         if split.paid_by_user {
             // User paid, person owes user
@@ -258,9 +270,9 @@ pub async fn calculate_debt(user_id: Uuid, person_id: Uuid) -> Result<DebtSummar
             i_owe += split.amount;
         }
     }
-    
+
     let net = owed_to_me - i_owe;
-    
+
     Ok(DebtSummary {
         person_id,
         person_name: split.person_name,
@@ -287,11 +299,11 @@ pub async fn settle_debt(
     account_id: Uuid,
 ) -> Result<Transaction> {
     let debt = calculate_debt(user_id, person_id).await?;
-    
+
     if debt.net_balance == Decimal::ZERO {
         return Err(BusinessError::NoDebtToSettle);
     }
-    
+
     // Create settlement transaction
     let transaction = Transaction {
         title: format!("Debt settlement with {}", debt.person_name),
@@ -302,7 +314,7 @@ pub async fn settle_debt(
         notes: Some("Automatic debt settlement".to_string()),
         ..Default::default()
     };
-    
+
     create_transaction(user_id, transaction).await
 }
 ```
@@ -320,13 +332,13 @@ pub struct NetWorth {
 
 pub async fn calculate_net_worth(user_id: Uuid) -> Result<NetWorth> {
     let accounts = get_user_accounts(user_id).await?;
-    
+
     let mut assets = Decimal::ZERO;
     let mut liabilities = Decimal::ZERO;
-    
+
     for account in accounts {
         let balance = calculate_balance(account.id).await?;
-        
+
         match account.account_type {
             AccountType::CreditCard | AccountType::Loan => {
                 // Negative balance = liability
@@ -345,15 +357,15 @@ pub async fn calculate_net_worth(user_id: Uuid) -> Result<NetWorth> {
             }
         }
     }
-    
+
     let net_worth = assets - liabilities;
-    
+
     // Calculate change from previous month
     let previous_net_worth = get_net_worth_for_date(
         user_id,
         Utc::now() - Duration::days(30)
     ).await?;
-    
+
     let change = net_worth - previous_net_worth;
     let change_pct = if previous_net_worth != Decimal::ZERO {
         (change / previous_net_worth * Decimal::from(100))
@@ -362,7 +374,7 @@ pub async fn calculate_net_worth(user_id: Uuid) -> Result<NetWorth> {
     } else {
         0.0
     };
-    
+
     Ok(NetWorth {
         total_assets: assets,
         total_liabilities: liabilities,
@@ -397,7 +409,7 @@ pub async fn get_dashboard_summary(user_id: Uuid) -> Result<DashboardSummary> {
         get_spending_trend(user_id, 6), // Last 6 months
         get_category_breakdown(user_id, current_month()),
     )?;
-    
+
     Ok(DashboardSummary {
         net_worth,
         accounts,
@@ -423,17 +435,17 @@ impl Validator for CreateTransactionRequest {
         if self.title.len() > 255 {
             return Err(ValidationError::field("title", "Title too long"));
         }
-        
+
         // Amount
         if self.amount == Decimal::ZERO {
             return Err(ValidationError::field("amount", "Amount cannot be zero"));
         }
-        
+
         // Date
         if self.date > Utc::now() {
             return Err(ValidationError::field("date", "Date cannot be in the future"));
         }
-        
+
         // Splits
         if let Some(splits) = &self.splits {
             let total: Decimal = splits.iter().map(|s| s.amount).sum();
@@ -444,7 +456,7 @@ impl Validator for CreateTransactionRequest {
                 ));
             }
         }
-        
+
         Ok(())
     }
 }
@@ -459,7 +471,7 @@ impl Validator for CreateBudgetRequest {
         if self.limit <= Decimal::ZERO {
             return Err(ValidationError::field("limit", "Limit must be positive"));
         }
-        
+
         // Must have filters (which includes category)
         if self.filters.is_none() {
             return Err(ValidationError::field(
@@ -467,18 +479,18 @@ impl Validator for CreateBudgetRequest {
                 "Must specify budget filters"
             ));
         }
-        
+
         // Month must be valid
         if self.month < 1 || self.month > 12 {
             return Err(ValidationError::field("month", "Invalid month"));
         }
-        
+
         // Year must be reasonable
         let current_year = Utc::now().year();
         if self.year < 2000 || self.year > current_year + 10 {
             return Err(ValidationError::field("year", "Invalid year"));
         }
-        
+
         Ok(())
     }
 }
@@ -487,6 +499,7 @@ impl Validator for CreateBudgetRequest {
 ## Business Rules Summary
 
 ### Transactions
+
 - ✅ Support income and expenses
 - ✅ Split payments with automatic debt tracking
 - ✅ User-defined categories
@@ -494,12 +507,14 @@ impl Validator for CreateBudgetRequest {
 - ✅ Must belong to an account
 
 ### Accounts
+
 - ✅ Multiple account types
 - ✅ Calculated balances
 - ✅ Cannot delete with transactions
 - ✅ Support for assets and liabilities
 
 ### Budgets
+
 - ✅ Monthly tracking
 - ✅ Category or filter-based
 - ✅ Auto-categorization
@@ -507,12 +522,14 @@ impl Validator for CreateBudgetRequest {
 - ✅ Multiple budgets per category
 
 ### Debts
+
 - ✅ Derived from splits
 - ✅ Bidirectional tracking
 - ✅ Settlement transactions
 - ✅ Historical preservation
 
 ### Analytics
+
 - ✅ Net worth calculation
 - ✅ Spending trends
 - ✅ Category breakdowns

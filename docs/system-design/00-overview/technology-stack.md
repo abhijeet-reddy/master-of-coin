@@ -502,7 +502,7 @@ uuid = { version = "1.6", features = ["serde", "v4"] }
 
 - Comprehensive date/time handling
 - Timezone support
-- SQLx integration
+- Diesel integration
 - Serde support
 
 ```toml

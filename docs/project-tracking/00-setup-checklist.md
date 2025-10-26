@@ -1,6 +1,7 @@
 # Setup Checklist
 
 ## Overview
+
 This checklist covers the initial development environment setup and project initialization for Master of Coin.
 
 ---
@@ -8,6 +9,7 @@ This checklist covers the initial development environment setup and project init
 ## Development Environment Setup
 
 ### System Requirements
+
 - [x] Verify system meets minimum requirements
   - [x] macOS/Linux/Windows with WSL2
   - [x] At least 8GB RAM available
@@ -16,6 +18,7 @@ This checklist covers the initial development environment setup and project init
 ### Core Tools Installation
 
 #### Rust Development
+
 - [x] Install Rust toolchain (1.75+)
   - [x] Run: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
   - [x] Verify: `rustc --version`
@@ -26,6 +29,7 @@ This checklist covers the initial development environment setup and project init
   - [x] Install rustfmt: `rustup component add rustfmt`
 
 #### Node.js & Frontend Tools
+
 - [x] Install Node.js (v18+ LTS)
   - [x] Download from nodejs.org or use nvm
   - [x] Verify: `node --version`
@@ -35,6 +39,7 @@ This checklist covers the initial development environment setup and project init
   - [x] Verify: `pnpm --version`
 
 #### Database
+
 - [x] Install PostgreSQL 16
   - [x] Download from postgresql.org
   - [x] Verify: `psql --version`
@@ -45,6 +50,7 @@ This checklist covers the initial development environment setup and project init
   - [x] psql (CLI)
 
 #### Docker & Container Tools
+
 - [x] Install Docker Desktop
   - [x] Download from docker.com
   - [x] Verify: `docker --version`
@@ -53,6 +59,7 @@ This checklist covers the initial development environment setup and project init
 - [x] Test Docker: `docker run hello-world`
 
 #### Version Control
+
 - [x] Install Git
   - [x] Verify: `git --version`
 - [x] Configure Git
@@ -64,6 +71,7 @@ This checklist covers the initial development environment setup and project init
 ## IDE Configuration
 
 ### VS Code Setup (Recommended)
+
 - [x] Install Visual Studio Code
 - [x] Install essential extensions
   - [x] rust-analyzer (Rust language support)
@@ -78,6 +86,7 @@ This checklist covers the initial development environment setup and project init
   - [x] GitLens
 
 ### VS Code Settings
+
 - [x] Create `.vscode/settings.json`
   ```json
   {
@@ -96,6 +105,7 @@ This checklist covers the initial development environment setup and project init
 ## Project Initialization
 
 ### Repository Setup
+
 - [x] Create GitHub/GitLab repository
   - [x] Repository name: `master-of-coin`
   - [x] Initialize with README
@@ -105,6 +115,7 @@ This checklist covers the initial development environment setup and project init
   - [x] `cd master-of-coin`
 
 ### Project Structure
+
 - [x] Create root directory structure
   ```
   master-of-coin/
@@ -118,6 +129,7 @@ This checklist covers the initial development environment setup and project init
   ```
 
 ### Backend Initialization
+
 - [x] Navigate to backend directory: `cd backend`
 - [x] Initialize Rust project
   - [x] Run: `cargo init --name master-of-coin-backend`
@@ -146,6 +158,7 @@ This checklist covers the initial development environment setup and project init
 - [x] Create placeholder files for each module
 
 ### Frontend Initialization
+
 - [x] Navigate to frontend directory: `cd ../frontend`
 - [x] Initialize Vite + React + TypeScript project
   - [x] Run: `npm create vite@latest . -- --template react-ts`
@@ -178,53 +191,59 @@ This checklist covers the initial development environment setup and project init
 ## Configuration Files
 
 ### Root Configuration
+
 - [x] Create `.env.example`
+
   ```env
   # Database
   DATABASE_URL=postgresql://postgres:password@localhost:5432/master_of_coin
   DB_PASSWORD=your_secure_password
-  
+
   # Backend
   JWT_SECRET=your_jwt_secret_min_32_characters
   RUST_LOG=info
-  
+
   # Cloudflare Tunnel (for deployment)
   CLOUDFLARE_TUNNEL_TOKEN=your_tunnel_token
   ```
+
 - [x] Create `.env` from `.env.example` (add to .gitignore)
 - [x] Create `.gitignore`
+
   ```
   # Rust
   target/
   Cargo.lock
-  
+
   # Node
   node_modules/
   dist/
   .env
   .env.local
-  
+
   # IDE
   .vscode/
   .idea/
-  
+
   # OS
   .DS_Store
   Thumbs.db
-  
+
   # Database
   *.db
   *.sqlite
-  
+
   # Logs
   *.log
   ```
 
 ### Docker Compose (Initial)
+
 - [x] Create `docker-compose.yml` (development version)
+
   ```yaml
-  version: '3.8'
-  
+  version: "3.8"
+
   services:
     postgres:
       image: postgres:16-alpine
@@ -242,7 +261,7 @@ This checklist covers the initial development environment setup and project init
         interval: 10s
         timeout: 5s
         retries: 5
-  
+
   volumes:
     postgres-data:
   ```
@@ -252,7 +271,9 @@ This checklist covers the initial development environment setup and project init
 ## Dependency Installation
 
 ### Backend Dependencies
+
 - [x] Add dependencies to `backend/Cargo.toml`
+
   ```toml
   [dependencies]
   # Web framework
@@ -260,43 +281,47 @@ This checklist covers the initial development environment setup and project init
   tokio = { version = "1", features = ["full"] }
   tower = "0.4"
   tower-http = { version = "0.5", features = ["cors", "trace", "fs"] }
-  
+
   # Database
-  sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
-  
+  diesel = { version = "2.1", features = ["postgres", "uuid", "chrono", "numeric", "r2d2"] }
+  diesel_migrations = "2.1"
+  diesel-derive-enum = { version = "2.1", features = ["postgres"] }
+
   # Serialization
   serde = { version = "1.0", features = ["derive"] }
   serde_json = "1.0"
-  
+
   # Authentication
   jsonwebtoken = "9.2"
   argon2 = "0.5"
-  
+
   # Validation
   validator = { version = "0.16", features = ["derive"] }
-  
+
   # Error handling
   thiserror = "1.0"
   anyhow = "1.0"
-  
+
   # Logging
   tracing = "0.1"
   tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-  
+
   # Configuration
   config = "0.13"
   dotenvy = "0.15"
-  
+
   # UUID
   uuid = { version = "1.6", features = ["serde", "v4"] }
-  
+
   # Date/Time
   chrono = { version = "0.4", features = ["serde"] }
   ```
+
 - [x] Run: `cargo build` to download and compile dependencies
 - [x] Verify build succeeds
 
 ### Frontend Dependencies
+
 - [x] Install core dependencies
   ```bash
   npm install @chakra-ui/react @chakra-ui/icons @emotion/react @emotion/styled framer-motion
@@ -335,6 +360,7 @@ This checklist covers the initial development environment setup and project init
   ```
 
 ### Development Dependencies
+
 - [x] Install frontend dev dependencies
   ```bash
   npm install -D @types/node @types/react @types/react-dom
@@ -348,17 +374,20 @@ This checklist covers the initial development environment setup and project init
 ## Initial Configuration
 
 ### Backend Configuration
+
 - [x] Create `backend/src/config.rs` with basic structure
 - [x] Set up environment variable loading
 - [x] Configure logging with tracing
 
 ### Frontend Configuration
+
 - [x] Configure Chakra UI theme in `src/theme/index.ts`
 - [x] Set up React Query client
 - [x] Configure Axios defaults
 - [x] Set up routing structure
 
 ### ESLint & Prettier
+
 - [x] Create `frontend/.eslintrc.js`
 - [x] Create `frontend/.prettierrc`
 - [x] Add format scripts to package.json
@@ -376,12 +405,14 @@ This checklist covers the initial development environment setup and project init
 ## Verification Steps
 
 ### Backend Verification
+
 - [x] Run `cargo check` - should pass
 - [x] Run `cargo clippy` - should have no warnings
 - [x] Run `cargo test` - should pass (even with no tests)
 - [x] Run `cargo run` - should compile and start (may error without DB)
 
 ### Frontend Verification
+
 - [x] Run `npm run dev` - should start dev server
 - [x] Open http://localhost:5173 - should show Vite + React page
 - [x] Run `npm run build` - should create dist/ folder
@@ -389,6 +420,7 @@ This checklist covers the initial development environment setup and project init
 - [x] Run `npm run format` - should format files
 
 ### Database Verification
+
 - [x] Start Docker Compose: `docker-compose up -d`
 - [x] Check PostgreSQL is running: `docker ps`
 - [x] Connect to database: `psql -h localhost -U postgres -d master_of_coin`
@@ -399,6 +431,7 @@ This checklist covers the initial development environment setup and project init
 ## Documentation Setup
 
 ### Project Documentation
+
 - [x] Create comprehensive README.md
   - [x] Project description
   - [x] Features list
@@ -410,6 +443,7 @@ This checklist covers the initial development environment setup and project init
 - [x] Create LICENSE file
 
 ### Development Documentation
+
 - [x] Document environment setup process
 - [x] Create architecture diagrams
 - [x] Document coding standards
@@ -420,16 +454,19 @@ This checklist covers the initial development environment setup and project init
 ## Git Workflow Setup
 
 ### Branch Strategy
+
 - [x] Create development branch: `git checkout -b develop`
 - [x] Set up branch protection rules (if using GitHub/GitLab)
   - [x] Require PR reviews
   - [x] Require status checks to pass
 
 ### Commit Convention
+
 - [x] Decide on commit message format (e.g., Conventional Commits)
 - [x] Document in CONTRIBUTING.md
 
 ### Initial Commit
+
 - [x] Stage all files: `git add .`
 - [x] Commit: `git commit -m "chore: initial project setup"`
 - [x] Push: `git push -u origin main`
@@ -439,21 +476,25 @@ This checklist covers the initial development environment setup and project init
 ## Troubleshooting Common Issues
 
 ### Rust Issues
+
 - [ ] If compilation fails, check Rust version: `rustc --version`
 - [ ] Update Rust: `rustup update`
 - [ ] Clear cargo cache: `cargo clean`
 
 ### Node Issues
+
 - [ ] If npm install fails, try: `npm cache clean --force`
 - [ ] Delete node_modules and package-lock.json, reinstall
 - [ ] Check Node version compatibility
 
 ### Docker Issues
+
 - [ ] Ensure Docker daemon is running
 - [ ] Check port 5432 is not already in use
 - [ ] Reset Docker: `docker-compose down -v`
 
 ### PostgreSQL Issues
+
 - [ ] Verify PostgreSQL is running: `docker ps`
 - [ ] Check logs: `docker-compose logs postgres`
 - [ ] Ensure DATABASE_URL is correct in .env

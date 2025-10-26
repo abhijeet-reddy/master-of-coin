@@ -50,10 +50,10 @@
    - UUID support built-in
 
 7. **Developer Experience**
-   - Excellent Rust integration via SQLx
-   - Compile-time query verification
+   - Excellent Rust integration via Diesel ORM
+   - Compile-time query verification with query builder
    - Type-safe database operations
-   - Great documentation
+   - Great documentation and tooling
 
 **Why NOT MongoDB:**
 
@@ -82,10 +82,11 @@
 
 ### Connection Management
 
-- **SQLx**: Async Rust database library
-- **Connection Pool**: Configured in backend
-- **Migrations**: Managed via SQLx CLI
-- **Type Safety**: Compile-time query verification
+- **Diesel**: Type-safe ORM and query builder for Rust
+- **Connection Pool**: r2d2 connection pooling
+- **Migrations**: Managed via Diesel CLI
+- **Type Safety**: Compile-time query builder validation
+- **Async Integration**: Uses `tokio::task::spawn_blocking` for async contexts
 
 ### Database Configuration
 
@@ -139,7 +140,7 @@ For 1-2 users with high transaction volume:
 ### Current (1-2 users)
 
 - Single PostgreSQL instance
-- Connection pooling (5-20 connections via SQLx)
+- Connection pooling (5-20 connections via Diesel r2d2)
 - Strategic indexing on common query patterns
 - Regular backups via `backup.sh` script
 
@@ -188,14 +189,21 @@ For 1-2 users with high transaction volume:
 
 ```bash
 cd backend
-sqlx migrate run
+diesel migration run
 ```
 
 ### Creating New Migrations
 
 ```bash
 cd backend
-sqlx migrate add <migration_name>
+diesel migration generate <migration_name>
+```
+
+### Generating Schema
+
+```bash
+cd backend
+diesel print-schema > src/schema.rs
 ```
 
 ### Seed Data

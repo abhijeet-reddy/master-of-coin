@@ -49,52 +49,65 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
 ## Security Measures
 
 ### 1. HTTPS Only
+
 - Enforced via Cloudflare Tunnel
 - All traffic encrypted end-to-end
 - Free SSL/TLS certificates
 
 ### 2. SQL Injection Prevention
-- SQLx compile-time checked queries
-- Parameterized queries only
-- No string concatenation in SQL
+
+- Diesel's type-safe query builder prevents SQL injection
+- Compile-time query validation
+- No raw SQL string concatenation
+- Parameterized queries enforced by design
 
 ### 3. XSS Protection
+
 - React escapes output by default
 - Sanitize user input
 - Content Security Policy headers
 
 ### 4. CSRF Protection
+
 - JWT in Authorization header (not cookies)
 - SameSite cookie attribute if using cookies
 - Origin validation
 
 ### 5. Input Validation
+
 - Backend validation with validator crate
 - Frontend validation for UX
 - Never trust client input
 
 ### 6. Authorization
+
 - User can only access their own data
 - All queries filtered by user_id
 - Resource ownership checked
 
 ```rust
+use crate::schema::transactions::dsl::*;
+use diesel::prelude::*;
+use tokio::task;
+
 // Example: Ensure user owns the resource
 pub async fn get_transaction(
+    pool: &DbPool,
     user_id: Uuid,
     transaction_id: Uuid,
 ) -> Result<Transaction> {
-    let transaction = sqlx::query_as!(
-        Transaction,
-        "SELECT * FROM transactions WHERE id = $1 AND user_id = $2",
-        transaction_id,
-        user_id
-    )
-    .fetch_optional(&pool)
+    let pool = pool.clone();
+    task::spawn_blocking(move || {
+        let mut conn = pool.get()?;
+
+        transactions
+            .filter(id.eq(transaction_id))
+            .filter(user_id.eq(user_id))
+            .first::<Transaction>(&mut conn)
+            .optional()?
+            .ok_or(ApiError::NotFound("Transaction not found".into()))
+    })
     .await?
-    .ok_or(ApiError::NotFound("Transaction not found".into()))?;
-    
-    Ok(transaction)
 }
 ```
 
@@ -121,11 +134,13 @@ let app = Router::new()
 ## Data Privacy
 
 ### User Data Isolation
+
 - All queries scoped to user_id
 - No cross-user data access
 - Soft deletes for audit trail (optional)
 
 ### GDPR Compliance
+
 - User can export all their data
 - User can delete their account (CASCADE delete)
 - Clear data retention policy

@@ -1,10 +1,13 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+use crate::schema::transactions;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+#[diesel(table_name = transactions)]
 pub struct Transaction {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -16,6 +19,18 @@ pub struct Transaction {
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = transactions)]
+pub struct NewTransaction<'a> {
+    pub user_id: Uuid,
+    pub account_id: Uuid,
+    pub category_id: Option<Uuid>,
+    pub title: &'a str,
+    pub amount: BigDecimal,
+    pub date: DateTime<Utc>,
+    pub notes: Option<&'a str>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,8 +53,7 @@ pub struct UpdateTransaction {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "transaction_type", rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TransactionType {
     Income,
     Expense,

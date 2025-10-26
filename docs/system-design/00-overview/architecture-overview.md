@@ -13,13 +13,13 @@ graph TB
         Charts[Chart Components]
         Forms[Form Components]
     end
-    
+
     subgraph "API Layer"
         API[REST API Gateway]
         Auth[Authentication Middleware]
         Valid[Validation Layer]
     end
-    
+
     subgraph "Business Logic Layer"
         TransSvc[Transaction Service]
         AcctSvc[Account Service]
@@ -27,12 +27,12 @@ graph TB
         DebtSvc[Debt Tracking Service]
         AnalyticsSvc[Analytics Service]
     end
-    
+
     subgraph "Data Layer"
         DB[(PostgreSQL Database)]
         Cache[Redis Cache]
     end
-    
+
     UI --> API
     Charts --> API
     Forms --> API
@@ -62,7 +62,7 @@ sequenceDiagram
     participant API
     participant Service
     participant DB
-    
+
     User->>React: Interact with UI
     React->>React: Validate Input (Hook)
     React->>API: HTTP Request (JWT)
@@ -87,7 +87,7 @@ sequenceDiagram
     participant TransService
     participant DebtService
     participant DB
-    
+
     User->>UI: Create Transaction with Splits
     UI->>TransAPI: POST /transactions
     TransAPI->>TransService: Create Transaction
@@ -141,15 +141,17 @@ graph LR
 ### System Layers
 
 #### 1. Presentation Layer (React Frontend)
+
 - **Responsibility**: User interface, user interactions, client-side validation
 - **Technology**: React with functional components and hooks
-- **Key Patterns**: 
+- **Key Patterns**:
   - Single responsibility hooks
   - Controlled components
   - Optimistic UI updates
   - Error boundaries
 
 #### 2. API Layer (Rust Backend)
+
 - **Responsibility**: Request routing, authentication, input validation
 - **Technology**: Actix-web or Axum
 - **Key Patterns**:
@@ -159,6 +161,7 @@ graph LR
   - Error handling middleware
 
 #### 3. Business Logic Layer (Rust Services)
+
 - **Responsibility**: Core business rules, calculations, data transformations
 - **Technology**: Rust modules with trait-based design
 - **Key Patterns**:
@@ -168,15 +171,18 @@ graph LR
   - Result-based error handling
 
 #### 4. Data Access Layer (Rust Repositories)
+
 - **Responsibility**: Database queries, data persistence
-- **Technology**: SQLx or Diesel ORM
+- **Technology**: Diesel ORM
 - **Key Patterns**:
   - Repository pattern
-  - Query builders
+  - Type-safe query builder
   - Transaction management
-  - Connection pooling
+  - Connection pooling with r2d2
+  - Async/sync bridge with `spawn_blocking`
 
 #### 5. Data Storage Layer
+
 - **Responsibility**: Data persistence, integrity, performance
 - **Technology**: PostgreSQL with Redis cache
 - **Key Patterns**:
@@ -188,6 +194,7 @@ graph LR
 ### Cross-Cutting Concerns
 
 #### Authentication & Authorization
+
 ```mermaid
 graph TB
     A[Login Request] --> B[Validate Credentials]
@@ -201,11 +208,13 @@ graph TB
 ```
 
 #### Error Handling Strategy
+
 - **Frontend**: Error boundaries, toast notifications, form validation errors
 - **Backend**: Result types, custom error enums, structured error responses
 - **Database**: Transaction rollbacks, constraint violations, connection errors
 
 #### Logging & Monitoring
+
 - **Frontend**: Console errors, user action tracking
 - **Backend**: Structured logging (tracing crate), request/response logging
 - **Database**: Query performance logs, slow query analysis
@@ -213,12 +222,14 @@ graph TB
 ### Scalability Considerations
 
 #### Current Scale (1-2 Users)
+
 - Single Docker container deployment
 - Shared PostgreSQL instance
 - Minimal caching requirements
 - Simple backup strategy
 
 #### Future Scale (If Needed)
+
 - Horizontal scaling with load balancer
 - Read replicas for analytics queries
 - Enhanced caching layer
@@ -241,6 +252,7 @@ graph TB
 ### Performance Optimization
 
 #### Frontend
+
 - Code splitting by route
 - Lazy loading components
 - Memoization of expensive calculations
@@ -248,6 +260,7 @@ graph TB
 - Debounced search inputs
 
 #### Backend
+
 - Connection pooling
 - Query optimization with indexes
 - Batch operations where possible
@@ -255,6 +268,7 @@ graph TB
 - Async/await for I/O operations
 
 #### Database
+
 - Proper indexing strategy
 - Materialized views for complex aggregations
 - Partitioning for transaction history
@@ -268,7 +282,7 @@ graph TB
         User[User Browser]
         CF[Cloudflare Edge]
     end
-    
+
     subgraph "Docker Host Local Network"
         subgraph "Cloudflare Tunnel"
             Tunnel[cloudflared]
@@ -284,14 +298,14 @@ graph TB
             Cache[Redis]
         end
     end
-    
+
     User -->|HTTPS| CF
     CF -->|Secure Tunnel| Tunnel
     Tunnel --> API
     Tunnel --> Static
     API --> DB
     API --> Cache
-    
+
     Compose[Docker Compose] -.-> Tunnel
     Compose -.-> API
     Compose -.-> DB
@@ -299,6 +313,7 @@ graph TB
 ```
 
 **Key Points**:
+
 - No exposed ports on local network
 - Cloudflare Tunnel provides secure access
 - Rust backend serves both API and static files
@@ -330,6 +345,7 @@ graph LR
 ### API Communication Pattern
 
 All communication between frontend and backend follows this pattern:
+
 - **Request**: JSON payload with JWT in Authorization header
 - **Response**: JSON with consistent structure (data/error fields)
 - **Error Handling**: HTTP status codes + detailed error messages
@@ -338,12 +354,14 @@ All communication between frontend and backend follows this pattern:
 ### State Management Strategy
 
 #### Frontend State Categories
+
 1. **Server State**: Cached API responses (React Query)
 2. **UI State**: Form inputs, modal visibility (local useState)
 3. **User State**: Authentication, preferences (Context API)
 4. **Route State**: URL parameters, navigation (React Router)
 
 #### Backend State Management
+
 - Stateless API design
 - Database as single source of truth
 - Redis for session/cache data

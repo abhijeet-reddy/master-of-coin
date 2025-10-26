@@ -8,7 +8,9 @@ use tracing::error;
 #[derive(Debug)]
 pub enum ApiError {
     /// Database-related errors
-    DatabaseError(sqlx::Error),
+    DatabaseError(diesel::result::Error),
+    /// Connection pool errors
+    PoolError(diesel::r2d2::Error),
     /// Resource not found
     NotFound(String),
     /// Bad request with validation or parsing errors
@@ -25,6 +27,7 @@ impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ApiError::DatabaseError(e) => write!(f, "Database error: {}", e),
+            ApiError::PoolError(e) => write!(f, "Connection pool error: {}", e),
             ApiError::NotFound(msg) => write!(f, "Not found: {}", msg),
             ApiError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
             ApiError::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
@@ -44,6 +47,13 @@ impl IntoResponse for ApiError {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "An internal database error occurred".to_string(),
+                )
+            }
+            ApiError::PoolError(e) => {
+                error!("Connection pool error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Database connection error".to_string(),
                 )
             }
             ApiError::NotFound(msg) => {
@@ -76,12 +86,18 @@ impl IntoResponse for ApiError {
     }
 }
 
-impl From<sqlx::Error> for ApiError {
-    fn from(error: sqlx::Error) -> Self {
+impl From<diesel::result::Error> for ApiError {
+    fn from(error: diesel::result::Error) -> Self {
         match error {
-            sqlx::Error::RowNotFound => ApiError::NotFound("Resource not found".to_string()),
+            diesel::result::Error::NotFound => ApiError::NotFound("Resource not found".to_string()),
             _ => ApiError::DatabaseError(error),
         }
+    }
+}
+
+impl From<diesel::r2d2::Error> for ApiError {
+    fn from(error: diesel::r2d2::Error) -> Self {
+        ApiError::PoolError(error)
     }
 }
 

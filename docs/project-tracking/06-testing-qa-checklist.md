@@ -1,9 +1,11 @@
 # Testing & QA Checklist
 
 ## Overview
+
 This checklist covers comprehensive testing including unit tests, integration tests, end-to-end tests, performance testing, security testing, accessibility testing, and final QA verification before production release.
 
 **References:**
+
 - All system design documents
 - Previous implementation checklists
 
@@ -12,6 +14,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Testing Strategy
 
 ### Test Pyramid
+
 - [ ] Define test distribution
   - [ ] 70% Unit tests (fast, isolated)
   - [ ] 20% Integration tests (API + DB)
@@ -24,6 +27,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Backend Unit Tests
 
 ### Model Tests (`backend/tests/models/`)
+
 - [ ] Test User model
   - [ ] Serialization/deserialization
   - [ ] Validation rules
@@ -42,6 +46,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test Person model
 
 ### Repository Tests (`backend/tests/repositories/`)
+
 - [ ] Test UserRepository
   - [ ] create_user
   - [ ] find_by_id
@@ -69,6 +74,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test PersonRepository
 
 ### Service Tests (`backend/tests/services/`)
+
 - [ ] Test TransactionService
   - [ ] create_transaction with splits
   - [ ] split calculation logic
@@ -91,6 +97,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] get_category_breakdown
 
 ### Authentication Tests (`backend/tests/auth/`)
+
 - [ ] Test password hashing
   - [ ] hash_password creates valid hash
   - [ ] verify_password with correct password
@@ -103,6 +110,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] decode_token extracts claims
 
 ### Error Handling Tests
+
 - [ ] Test ApiError conversions
 - [ ] Test error responses
 - [ ] Test validation errors
@@ -113,24 +121,28 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Backend Integration Tests
 
 ### Setup Test Database
+
 - [ ] Create test database configuration
   ```rust
   #[cfg(test)]
-  async fn setup_test_db() -> PgPool {
+  fn setup_test_db() -> DbPool {
+      use diesel::r2d2::{self, ConnectionManager};
+      use diesel::PgConnection;
+      use diesel_migrations::MigrationHarness;
+
       let database_url = std::env::var("TEST_DATABASE_URL")
           .unwrap_or_else(|_| "postgresql://postgres:password@localhost:5432/master_of_coin_test".to_string());
-      
-      let pool = PgPoolOptions::new()
-          .max_connections(5)
-          .connect(&database_url)
-          .await
-          .expect("Failed to connect to test database");
-      
-      sqlx::migrate!("./migrations")
-          .run(&pool)
-          .await
+
+      let manager = ConnectionManager::<PgConnection>::new(database_url);
+      let pool = r2d2::Pool::builder()
+          .max_size(5)
+          .build(manager)
+          .expect("Failed to create pool");
+
+      let mut conn = pool.get().expect("Failed to get connection");
+      conn.run_pending_migrations(crate::db::MIGRATIONS)
           .expect("Failed to run migrations");
-      
+
       pool
   }
   ```
@@ -140,6 +152,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ### API Endpoint Tests (`backend/tests/api/`)
 
 #### Auth Endpoints
+
 - [ ] Test POST /api/auth/register
   - [ ] Valid registration
   - [ ] Duplicate username
@@ -154,6 +167,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Returns user data
 
 #### Transaction Endpoints
+
 - [ ] Test GET /api/transactions
   - [ ] Returns user's transactions
   - [ ] Respects filters (date, category, account)
@@ -181,6 +195,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Returns 403 for other user's transaction
 
 #### Account Endpoints
+
 - [ ] Test GET /api/accounts
   - [ ] Returns user's accounts
   - [ ] Includes balances
@@ -200,6 +215,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Prevents deletion with transactions
 
 #### Budget Endpoints
+
 - [ ] Test GET /api/budgets
   - [ ] Returns user's budgets
   - [ ] Includes current status
@@ -211,6 +227,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Validates dates
 
 #### People Endpoints
+
 - [ ] Test GET /api/people
   - [ ] Returns user's people
 - [ ] Test POST /api/people
@@ -222,6 +239,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Creates settlement transaction
 
 #### Dashboard Endpoint
+
 - [ ] Test GET /api/dashboard
   - [ ] Returns aggregated data
   - [ ] Includes net worth
@@ -231,6 +249,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Requires authentication
 
 ### Authorization Tests
+
 - [ ] Test user can only access own data
   - [ ] Transactions
   - [ ] Accounts
@@ -244,14 +263,15 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Frontend Component Tests
 
 ### Setup Testing Environment
+
 - [ ] Configure Vitest
   ```typescript
   // vitest.config.ts
   export default defineConfig({
     test: {
       globals: true,
-      environment: 'jsdom',
-      setupFiles: './src/test/setup.ts',
+      environment: "jsdom",
+      setupFiles: "./src/test/setup.ts",
     },
   });
   ```
@@ -263,9 +283,7 @@ This checklist covers comprehensive testing including unit tests, integration te
     return render(
       <ChakraProvider>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            {ui}
-          </BrowserRouter>
+          <BrowserRouter>{ui}</BrowserRouter>
         </QueryClientProvider>
       </ChakraProvider>
     );
@@ -273,6 +291,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   ```
 
 ### Authentication Component Tests
+
 - [ ] Test LoginPage
   - [ ] Renders form fields
   - [ ] Validates required fields
@@ -286,6 +305,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Calls register on submit
 
 ### Dashboard Component Tests
+
 - [ ] Test DashboardPage
   - [ ] Shows loading state
   - [ ] Renders widgets with data
@@ -304,6 +324,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Indicates over-budget
 
 ### Transaction Component Tests
+
 - [ ] Test TransactionList
   - [ ] Renders transactions
   - [ ] Groups by date
@@ -320,6 +341,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Validates split total
 
 ### Form Component Tests
+
 - [ ] Test form validation
   - [ ] Required fields
   - [ ] Email format
@@ -329,6 +351,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test submission handling
 
 ### Common Component Tests
+
 - [ ] Test LoadingSpinner
 - [ ] Test ErrorBoundary
 - [ ] Test EmptyState
@@ -339,10 +362,12 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Frontend Hook Tests
 
 ### Setup Hook Testing
+
 - [ ] Install @testing-library/react-hooks
 - [ ] Create hook test utilities
 
 ### API Hook Tests
+
 - [ ] Test useTransactions
   - [ ] Fetches transactions
   - [ ] Handles filters
@@ -354,6 +379,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test other API hooks similarly
 
 ### Form Hook Tests
+
 - [ ] Test useTransactionForm
   - [ ] Manages form state
   - [ ] Handles changes
@@ -361,6 +387,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test other form hooks
 
 ### Business Logic Hook Tests
+
 - [ ] Test useSplitCalculator
   - [ ] Calculates remaining amount
   - [ ] Adds/removes splits
@@ -374,6 +401,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## End-to-End Tests
 
 ### Setup E2E Testing
+
 - [ ] Choose E2E framework (Playwright or Cypress)
 - [ ] Install and configure
   ```bash
@@ -385,6 +413,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Create test user fixtures
 
 ### User Authentication Flow
+
 - [ ] Test registration flow
   - [ ] Navigate to register page
   - [ ] Fill registration form
@@ -403,6 +432,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Verify cannot access protected routes
 
 ### Account Management Flow
+
 - [ ] Test create account
   - [ ] Navigate to accounts page
   - [ ] Click add account button
@@ -421,6 +451,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Verify account removed
 
 ### Transaction Workflow
+
 - [ ] Test create transaction
   - [ ] Navigate to transactions page
   - [ ] Click add transaction button
@@ -447,6 +478,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Verify balance updated
 
 ### Budget Tracking Flow
+
 - [ ] Test create budget
   - [ ] Navigate to budgets page
   - [ ] Click add budget button
@@ -461,6 +493,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Verify warning if over budget
 
 ### Split Transaction Flow
+
 - [ ] Test split payment creation
   - [ ] Create transaction with splits
   - [ ] Verify splits saved
@@ -474,6 +507,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Verify settlement transaction created
 
 ### Dashboard Data Flow
+
 - [ ] Test dashboard updates
   - [ ] Create account
   - [ ] Verify dashboard updated
@@ -483,6 +517,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Verify dashboard updated
 
 ### Reports Generation Flow
+
 - [ ] Test monthly report
   - [ ] Navigate to reports page
   - [ ] Select month
@@ -498,6 +533,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Performance Testing
 
 ### Load Time Testing
+
 - [ ] Measure initial page load
   - [ ] Target: < 2 seconds
   - [ ] Test on 3G network
@@ -510,6 +546,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Target: < 500ms
 
 ### API Response Time Testing
+
 - [ ] Test GET /api/transactions
   - [ ] Target: < 200ms
   - [ ] Test with 1000+ transactions
@@ -521,6 +558,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Optimize if needed
 
 ### Frontend Performance
+
 - [ ] Test with large datasets
   - [ ] 1000+ transactions
   - [ ] 50+ accounts
@@ -534,6 +572,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Total < 500KB gzipped
 
 ### Database Performance
+
 - [ ] Test query performance
   - [ ] Use EXPLAIN ANALYZE
   - [ ] Verify indexes used
@@ -548,6 +587,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Security Testing
 
 ### Authentication Security
+
 - [ ] Test password hashing
   - [ ] Verify Argon2 used
   - [ ] Verify salt unique per user
@@ -563,6 +603,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Test token refresh (if implemented)
 
 ### Authorization Testing
+
 - [ ] Test user isolation
   - [ ] User A cannot access User B's data
   - [ ] Test with direct API calls
@@ -571,6 +612,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test admin access (if applicable)
 
 ### Input Validation
+
 - [ ] Test SQL injection attempts
   - [ ] In transaction title
   - [ ] In search queries
@@ -584,6 +626,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test file upload security (if applicable)
 
 ### API Security
+
 - [ ] Test rate limiting (if implemented)
 - [ ] Test CORS configuration
   - [ ] Verify allowed origins
@@ -595,6 +638,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Content-Security-Policy
 
 ### Data Security
+
 - [ ] Verify passwords never logged
 - [ ] Verify JWT secrets not exposed
 - [ ] Verify database credentials secure
@@ -605,6 +649,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Accessibility Testing
 
 ### Keyboard Navigation
+
 - [ ] Test tab navigation
   - [ ] Through forms
   - [ ] Through menus
@@ -615,6 +660,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test escape key closes modals
 
 ### Screen Reader Testing
+
 - [ ] Test with VoiceOver (Mac)
   - [ ] Navigation menu
   - [ ] Forms
@@ -626,6 +672,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Verify form errors announced
 
 ### ARIA Labels
+
 - [ ] Verify all icon buttons have aria-label
 - [ ] Verify all interactive elements labeled
 - [ ] Verify proper heading hierarchy
@@ -633,6 +680,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Test with axe DevTools
 
 ### Color Contrast
+
 - [ ] Test color contrast ratios
   - [ ] Normal text: 4.5:1 minimum
   - [ ] Large text: 3:1 minimum
@@ -642,6 +690,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Verify information not conveyed by color alone
 
 ### WCAG Compliance
+
 - [ ] Run automated accessibility tests
   - [ ] axe DevTools
   - [ ] Lighthouse accessibility audit
@@ -653,6 +702,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Browser Compatibility Testing
 
 ### Desktop Browsers
+
 - [ ] Test on Chrome (latest)
   - [ ] All features work
   - [ ] Styling correct
@@ -669,6 +719,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Styling correct
 
 ### Mobile Browsers
+
 - [ ] Test on iOS Safari
   - [ ] Touch interactions work
   - [ ] Responsive layout correct
@@ -680,6 +731,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] Basic functionality works
 
 ### Responsive Design Testing
+
 - [ ] Test on mobile (320px - 480px)
   - [ ] Layout adapts correctly
   - [ ] Navigation drawer works
@@ -699,6 +751,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ### Test Scenarios
 
 #### Scenario 1: New User Onboarding
+
 - [ ] User registers account
 - [ ] User logs in
 - [ ] User creates first account
@@ -708,6 +761,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Verify smooth experience
 
 #### Scenario 2: Daily Transaction Entry
+
 - [ ] User logs in
 - [ ] User adds morning coffee transaction
 - [ ] User adds lunch transaction
@@ -717,6 +771,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Verify quick and easy
 
 #### Scenario 3: Split Payment with Friends
+
 - [ ] User creates person (friend)
 - [ ] User creates transaction with split
 - [ ] User verifies debt shown
@@ -725,6 +780,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Verify intuitive flow
 
 #### Scenario 4: Monthly Budget Review
+
 - [ ] User navigates to budgets
 - [ ] User reviews budget status
 - [ ] User identifies over-budget categories
@@ -733,6 +789,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Verify useful insights
 
 #### Scenario 5: Account Management
+
 - [ ] User adds new credit card account
 - [ ] User moves transactions to new account
 - [ ] User updates account balances
@@ -740,6 +797,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Verify accurate tracking
 
 ### Usability Testing
+
 - [ ] Test with real users (if possible)
 - [ ] Observe user interactions
 - [ ] Collect feedback
@@ -751,6 +809,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Bug Tracking & Resolution
 
 ### Bug Tracking Setup
+
 - [ ] Set up bug tracking system
   - [ ] GitHub Issues
   - [ ] Or other bug tracker
@@ -766,6 +825,7 @@ This checklist covers comprehensive testing including unit tests, integration te
   - [ ] P3: Fix when possible
 
 ### Bug Resolution Process
+
 - [ ] Document each bug found
   - [ ] Steps to reproduce
   - [ ] Expected behavior
@@ -783,6 +843,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Final QA Checklist
 
 ### Functionality
+
 - [ ] All features implemented
 - [ ] All features working correctly
 - [ ] No critical bugs
@@ -791,6 +852,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Error messages clear and helpful
 
 ### Performance
+
 - [ ] Page load times acceptable
 - [ ] API response times acceptable
 - [ ] No memory leaks
@@ -798,6 +860,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] No lag or freezing
 
 ### Security
+
 - [ ] Authentication secure
 - [ ] Authorization working
 - [ ] Input validation comprehensive
@@ -806,6 +869,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Secrets not exposed
 
 ### Accessibility
+
 - [ ] Keyboard navigation works
 - [ ] Screen reader compatible
 - [ ] Color contrast sufficient
@@ -813,12 +877,14 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Focus indicators visible
 
 ### Browser Compatibility
+
 - [ ] Works on all major browsers
 - [ ] Mobile responsive
 - [ ] Touch interactions work
 - [ ] Consistent styling
 
 ### User Experience
+
 - [ ] Intuitive navigation
 - [ ] Clear error messages
 - [ ] Helpful empty states
@@ -826,6 +892,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Fast and responsive
 
 ### Documentation
+
 - [ ] User documentation complete
 - [ ] API documentation complete
 - [ ] Deployment documentation complete
@@ -836,6 +903,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 ## Pre-Release Checklist
 
 ### Code Quality
+
 - [ ] All tests passing
 - [ ] Code reviewed
 - [ ] No console.logs in production
@@ -844,6 +912,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Code formatted consistently
 
 ### Configuration
+
 - [ ] Environment variables set
 - [ ] Production config verified
 - [ ] Secrets secure
@@ -851,6 +920,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Rate limiting configured (if applicable)
 
 ### Deployment
+
 - [ ] Deployment tested in staging
 - [ ] Rollback plan documented
 - [ ] Backup procedures tested
@@ -858,6 +928,7 @@ This checklist covers comprehensive testing including unit tests, integration te
 - [ ] Alerts set up
 
 ### Legal & Compliance
+
 - [ ] Privacy policy (if needed)
 - [ ] Terms of service (if needed)
 - [ ] Cookie policy (if needed)

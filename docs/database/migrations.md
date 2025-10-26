@@ -2,24 +2,29 @@
 
 ## Overview
 
-Master of Coin uses SQLx for database migrations. This document explains the migration system, how to create new migrations, and best practices.
+Master of Coin uses Diesel for database migrations. This document explains the migration system, how to create new migrations, and best practices.
 
 ---
 
 ## Migration System
 
-### SQLx Migrations
+### Diesel Migrations
 
-- **Tool:** SQLx CLI
+- **Tool:** Diesel CLI
 - **Location:** `backend/migrations/`
-- **Tracking:** Migrations are tracked in the `_sqlx_migrations` table
-- **Format:** SQL files with timestamp prefixes
+- **Tracking:** Migrations are tracked in the `__diesel_schema_migrations` table
+- **Format:** Directories with `up.sql` and `down.sql` files
 
-### Migration File Naming
+### Migration Directory Structure
 
-Format: `YYYYMMDDHHMMSS_description.sql`
+Each migration is a directory containing two files:
 
-Example: `20251024000001_create_enums.sql`
+- `up.sql` - Applied when running migrations
+- `down.sql` - Applied when reverting migrations
+
+Format: `YYYY-MM-DD-HHMMSS_description/`
+
+Example: `2025-10-25-000001_create_enums/`
 
 ---
 
@@ -44,32 +49,42 @@ Example: `20251024000001_create_enums.sql`
 
 ## Creating New Migrations
 
-### Step 1: Create Migration File
+### Step 1: Create Migration Directory
 
 ```bash
 cd backend
-sqlx migrate add <description>
+diesel migration generate <description>
 ```
 
 Example:
 
 ```bash
-sqlx migrate add add_tags_to_transactions
+diesel migration generate add_tags_to_transactions
 ```
 
-This creates: `migrations/YYYYMMDDHHMMSS_add_tags_to_transactions.sql`
+This creates: `migrations/YYYY-MM-DD-HHMMSS_add_tags_to_transactions/` with `up.sql` and `down.sql`
 
 ### Step 2: Write Migration SQL
 
-Edit the generated file with your SQL:
+Edit `up.sql` with your forward migration:
 
 ```sql
+-- up.sql
 -- Add tags column to transactions
 ALTER TABLE transactions
 ADD COLUMN tags TEXT[];
 
 -- Create index for tag searches
 CREATE INDEX idx_transactions_tags ON transactions USING GIN(tags);
+```
+
+Edit `down.sql` with your rollback migration:
+
+```sql
+-- down.sql
+-- Remove tags column and index
+DROP INDEX IF EXISTS idx_transactions_tags;
+ALTER TABLE transactions DROP COLUMN IF EXISTS tags;
 ```
 
 ### Step 3: Test Migration
@@ -79,10 +94,16 @@ CREATE INDEX idx_transactions_tags ON transactions USING GIN(tags);
 export DATABASE_URL="postgresql://little-finger:password@localhost:5432/master_of_coin"
 
 # Run migration
-sqlx migrate run
+diesel migration run
 
 # Verify
-sqlx migrate info
+diesel migration list
+
+# Test rollback
+diesel migration revert
+
+# Re-apply
+diesel migration run
 ```
 
 ### Step 4: Verify in Database
@@ -99,7 +120,7 @@ SELECT id, title, tags FROM transactions LIMIT 1;
 
 ## Running Migrations
 
-### Using SQLx CLI
+### Using Diesel CLI
 
 ```bash
 # Navigate to backend directory
@@ -109,13 +130,16 @@ cd backend
 export DATABASE_URL="postgresql://little-finger:password@localhost:5432/master_of_coin"
 
 # Run all pending migrations
-sqlx migrate run
+diesel migration run
 
 # Check migration status
-sqlx migrate info
+diesel migration list
 
-# Revert last migration (if supported)
-sqlx migrate revert
+# Revert last migration
+diesel migration revert
+
+# Redo last migration (revert then run)
+diesel migration redo
 ```
 
 ### Using Docker Compose
@@ -269,22 +293,27 @@ ALTER TABLE old_table ADD COLUMN ...;
 
 ## Rollback Strategy
 
-### SQLx Limitations
+### Diesel Rollback Support
 
-SQLx doesn't support automatic rollbacks. For rollback capability:
+Diesel provides built-in rollback support through `down.sql` files:
 
-1. **Manual Rollback Scripts**: Create separate rollback SQL files
-2. **Database Backups**: Take backups before major migrations
+1. **Automatic Rollbacks**: Use `diesel migration revert`
+2. **Database Backups**: Still recommended before major migrations
 3. **Version Control**: Keep migration history in git
 
-### Manual Rollback Example
+### Rollback Example
 
-Create `migrations/down/YYYYMMDDHHMMSS_add_tags.sql`:
+The `down.sql` file is automatically used when reverting:
 
-```sql
--- Rollback for add_tags_to_transactions
-DROP INDEX IF EXISTS idx_transactions_tags;
-ALTER TABLE transactions DROP COLUMN IF EXISTS tags;
+```bash
+# Revert the last migration
+diesel migration revert
+
+# Revert multiple migrations
+diesel migration revert --all
+
+# Redo a migration (revert then run)
+diesel migration redo
 ```
 
 ### Backup Before Migration
@@ -493,7 +522,8 @@ For production systems that can't have downtime:
 
 ## Resources
 
-- [SQLx Documentation](https://github.com/launchbadge/sqlx)
+- [Diesel Documentation](https://diesel.rs/)
+- [Diesel Migration Guide](https://diesel.rs/guides/getting-started#migrations)
 - [PostgreSQL ALTER TABLE](https://www.postgresql.org/docs/current/sql-altertable.html)
 - [PostgreSQL Indexes](https://www.postgresql.org/docs/current/indexes.html)
 - [Database Migration Best Practices](https://www.postgresql.org/docs/current/ddl.html)
@@ -504,8 +534,9 @@ For production systems that can't have downtime:
 
 If you encounter issues:
 
-1. Check SQLx documentation
+1. Check Diesel documentation
 2. Review PostgreSQL logs
 3. Test on development database
-4. Ask team for review
-5. Create backup before attempting fixes
+4. Use `diesel migration list` to check status
+5. Ask team for review
+6. Create backup before attempting fixes

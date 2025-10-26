@@ -8,14 +8,24 @@ pub mod transaction_split;
 pub mod user;
 
 // Re-export base models
-pub use account::{Account, AccountType, CreateAccount, CurrencyCode, UpdateAccount};
-pub use budget::{Budget, BudgetPeriod, CreateBudget, UpdateBudget};
+pub use account::{Account, CreateAccount, UpdateAccount};
+pub use budget::{Budget, CreateBudget, UpdateBudget};
 pub use budget_range::{BudgetRange, CreateBudgetRange, UpdateBudgetRange};
 pub use category::{Category, CreateCategory, UpdateCategory};
 pub use person::{CreatePerson, Person, UpdatePerson};
 pub use transaction::{CreateTransaction, Transaction, UpdateTransaction};
 pub use transaction_split::{CreateTransactionSplit, TransactionSplit, UpdateTransactionSplit};
 pub use user::{CreateUser, UpdateUser, User};
+
+// Re-export New* structs for insertions
+pub use account::NewAccount;
+pub use budget::NewBudget;
+pub use budget_range::NewBudgetRange;
+pub use category::NewCategory;
+pub use person::NewPerson;
+pub use transaction::NewTransaction;
+pub use transaction_split::NewTransactionSplit;
+pub use user::NewUser;
 
 // Re-export Request DTOs
 pub use account::{CreateAccountRequest, UpdateAccountRequest};
@@ -36,3 +46,6 @@ pub use category::CategoryResponse;
 pub use person::PersonResponse;
 pub use transaction::TransactionResponse;
 pub use user::UserResponse;
+
+// Re-export types from types module for convenience
+pub use crate::types::{AccountType, BudgetPeriod, CurrencyCode};

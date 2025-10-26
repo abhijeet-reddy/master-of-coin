@@ -1,9 +1,11 @@
 # Deployment Checklist
 
 ## Overview
+
 This checklist covers Docker containerization, Docker Compose configuration with 4 containers (cloudflared, backend, postgres, redis), Cloudflare Tunnel setup, and production deployment procedures.
 
 **References:**
+
 - [`docs/system-design/05-deployment/docker-architecture.md`](../system-design/05-deployment/docker-architecture.md)
 - [`docs/system-design/05-deployment/infrastructure.md`](../system-design/05-deployment/infrastructure.md)
 
@@ -12,6 +14,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Pre-Deployment Preparation
 
 ### Code Review
+
 - [ ] Review all code for production readiness
 - [ ] Remove debug statements and console.logs
 - [ ] Remove test data and seed scripts
@@ -19,6 +22,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Check for TODO/FIXME comments
 
 ### Security Audit
+
 - [ ] Review authentication implementation
 - [ ] Verify JWT secret is strong (min 32 characters)
 - [ ] Check database password strength
@@ -28,6 +32,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Verify SQL injection protection
 
 ### Environment Variables
+
 - [ ] Create `.env.production` file
 - [ ] Document all required environment variables
 - [ ] Generate strong secrets
@@ -38,20 +43,21 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Frontend Build Optimization
 
 ### Production Build Configuration
+
 - [ ] Configure Vite for production
   ```typescript
   // vite.config.ts
   export default defineConfig({
     build: {
-      outDir: 'dist',
+      outDir: "dist",
       sourcemap: false,
-      minify: 'terser',
+      minify: "terser",
       rollupOptions: {
         output: {
           manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            chakra: ['@chakra-ui/react', '@emotion/react'],
-            charts: ['recharts'],
+            vendor: ["react", "react-dom", "react-router-dom"],
+            chakra: ["@chakra-ui/react", "@emotion/react"],
+            charts: ["recharts"],
           },
         },
       },
@@ -63,6 +69,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Set up proper caching headers
 
 ### Build Process
+
 - [ ] Navigate to frontend directory: `cd frontend`
 - [ ] Install dependencies: `npm ci` (clean install)
 - [ ] Run production build: `npm run build`
@@ -76,6 +83,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
   - [ ] Verify all features work
 
 ### Build Optimization
+
 - [ ] Analyze bundle with visualizer
   ```bash
   npm install -D rollup-plugin-visualizer
@@ -91,73 +99,79 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Backend Dockerfile
 
 ### Create Backend Dockerfile (`backend/Dockerfile`)
+
 - [ ] Create multi-stage Dockerfile
+
   ```dockerfile
   # Build stage
   FROM rust:1.75-slim as builder
   WORKDIR /app
-  
+
   # Install dependencies
   RUN apt-get update && apt-get install -y \
       pkg-config \
       libssl-dev \
       && rm -rf /var/lib/apt/lists/*
-  
+
   # Copy manifests
   COPY Cargo.toml Cargo.lock ./
-  
+
   # Build dependencies (cached layer)
   RUN mkdir src && \
       echo "fn main() {}" > src/main.rs && \
       cargo build --release && \
       rm -rf src
-  
+
   # Copy source code
   COPY src ./src
   COPY migrations ./migrations
-  
+
   # Build application
   RUN cargo build --release
-  
+
   # Runtime stage
   FROM debian:bookworm-slim
   WORKDIR /app
-  
+
   # Install runtime dependencies
   RUN apt-get update && apt-get install -y \
       ca-certificates \
       libssl3 \
       && rm -rf /var/lib/apt/lists/*
-  
+
   # Copy binary from builder
   COPY --from=builder /app/target/release/master-of-coin-backend /app/backend
-  
+
   # Copy frontend static files
   COPY --from=frontend-build /app/dist /app/static
-  
+
   # Create non-root user
   RUN useradd -m -u 1000 appuser && \
       chown -R appuser:appuser /app
-  
+
   USER appuser
-  
+
   EXPOSE 3000
-  
+
   CMD ["/app/backend"]
   ```
+
 - [ ] Test Dockerfile builds successfully
 - [ ] Verify image size (target: < 200MB)
 
 ### Backend Static File Serving
+
 - [ ] Configure Axum to serve static files
+
   ```rust
   use tower_http::services::ServeDir;
-  
+
   let app = Router::new()
       .nest("/api", api_routes())
       .nest_service("/", ServeDir::new("static"))
       .fallback_service(ServeFile::new("static/index.html"));
   ```
+
 - [ ] Test static file serving
 - [ ] Verify SPA routing works (fallback to index.html)
 - [ ] Test API routes still work
@@ -167,10 +181,12 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Docker Compose Configuration
 
 ### Create docker-compose.yml
+
 - [ ] Create `docker-compose.yml` in project root
+
   ```yaml
-  version: '3.8'
-  
+  version: "3.8"
+
   services:
     cloudflared:
       image: cloudflare/cloudflared:latest
@@ -183,7 +199,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
         - app-network
       depends_on:
         - backend
-  
+
     backend:
       build:
         context: .
@@ -209,7 +225,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
         timeout: 10s
         retries: 3
         start_period: 40s
-  
+
     postgres:
       image: postgres:16-alpine
       container_name: master-of-coin-db
@@ -230,7 +246,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
       restart: unless-stopped
       networks:
         - app-network
-  
+
     redis:
       image: redis:7-alpine
       container_name: master-of-coin-cache
@@ -247,36 +263,40 @@ This checklist covers Docker containerization, Docker Compose configuration with
       restart: unless-stopped
       networks:
         - app-network
-  
+
   networks:
     app-network:
       driver: bridge
-  
+
   volumes:
     postgres-data:
       driver: local
     redis-data:
       driver: local
   ```
+
 - [ ] Verify YAML syntax
 - [ ] Test docker-compose configuration
 
 ### Environment Variables Setup
+
 - [ ] Create `.env.production` file
+
   ```env
   # Database
   DB_PASSWORD=<generate_strong_password>
-  
+
   # Backend
   JWT_SECRET=<generate_min_32_char_secret>
   RUST_LOG=info
-  
+
   # Redis
   REDIS_PASSWORD=<generate_strong_password>
-  
+
   # Cloudflare Tunnel
   CLOUDFLARE_TUNNEL_TOKEN=<your_tunnel_token>
   ```
+
 - [ ] Generate strong passwords
   ```bash
   # Generate random password
@@ -291,21 +311,25 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Cloudflare Tunnel Setup
 
 ### Cloudflare Account Setup
+
 - [ ] Create Cloudflare account (if not exists)
 - [ ] Add domain to Cloudflare
 - [ ] Verify domain ownership
 - [ ] Configure DNS settings
 
 ### Create Cloudflare Tunnel
+
 - [ ] Install cloudflared locally (for setup)
+
   ```bash
   # macOS
   brew install cloudflare/cloudflare/cloudflared
-  
+
   # Linux
   wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
   sudo dpkg -i cloudflared-linux-amd64.deb
   ```
+
 - [ ] Login to Cloudflare
   ```bash
   cloudflared tunnel login
@@ -322,6 +346,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Save token to `.env.production`
 
 ### Configure Tunnel Routes
+
 - [ ] Create tunnel configuration
   ```bash
   cloudflared tunnel route dns master-of-coin app.yourdomain.com
@@ -333,16 +358,19 @@ This checklist covers Docker containerization, Docker Compose configuration with
   ```
 
 ### Tunnel Configuration File (Optional)
+
 - [ ] Create `config.yml` for cloudflared
+
   ```yaml
   tunnel: <tunnel-id>
   credentials-file: /root/.cloudflared/<tunnel-id>.json
-  
+
   ingress:
     - hostname: app.yourdomain.com
       service: http://backend:3000
     - service: http_status:404
   ```
+
 - [ ] Test configuration
 
 ---
@@ -350,17 +378,19 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Database Migration in Production
 
 ### Migration Strategy
+
 - [ ] Plan migration approach
   - [ ] Fresh database (first deployment)
   - [ ] Migrate existing data (if applicable)
 - [ ] Backup strategy (for future updates)
 
 ### Run Migrations
+
 - [ ] Ensure migrations are in `backend/migrations/`
 - [ ] Migrations will run automatically on container start
 - [ ] Alternative: Run manually
   ```bash
-  docker-compose exec backend sqlx migrate run
+  docker-compose exec backend diesel migration run
   ```
 - [ ] Verify migrations applied
   ```bash
@@ -368,10 +398,11 @@ This checklist covers Docker containerization, Docker Compose configuration with
   ```
 - [ ] Check migration status
   ```bash
-  docker-compose exec backend sqlx migrate info
+  docker-compose exec backend diesel migration list
   ```
 
 ### Seed Data (Optional)
+
 - [ ] Decide if seed data needed
 - [ ] Create production seed script (minimal)
 - [ ] Run seed script if needed
@@ -384,6 +415,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## SSL/TLS Configuration
 
 ### Cloudflare SSL
+
 - [ ] Enable SSL in Cloudflare dashboard
 - [ ] Select SSL mode: "Full (strict)" recommended
 - [ ] Verify SSL certificate active
@@ -391,6 +423,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Configure automatic HTTPS redirects
 
 ### SSL Certificate (Alternative - if not using Cloudflare)
+
 - [ ] Generate SSL certificate with Let's Encrypt
 - [ ] Configure Nginx for SSL (if using)
 - [ ] Set up auto-renewal
@@ -401,6 +434,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Deployment Execution
 
 ### Pre-Deployment Checks
+
 - [ ] All tests passing
 - [ ] Code reviewed and approved
 - [ ] Environment variables configured
@@ -409,6 +443,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Rollback plan documented
 
 ### Build and Deploy
+
 - [ ] Build frontend
   ```bash
   cd frontend
@@ -439,6 +474,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
   ```
 
 ### Verify Deployment
+
 - [ ] Check all containers running
   ```bash
   docker-compose ps
@@ -468,6 +504,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Health Checks & Monitoring
 
 ### Health Check Endpoints
+
 - [ ] Implement backend health endpoint
   ```rust
   async fn health_check() -> impl IntoResponse {
@@ -481,6 +518,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Configure Docker health checks (already in docker-compose)
 
 ### Monitoring Setup
+
 - [ ] Set up log aggregation
   - [ ] Configure Docker logging driver
   - [ ] Set log rotation
@@ -501,6 +539,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
   - [ ] Container down alerts
 
 ### Application Monitoring
+
 - [ ] Monitor API response times
 - [ ] Monitor error rates
 - [ ] Monitor database connections
@@ -512,22 +551,25 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Backup & Restore Procedures
 
 ### Database Backup
+
 - [ ] Create backup script
+
   ```bash
   #!/bin/bash
   # backup.sh
   BACKUP_DIR="./backups"
   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
   mkdir -p $BACKUP_DIR
-  
+
   docker-compose exec -T postgres pg_dump -U postgres master_of_coin | \
     gzip > "$BACKUP_DIR/backup_$TIMESTAMP.sql.gz"
-  
+
   echo "Backup created: backup_$TIMESTAMP.sql.gz"
-  
+
   # Keep only last 7 days of backups
   find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +7 -delete
   ```
+
 - [ ] Make script executable
   ```bash
   chmod +x backup.sh
@@ -543,7 +585,9 @@ This checklist covers Docker containerization, Docker Compose configuration with
   ```
 
 ### Database Restore
+
 - [ ] Create restore script
+
   ```bash
   #!/bin/bash
   # restore.sh
@@ -551,10 +595,11 @@ This checklist covers Docker containerization, Docker Compose configuration with
     echo "Usage: ./restore.sh <backup_file>"
     exit 1
   fi
-  
+
   gunzip -c "$1" | docker-compose exec -T postgres psql -U postgres master_of_coin
   echo "Database restored from $1"
   ```
+
 - [ ] Make script executable
   ```bash
   chmod +x restore.sh
@@ -565,6 +610,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
   ```
 
 ### Volume Backup
+
 - [ ] Backup Docker volumes
   ```bash
   docker run --rm -v master-of-coin_postgres-data:/data \
@@ -579,6 +625,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Rollback Procedures
 
 ### Rollback Strategy
+
 - [ ] Document current version/commit
 - [ ] Keep previous Docker images
   ```bash
@@ -587,6 +634,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Document rollback steps
 
 ### Rollback Execution
+
 - [ ] Stop current containers
   ```bash
   docker-compose down
@@ -608,6 +656,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Performance Optimization
 
 ### Docker Optimization
+
 - [ ] Use multi-stage builds (already implemented)
 - [ ] Minimize layer count
 - [ ] Use .dockerignore
@@ -624,22 +673,26 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Use specific image tags (not :latest)
 
 ### Database Optimization
+
 - [ ] Configure PostgreSQL for production
+
   ```sql
   -- Increase shared_buffers
   ALTER SYSTEM SET shared_buffers = '256MB';
-  
+
   -- Increase work_mem
   ALTER SYSTEM SET work_mem = '16MB';
-  
+
   -- Enable query logging for slow queries
   ALTER SYSTEM SET log_min_duration_statement = 1000;
   ```
+
 - [ ] Set up connection pooling (already in backend)
 - [ ] Monitor query performance
 - [ ] Create necessary indexes (already in migrations)
 
 ### Redis Configuration
+
 - [ ] Configure Redis persistence
 - [ ] Set memory limits
   ```yaml
@@ -653,6 +706,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Security Hardening
 
 ### Container Security
+
 - [ ] Run containers as non-root user (already implemented)
 - [ ] Use read-only file systems where possible
 - [ ] Limit container resources
@@ -660,10 +714,10 @@ This checklist covers Docker containerization, Docker Compose configuration with
   deploy:
     resources:
       limits:
-        cpus: '1'
+        cpus: "1"
         memory: 1G
       reservations:
-        cpus: '0.5'
+        cpus: "0.5"
         memory: 512M
   ```
 - [ ] Scan images for vulnerabilities
@@ -672,6 +726,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
   ```
 
 ### Network Security
+
 - [ ] Use internal Docker network (already implemented)
 - [ ] Don't expose unnecessary ports
 - [ ] Configure firewall rules
@@ -679,19 +734,21 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Enable Cloudflare WAF (Web Application Firewall)
 
 ### Application Security
+
 - [ ] Verify JWT secret is strong
 - [ ] Enable HTTPS only
 - [ ] Set secure cookie flags
 - [ ] Implement rate limiting (optional)
 - [ ] Enable CORS with specific origins
 - [ ] Sanitize all user inputs
-- [ ] Use parameterized queries (SQLx does this)
+- [ ] Use parameterized queries (Diesel query builder enforces this)
 
 ---
 
 ## Post-Deployment Verification
 
 ### Functional Testing
+
 - [ ] Test user registration
 - [ ] Test user login
 - [ ] Test creating account
@@ -703,6 +760,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Test on different browsers
 
 ### Performance Testing
+
 - [ ] Measure page load times
 - [ ] Measure API response times
 - [ ] Test with concurrent users (if applicable)
@@ -710,6 +768,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Check for memory leaks
 
 ### Security Testing
+
 - [ ] Verify HTTPS working
 - [ ] Test authentication flow
 - [ ] Verify authorization working
@@ -721,6 +780,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Documentation
 
 ### Deployment Documentation
+
 - [ ] Document deployment process
 - [ ] Document environment setup
 - [ ] Document troubleshooting steps
@@ -728,12 +788,14 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Document backup/restore procedures
 
 ### Operations Documentation
+
 - [ ] Document monitoring procedures
 - [ ] Document maintenance tasks
 - [ ] Document update procedures
 - [ ] Document scaling procedures (if applicable)
 
 ### User Documentation
+
 - [ ] Create user guide
 - [ ] Document features
 - [ ] Create FAQ
@@ -744,6 +806,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ## Maintenance Procedures
 
 ### Regular Maintenance
+
 - [ ] Schedule regular backups (daily)
 - [ ] Monitor disk space
 - [ ] Monitor logs for errors
@@ -755,6 +818,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
   ```
 
 ### Update Procedures
+
 - [ ] Document update process
 - [ ] Test updates in staging first
 - [ ] Create backup before update
@@ -769,6 +833,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 ### Common Issues
 
 #### Container Won't Start
+
 - [ ] Check logs: `docker-compose logs <service>`
 - [ ] Check environment variables
 - [ ] Check port conflicts
@@ -776,6 +841,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Verify network connectivity
 
 #### Database Connection Issues
+
 - [ ] Verify postgres container running
 - [ ] Check DATABASE_URL format
 - [ ] Verify credentials
@@ -783,6 +849,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Review postgres logs
 
 #### Frontend Not Loading
+
 - [ ] Verify backend serving static files
 - [ ] Check build output in dist/
 - [ ] Verify static files copied to backend
@@ -790,6 +857,7 @@ This checklist covers Docker containerization, Docker Compose configuration with
 - [ ] Verify API endpoints working
 
 #### Cloudflare Tunnel Issues
+
 - [ ] Verify tunnel token correct
 - [ ] Check cloudflared logs
 - [ ] Verify DNS configuration

@@ -9,42 +9,42 @@ This checklist covers PostgreSQL database setup, schema implementation, migratio
 - [`docs/system-design/03-database/schema-design.md`](../system-design/03-database/schema-design.md)
 - [`docs/database/sqlx-to-diesel-migration-plan.md`](../database/sqlx-to-diesel-migration-plan.md) - **Diesel Migration Plan**
 
-**ORM Decision:** ✅ **Diesel** (migrating from SQLx)
+**ORM Decision:** ✅ **Diesel** (migration completed)
 
 ---
 
-## 🔄 SQLx to Diesel Migration
+## ✅ SQLx to Diesel Migration - COMPLETED
 
-**Status:** Required before backend repository implementation
-**Estimated Time:** 4-7 hours
+**Status:** ✅ **COMPLETED** on October 26, 2025
+**Actual Time:** ~6 hours
 **Detailed Plan:** [`docs/database/sqlx-to-diesel-migration-plan.md`](../database/sqlx-to-diesel-migration-plan.md)
 
-### Migration Overview
+### Migration Summary
 
-- [ ] **Phase 1:** Setup & Dependencies (1 hour)
-  - [ ] Install Diesel CLI: `cargo install diesel_cli --no-default-features --features postgres`
-  - [ ] Remove SQLx from Cargo.toml
-  - [ ] Add Diesel dependencies
-  - [ ] Initialize Diesel: `diesel setup`
-- [ ] **Phase 2:** Migration Files (30 min)
-  - [ ] Convert existing SQL migrations to Diesel format
-  - [ ] Generate schema: `diesel migration run && diesel print-schema > src/schema.rs`
-- [ ] **Phase 3:** Database Connection (30 min)
-  - [ ] Rewrite `src/db/mod.rs` with Diesel connection pool (r2d2)
-  - [ ] Update migration runner for Diesel
-- [ ] **Phase 4:** Custom Type Implementations (2-3 hours)
-  - [ ] Implement Diesel custom types for all 5 enums
-- [ ] **Phase 5:** Model Definitions (1-2 hours)
-  - [ ] Update all 8 model files with Diesel derives
-- [ ] **Phase 6:** SQLx Cleanup (30 min)
-  - [ ] Remove all SQLx imports and derives
-  - [ ] Update error handling
-  - [ ] Verify no SQLx references remain
-- [ ] **Phase 7:** Testing & Validation (1 hour)
-  - [ ] Verify compilation and migrations
-  - [ ] Test custom type serialization
+- [x] **Phase 1:** Setup & Dependencies (1 hour)
+  - [x] Install Diesel CLI: `cargo install diesel_cli --no-default-features --features postgres`
+  - [x] Remove SQLx from Cargo.toml
+  - [x] Add Diesel dependencies
+  - [x] Initialize Diesel: `diesel setup`
+- [x] **Phase 2:** Migration Files (30 min)
+  - [x] Convert existing SQL migrations to Diesel format
+  - [x] Generate schema: `diesel migration run && diesel print-schema > src/schema.rs`
+- [x] **Phase 3:** Database Connection (30 min)
+  - [x] Rewrite `src/db/mod.rs` with Diesel connection pool (r2d2)
+  - [x] Update migration runner for Diesel
+- [x] **Phase 4:** Custom Type Implementations (2-3 hours)
+  - [x] Implement Diesel custom types for all 5 enums
+- [x] **Phase 5:** Model Definitions (1-2 hours)
+  - [x] Update all 8 model files with Diesel derives
+- [x] **Phase 6:** SQLx Cleanup (30 min)
+  - [x] Remove all SQLx imports and derives
+  - [x] Update error handling
+  - [x] Verify no SQLx references remain
+- [x] **Phase 7:** Testing & Validation (1 hour)
+  - [x] Verify compilation and migrations
+  - [x] Test custom type serialization
 
-**See detailed migration plan for complete step-by-step instructions.**
+**All phases completed successfully. See migration plan for detailed completion notes.**
 
 ---
 
@@ -122,24 +122,16 @@ All database scripts are located in [`backend/scripts/`](../../backend/scripts/)
 
 ## Migration Tool Setup
 
-### Current: SQLx (To Be Replaced)
+### Diesel (Current)
 
-- [x] SQLx CLI installed
+- [x] Diesel CLI installed
 - [x] Migrations directory exists: `backend/migrations/`
-- [x] Migrations run automatically via Docker or `make db-migrate`
+- [x] Diesel initialized: `diesel.toml` created
+- [x] Migrations converted to Diesel format (up.sql/down.sql pairs)
+- [x] Schema generated: `src/schema.rs`
+- [x] Migrations run automatically via Docker or `diesel migration run`
 
-### Target: Diesel
-
-- [ ] Install Diesel CLI
-  ```bash
-  cargo install diesel_cli --no-default-features --features postgres
-  ```
-- [ ] Verify: `diesel --version`
-- [ ] Initialize Diesel: `diesel setup` (creates `diesel.toml`)
-- [ ] Convert migrations to Diesel format (up.sql/down.sql pairs)
-- [ ] Generate schema: `diesel migration run && diesel print-schema > src/schema.rs`
-
-**Note:** Existing SQL migrations can be reused with minimal changes. Diesel uses up.sql/down.sql pairs instead of single migration files.
+**Note:** All migrations successfully converted to Diesel format with up.sql/down.sql pairs.
 
 ---
 
@@ -532,41 +524,38 @@ The [`backend/scripts/seed.sql`](../../backend/scripts/seed.sql) includes:
 
 ## Database Connection Testing
 
-### Current: SQLx Connection Pool (To Be Replaced)
+### Diesel Connection Pool (Current)
 
-- [x] SQLx connection pool implemented in `backend/src/db/mod.rs`
+- [x] Diesel connection pool implemented in `backend/src/db/mod.rs`
 - [x] Connection tests passing
+- [x] Async/sync bridge implemented using `tokio::task::spawn_blocking`
+- [x] Migration runner updated for Diesel
 
-### Target: Diesel Connection Pool
+**Implementation:**
 
-- [ ] Rewrite `backend/src/db/mod.rs` with Diesel
+```rust
+use diesel::pg::PgConnection;
+use diesel::r2d2::{self, ConnectionManager, Pool};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
-  ```rust
-  use diesel::pg::PgConnection;
-  use diesel::r2d2::{self, ConnectionManager, Pool};
-  use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+pub type DbPool = Pool<ConnectionManager<PgConnection>>;
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-  pub type DbPool = Pool<ConnectionManager<PgConnection>>;
-  pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+pub fn create_pool(database_url: &str, max_connections: u32) -> Result<DbPool, r2d2::Error> {
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
+    Pool::builder()
+        .max_size(max_connections)
+        .build(manager)
+}
 
-  pub fn create_pool(database_url: &str, max_connections: u32) -> Result<DbPool, r2d2::Error> {
-      let manager = ConnectionManager::<PgConnection>::new(database_url);
-      Pool::builder()
-          .max_size(max_connections)
-          .build(manager)
-  }
+pub fn run_migrations(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
+    let mut conn = pool.get()?;
+    conn.run_pending_migrations(MIGRATIONS)?;
+    Ok(())
+}
+```
 
-  pub fn run_migrations(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
-      let mut conn = pool.get()?;
-      conn.run_pending_migrations(MIGRATIONS)?;
-      Ok(())
-  }
-  ```
-
-- [ ] Update connection tests for Diesel
-- [ ] Use `tokio::task::spawn_blocking` for async contexts
-
-**Note:** Diesel is synchronous, so database operations in async handlers need `spawn_blocking`.
+**Note:** Diesel is synchronous, so all database operations in async handlers use `spawn_blocking`.
 
 ---
 
@@ -679,23 +668,25 @@ The [`backend/scripts/seed.sql`](../../backend/scripts/seed.sql) includes:
 - [x] Backup/restore scripts created and tested
 - [x] Database documentation completed
 
-### Migration to Diesel (Required)
+### Migration to Diesel (Completed)
 
-- [ ] Diesel CLI installed
-- [ ] Diesel initialized (`diesel.toml` created)
-- [ ] Migrations converted to Diesel format
-- [ ] Schema generated (`src/schema.rs`)
-- [ ] Connection pool rewritten for Diesel
-- [ ] Custom enum types implemented
-- [ ] All model files updated with Diesel derives
-- [ ] SQLx completely removed from codebase
-- [ ] Migration tests passing
-- [ ] Connection tests passing with Diesel
+- [x] Diesel CLI installed
+- [x] Diesel initialized (`diesel.toml` created)
+- [x] Migrations converted to Diesel format
+- [x] Schema generated (`src/schema.rs`)
+- [x] Connection pool rewritten for Diesel
+- [x] Custom enum types implemented
+- [x] All model files updated with Diesel derives
+- [x] SQLx completely removed from codebase
+- [x] Migration tests passing
+- [x] Connection tests passing with Diesel
+- [x] Integration tests updated and passing
+- [x] Documentation updated
 
-**Estimated Time:**
+**Actual Time:**
 
 - Original database setup: 3-5 hours ✅
-- Diesel migration: 4-7 hours ⏳
+- Diesel migration: ~6 hours ✅
 
 **Next Steps:**
 

@@ -4,7 +4,7 @@
 
 All data models are implemented in Rust using **Diesel ORM** for database interaction. Models are located in [`backend/src/models/`](../../../backend/src/models/).
 
-**Migration Status**: Currently migrating from SQLx to Diesel. See [`docs/database/sqlx-to-diesel-migration-plan.md`](../../database/sqlx-to-diesel-migration-plan.md) for details.
+**Migration Status**: ✅ Migration to Diesel completed. See [`docs/database/sqlx-to-diesel-migration-plan.md`](../../database/sqlx-to-diesel-migration-plan.md) for completion details.
 
 ## Core Models
 
@@ -145,11 +145,13 @@ pub struct NewAccount {
 
 ```rust
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::categories;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = categories)]
 pub struct Category {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -161,15 +163,18 @@ pub struct Category {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateCategory {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = categories)]
+pub struct NewCategory {
+    pub user_id: Uuid,
     pub name: String,
     pub icon: Option<String>,
     pub color: Option<String>,
     pub parent_category_id: Option<Uuid>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = categories)]
 pub struct UpdateCategory {
     pub name: Option<String>,
     pub icon: Option<String>,
@@ -187,11 +192,13 @@ pub struct UpdateCategory {
 
 ```rust
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::people;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = people)]
 pub struct Person {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -203,15 +210,18 @@ pub struct Person {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreatePerson {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = people)]
+pub struct NewPerson {
+    pub user_id: Uuid,
     pub name: String,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = people)]
 pub struct UpdatePerson {
     pub name: Option<String>,
     pub email: Option<String>,
@@ -230,11 +240,13 @@ pub struct UpdatePerson {
 ```rust
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::transactions;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = transactions)]
 pub struct Transaction {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -248,8 +260,10 @@ pub struct Transaction {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateTransaction {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = transactions)]
+pub struct NewTransaction {
+    pub user_id: Uuid,
     pub account_id: Uuid,
     pub category_id: Option<Uuid>,
     pub title: String,
@@ -258,7 +272,8 @@ pub struct CreateTransaction {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = transactions)]
 pub struct UpdateTransaction {
     pub account_id: Option<Uuid>,
     pub category_id: Option<Uuid>,
@@ -280,28 +295,31 @@ pub struct UpdateTransaction {
 ```rust
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::transaction_splits;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = transaction_splits)]
 pub struct TransactionSplit {
     pub id: Uuid,
     pub transaction_id: Uuid,
     pub person_id: Uuid,
     pub amount: BigDecimal,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateTransactionSplit {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = transaction_splits)]
+pub struct NewTransactionSplit {
     pub transaction_id: Uuid,
     pub person_id: Uuid,
     pub amount: BigDecimal,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = transaction_splits)]
 pub struct UpdateTransactionSplit {
     pub person_id: Option<Uuid>,
     pub amount: Option<BigDecimal>,
@@ -317,22 +335,15 @@ pub struct UpdateTransactionSplit {
 
 ```rust
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::budgets;
+use crate::types::budget_period::BudgetPeriod;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "budget_period", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum BudgetPeriod {
-    Daily,
-    Weekly,
-    Monthly,
-    Quarterly,
-    Yearly,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = budgets)]
 pub struct Budget {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -342,13 +353,16 @@ pub struct Budget {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateBudget {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = budgets)]
+pub struct NewBudget {
+    pub user_id: Uuid,
     pub name: String,
     pub filters: JsonValue,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = budgets)]
 pub struct UpdateBudget {
     pub name: Option<String>,
     pub filters: Option<JsonValue>,
@@ -366,13 +380,14 @@ pub struct UpdateBudget {
 ```rust
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDate, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
+use crate::schema::budget_ranges;
+use crate::types::budget_period::BudgetPeriod;
 
-use super::budget::BudgetPeriod;
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable)]
+#[diesel(table_name = budget_ranges)]
 pub struct BudgetRange {
     pub id: Uuid,
     pub budget_id: Uuid,
@@ -381,11 +396,11 @@ pub struct BudgetRange {
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateBudgetRange {
+#[derive(Debug, Insertable)]
+#[diesel(table_name = budget_ranges)]
+pub struct NewBudgetRange {
     pub budget_id: Uuid,
     pub limit_amount: BigDecimal,
     pub period: BudgetPeriod,
@@ -393,7 +408,8 @@ pub struct CreateBudgetRange {
     pub end_date: NaiveDate,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = budget_ranges)]
 pub struct UpdateBudgetRange {
     pub limit_amount: Option<BigDecimal>,
     pub period: Option<BudgetPeriod>,
@@ -439,12 +455,17 @@ All models follow a consistent DTO (Data Transfer Object) pattern:
 
 ### Diesel Integration
 
-- `#[derive(Queryable)]`: Automatic mapping from database rows
-- `#[derive(Insertable)]`: For creating new records
-- `#[derive(AsChangeset)]`: For updating existing records
-- `#[diesel(table_name = ...)]`: Links struct to database table
+All models use Diesel derives for database interaction:
+
+- `#[derive(Queryable)]`: Automatic mapping from database rows to structs
+- `#[derive(Insertable)]`: For creating new records with `NewModel` structs
+- `#[derive(AsChangeset)]`: For updating existing records with `UpdateModel` structs
+- `#[diesel(table_name = ...)]`: Links struct to database table in `schema.rs`
 - Custom `ToSql`/`FromSql` implementations: Maps Rust enums to PostgreSQL ENUMs
 - `#[serde(skip_serializing)]`: Excludes sensitive fields from API responses
+
+**Compile-Time Safety:**
+Diesel validates all queries at compile time against the generated `schema.rs`, catching type mismatches and invalid column references before runtime.
 
 ### Type Safety
 

@@ -2,13 +2,26 @@
 
 ## Overview
 
-This document contains common SQL queries used in Master of Coin for reference and optimization purposes.
+This document contains common database queries used in Master of Coin using Diesel ORM. It provides both the Diesel query builder syntax and the equivalent SQL for reference and optimization purposes.
 
 ---
 
 ## User Queries
 
 ### Get User by Username
+
+**Diesel Query:**
+
+```rust
+use crate::schema::users::dsl::*;
+use diesel::prelude::*;
+
+let user = users
+    .filter(username.eq(target_username))
+    .first::<User>(&mut conn)?;
+```
+
+**Equivalent SQL:**
 
 ```sql
 SELECT id, username, email, name, created_at, updated_at
@@ -19,6 +32,18 @@ WHERE username = $1;
 **Index Used:** `idx_users_username`
 
 ### Get User by Email
+
+**Diesel Query:**
+
+```rust
+use crate::schema::users::dsl::*;
+
+let user = users
+    .filter(email.eq(target_email))
+    .first::<User>(&mut conn)?;
+```
+
+**Equivalent SQL:**
 
 ```sql
 SELECT id, username, email, name, created_at, updated_at
@@ -33,6 +58,19 @@ WHERE email = $1;
 ## Account Queries
 
 ### Get All User Accounts
+
+**Diesel Query:**
+
+```rust
+use crate::schema::accounts::dsl::*;
+
+let user_accounts = accounts
+    .filter(user_id.eq(target_user_id))
+    .order(created_at.desc())
+    .load::<Account>(&mut conn)?;
+```
+
+**Equivalent SQL:**
 
 ```sql
 SELECT id, name, account_type, currency, notes, created_at, updated_at
@@ -97,6 +135,28 @@ ORDER BY level, name;
 ## Transaction Queries
 
 ### Get Recent Transactions
+
+**Diesel Query:**
+
+```rust
+use crate::schema::{transactions, accounts, categories};
+
+let results = transactions::table
+    .left_join(accounts::table)
+    .left_join(categories::table)
+    .filter(transactions::user_id.eq(target_user_id))
+    .order((transactions::date.desc(), transactions::created_at.desc()))
+    .limit(limit_val)
+    .offset(offset_val)
+    .select((
+        transactions::all_columns,
+        accounts::name.nullable(),
+        (categories::name, categories::icon, categories::color).nullable(),
+    ))
+    .load::<(Transaction, Option<String>, Option<(String, Option<String>, Option<String>)>)>(&mut conn)?;
+```
+
+**Equivalent SQL:**
 
 ```sql
 SELECT t.id, t.title, t.amount, t.date, t.notes,
@@ -440,14 +500,34 @@ ALTER DATABASE master_of_coin SET log_min_duration_statement = 100;  -- log quer
 
 ## Connection Pool Configuration
 
-Recommended SQLx pool settings:
+Recommended Diesel r2d2 pool settings:
 
 ```rust
-PgPoolOptions::new()
-    .max_connections(5)
-    .acquire_timeout(Duration::from_secs(3))
-    .connect(&database_url)
-    .await
+use diesel::r2d2::{self, ConnectionManager};
+use diesel::pg::PgConnection;
+
+let manager = ConnectionManager::<PgConnection>::new(database_url);
+let pool = r2d2::Pool::builder()
+    .max_size(5)
+    .connection_timeout(Duration::from_secs(3))
+    .build(manager)?;
+```
+
+**Async Integration:**
+
+Since Diesel is synchronous, use `tokio::task::spawn_blocking` in async contexts:
+
+```rust
+use tokio::task;
+
+async fn get_user(pool: &DbPool, id: Uuid) -> Result<User, Error> {
+    let pool = pool.clone();
+    task::spawn_blocking(move || {
+        let mut conn = pool.get()?;
+        users::table.find(id).first(&mut conn)
+    })
+    .await?
+}
 ```
 
 ---

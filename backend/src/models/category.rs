@@ -1,9 +1,12 @@
 use chrono::{DateTime, Utc};
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+use crate::schema::categories;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+#[diesel(table_name = categories)]
 pub struct Category {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -13,6 +16,16 @@ pub struct Category {
     pub parent_category_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = categories)]
+pub struct NewCategory<'a> {
+    pub user_id: Uuid,
+    pub name: &'a str,
+    pub icon: Option<&'a str>,
+    pub color: Option<&'a str>,
+    pub parent_category_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,8 +44,7 @@ pub struct UpdateCategory {
     pub parent_category_id: Option<Uuid>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "category_type", rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CategoryType {
     Income,
     Expense,

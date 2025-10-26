@@ -358,18 +358,20 @@ Applied to: users, accounts, categories, people, transactions, budgets
 
 ## Migration History
 
-All migrations are tracked in the `_sqlx_migrations` table:
+All migrations are tracked in the `__diesel_schema_migrations` table:
 
-1. **20251024000001**: Create ENUM types
-2. **20251024000002**: Create users table
-3. **20251024000003**: Create accounts table
-4. **20251024000004**: Create categories table
-5. **20251024000005**: Create people table
-6. **20251024000006**: Create transactions table
-7. **20251024000007**: Create transaction_splits table
-8. **20251024000008**: Create budgets table
-9. **20251024000009**: Create budget_ranges table
-10. **20251024000010**: Create triggers
+1. **2025-10-25-000001**: Create ENUM types
+2. **2025-10-25-000002**: Create users table
+3. **2025-10-25-000003**: Create accounts table
+4. **2025-10-25-000004**: Create categories table
+5. **2025-10-25-000005**: Create people table
+6. **2025-10-25-000006**: Create transactions table
+7. **2025-10-25-000007**: Create transaction_splits table
+8. **2025-10-25-000008**: Create budgets table
+9. **2025-10-25-000009**: Create budget_ranges table
+10. **2025-10-25-000010**: Create triggers
+
+**Note:** Diesel automatically generates `src/schema.rs` from the database schema, providing compile-time type safety for all queries.
 
 ---
 

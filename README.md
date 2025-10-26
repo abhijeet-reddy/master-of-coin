@@ -15,6 +15,7 @@ A personal finance tracker application designed for 1-2 users to manage their fi
 ## Tech Stack
 
 ### Frontend
+
 - **Framework**: React 18 with TypeScript
 - **UI Library**: Chakra UI
 - **State Management**: TanStack Query (React Query)
@@ -25,14 +26,16 @@ A personal finance tracker application designed for 1-2 users to manage their fi
 - **Build Tool**: Vite
 
 ### Backend
+
 - **Language**: Rust
 - **Web Framework**: Axum
 - **Database**: PostgreSQL 16
-- **ORM**: SQLx
+- **ORM**: Diesel
 - **Authentication**: JWT with Argon2 password hashing
 - **Async Runtime**: Tokio
 
 ### Deployment
+
 - **Containerization**: Docker & Docker Compose
 - **Reverse Proxy**: Cloudflare Tunnels for secure external access
 
@@ -41,11 +44,13 @@ A personal finance tracker application designed for 1-2 users to manage their fi
 Before you begin, ensure you have the following installed:
 
 - **Rust**: 1.90.0 or higher
+
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   ```
 
 - **Node.js**: v20.19.3 or higher
+
   ```bash
   # Using nvm (recommended)
   nvm install 20.19.3
@@ -53,19 +58,35 @@ Before you begin, ensure you have the following installed:
   ```
 
 - **PostgreSQL**: 16.10 or higher
+
   ```bash
+
+  ```
+
+- **Diesel CLI**: For database migrations
+
+  ```bash
+  cargo install diesel_cli --no-default-features --features postgres
+  ```
+
   # macOS
+
   brew install postgresql@16
-  
+
   # Ubuntu/Debian
+
   sudo apt-get install postgresql-16
+
+  ```
+
   ```
 
 - **Docker**: 28.4.0 or higher (for deployment)
+
   ```bash
   # macOS
   brew install docker
-  
+
   # Ubuntu/Debian
   sudo apt-get install docker.io docker-compose
   ```
@@ -88,6 +109,7 @@ cp .env.example .env
 ```
 
 Edit `.env` and update the following:
+
 - `DATABASE_URL`: Your PostgreSQL connection string
 - `JWT_SECRET`: A secure random string for JWT signing
 - `VITE_API_URL`: Backend API URL (default: http://localhost:3001)
@@ -107,9 +129,9 @@ sudo systemctl start postgresql
 # Create database
 createdb master_of_coin
 
-# Run migrations (after backend setup)
+# Run migrations with Diesel CLI
 cd backend
-sqlx migrate run
+diesel migration run
 ```
 
 ### 4. Backend Setup

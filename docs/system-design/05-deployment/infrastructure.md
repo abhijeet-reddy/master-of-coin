@@ -5,12 +5,14 @@
 ### Local/Home Server Deployment
 
 **Recommended Setup:**
+
 - Docker host: Personal computer or home server
 - OS: Linux (Ubuntu/Debian) or macOS
 - Minimum specs: 2 CPU cores, 4GB RAM, 20GB storage
 - Cloudflare Tunnel for external access
 
 **Why Local Hosting:**
+
 - Free (no cloud costs)
 - Full control over data
 - Sufficient for 1-2 users
@@ -136,11 +138,12 @@ docker-compose logs -f backend
 ### Database Migrations
 
 ```bash
-# Run migrations
-docker-compose exec backend ./backend migrate
+# Run migrations using Diesel CLI
+docker-compose exec backend diesel migration run
 
-# Or using sqlx-cli
-sqlx migrate run
+# Or from host (if Diesel CLI installed)
+cd backend
+diesel migration run
 ```
 
 ## Security Checklist
@@ -156,6 +159,7 @@ sqlx migrate run
 ## Troubleshooting
 
 ### Container won't start
+
 ```bash
 docker-compose logs <service-name>
 docker-compose down
@@ -163,12 +167,14 @@ docker-compose up -d
 ```
 
 ### Database connection issues
+
 ```bash
 docker-compose exec postgres psql -U postgres -d master_of_coin
 # Check if database exists and is accessible
 ```
 
 ### Cloudflare Tunnel issues
+
 ```bash
 docker-compose logs cloudflared
 # Check token is correct in .env

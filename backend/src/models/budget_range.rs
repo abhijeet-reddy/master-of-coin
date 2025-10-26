@@ -1,12 +1,14 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDate, Utc};
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
 
-use super::budget::BudgetPeriod;
+use crate::schema::budget_ranges;
+use crate::types::BudgetPeriod;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+#[diesel(table_name = budget_ranges)]
 pub struct BudgetRange {
     pub id: Uuid,
     pub budget_id: Uuid,
@@ -16,6 +18,16 @@ pub struct BudgetRange {
     pub end_date: NaiveDate,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = budget_ranges)]
+pub struct NewBudgetRange {
+    pub budget_id: Uuid,
+    pub limit_amount: BigDecimal,
+    pub period: BudgetPeriod,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
 }
 
 #[derive(Debug, Deserialize)]

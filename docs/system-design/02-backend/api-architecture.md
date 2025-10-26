@@ -4,7 +4,7 @@
 
 Master of Coin backend is built with Rust using the Axum web framework and **Diesel ORM**, providing a high-performance, type-safe REST API.
 
-**Database Layer**: Migrating from SQLx to Diesel ORM. See [`docs/database/sqlx-to-diesel-migration-plan.md`](../../database/sqlx-to-diesel-migration-plan.md) for migration details.
+**Database Layer**: ✅ Migration to Diesel ORM completed. See [`docs/database/sqlx-to-diesel-migration-plan.md`](../../database/sqlx-to-diesel-migration-plan.md) for completion details.
 
 ## Project Structure
 

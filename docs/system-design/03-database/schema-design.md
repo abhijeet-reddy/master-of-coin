@@ -2,13 +2,13 @@
 
 ## Overview
 
-Master of Coin uses PostgreSQL 16 for its relational database with ACID compliance and complex query support. The schema is implemented through SQLx migrations located in [`backend/migrations/`](../../../backend/migrations/).
+Master of Coin uses PostgreSQL 16 for its relational database with ACID compliance and complex query support. The schema is implemented through Diesel migrations located in [`backend/migrations/`](../../../backend/migrations/).
 
 ## Complete Schema
 
 The database schema is implemented across 10 migration files:
 
-### 1. ENUM Types ([`20251024000001_create_enums.sql`](../../../backend/migrations/20251024000001_create_enums.sql))
+### 1. ENUM Types ([`2025-10-25-000001_create_enums`](../../../backend/migrations/2025-10-25-000001_create_enums/))
 
 ```sql
 CREATE TYPE account_type AS ENUM (
@@ -38,7 +38,7 @@ CREATE TYPE budget_period AS ENUM (
 );
 ```
 
-### 2. Users Table ([`20251024000002_create_users_table.sql`](../../../backend/migrations/20251024000002_create_users_table.sql))
+### 2. Users Table ([`2025-10-25-000002_create_users_table`](../../../backend/migrations/2025-10-25-000002_create_users_table/))
 
 ```sql
 CREATE TABLE users (
@@ -55,7 +55,7 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 ```
 
-### 3. Accounts Table ([`20251024000003_create_accounts_table.sql`](../../../backend/migrations/20251024000003_create_accounts_table.sql))
+### 3. Accounts Table ([`2025-10-25-000003_create_accounts_table`](../../../backend/migrations/2025-10-25-000003_create_accounts_table/))
 
 ```sql
 CREATE TABLE accounts (
@@ -72,7 +72,7 @@ CREATE TABLE accounts (
 CREATE INDEX idx_accounts_user_id ON accounts(user_id);
 ```
 
-### 4. Categories Table ([`20251024000004_create_categories_table.sql`](../../../backend/migrations/20251024000004_create_categories_table.sql))
+### 4. Categories Table ([`2025-10-25-000004_create_categories_table`](../../../backend/migrations/2025-10-25-000004_create_categories_table/))
 
 ```sql
 CREATE TABLE categories (
@@ -90,7 +90,7 @@ CREATE TABLE categories (
 CREATE INDEX idx_categories_user_id ON categories(user_id);
 ```
 
-### 5. People Table ([`20251024000005_create_people_table.sql`](../../../backend/migrations/20251024000005_create_people_table.sql))
+### 5. People Table ([`2025-10-25-000005_create_people_table`](../../../backend/migrations/2025-10-25-000005_create_people_table/))
 
 ```sql
 CREATE TABLE people (
@@ -108,7 +108,7 @@ CREATE INDEX idx_people_user_id ON people(user_id);
 CREATE INDEX idx_people_user_name ON people(user_id, name);
 ```
 
-### 6. Transactions Table ([`20251024000006_create_transactions_table.sql`](../../../backend/migrations/20251024000006_create_transactions_table.sql))
+### 6. Transactions Table ([`2025-10-25-000006_create_transactions_table`](../../../backend/migrations/2025-10-25-000006_create_transactions_table/))
 
 ```sql
 CREATE TABLE transactions (
@@ -131,7 +131,7 @@ CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
 CREATE INDEX idx_transactions_amount ON transactions(user_id, amount);
 ```
 
-### 7. Transaction Splits Table ([`20251024000007_create_transaction_splits_table.sql`](../../../backend/migrations/20251024000007_create_transaction_splits_table.sql))
+### 7. Transaction Splits Table ([`2025-10-25-000007_create_transaction_splits_table`](../../../backend/migrations/2025-10-25-000007_create_transaction_splits_table/))
 
 ```sql
 CREATE TABLE transaction_splits (
@@ -147,7 +147,7 @@ CREATE INDEX idx_splits_transaction_id ON transaction_splits(transaction_id);
 CREATE INDEX idx_splits_person_id ON transaction_splits(person_id);
 ```
 
-### 8. Budgets Table ([`20251024000008_create_budgets_table.sql`](../../../backend/migrations/20251024000008_create_budgets_table.sql))
+### 8. Budgets Table ([`2025-10-25-000008_create_budgets_table`](../../../backend/migrations/2025-10-25-000008_create_budgets_table/))
 
 ```sql
 CREATE TABLE budgets (
@@ -163,7 +163,7 @@ CREATE INDEX idx_budgets_user_id ON budgets(user_id);
 CREATE INDEX idx_budgets_filters ON budgets USING GIN(filters);
 ```
 
-### 9. Budget Ranges Table ([`20251024000009_create_budget_ranges_table.sql`](../../../backend/migrations/20251024000009_create_budget_ranges_table.sql))
+### 9. Budget Ranges Table ([`2025-10-25-000009_create_budget_ranges_table`](../../../backend/migrations/2025-10-25-000009_create_budget_ranges_table/))
 
 ```sql
 CREATE TABLE budget_ranges (
@@ -182,7 +182,7 @@ CREATE TABLE budget_ranges (
 CREATE INDEX idx_budget_ranges_budget_id ON budget_ranges(budget_id);
 ```
 
-### 10. Triggers ([`20251024000010_create_triggers.sql`](../../../backend/migrations/20251024000010_create_triggers.sql))
+### 10. Triggers ([`2025-10-25-000010_create_triggers`](../../../backend/migrations/2025-10-25-000010_create_triggers/))
 
 ```sql
 -- Updated_at trigger function
@@ -340,27 +340,53 @@ WHERE user_id = $1
 
 ## Migrations
 
-Using SQLx migrations in [`backend/migrations/`](../../../backend/migrations/):
+Using Diesel migrations in [`backend/migrations/`](../../../backend/migrations/):
 
 ```
 backend/migrations/
-├── 20251024000001_create_enums.sql
-├── 20251024000002_create_users_table.sql
-├── 20251024000003_create_accounts_table.sql
-├── 20251024000004_create_categories_table.sql
-├── 20251024000005_create_people_table.sql
-├── 20251024000006_create_transactions_table.sql
-├── 20251024000007_create_transaction_splits_table.sql
-├── 20251024000008_create_budgets_table.sql
-├── 20251024000009_create_budget_ranges_table.sql
-└── 20251024000010_create_triggers.sql
+├── 2025-10-25-000001_create_enums/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000002_create_users_table/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000003_create_accounts_table/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000004_create_categories_table/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000005_create_people_table/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000006_create_transactions_table/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000007_create_transaction_splits_table/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000008_create_budgets_table/
+│   ├── up.sql
+│   └── down.sql
+├── 2025-10-25-000009_create_budget_ranges_table/
+│   ├── up.sql
+│   └── down.sql
+└── 2025-10-25-000010_create_triggers/
+    ├── up.sql
+    └── down.sql
 ```
 
 Run migrations with:
 
 ```bash
 cd backend
-sqlx migrate run
+diesel migration run
+```
+
+Generate schema after migrations:
+
+```bash
+diesel print-schema > src/schema.rs
 ```
 
 Or use the initialization script:
@@ -373,7 +399,7 @@ Or use the initialization script:
 
 1. **Partitioning** (Future): Partition transactions by date if volume grows
 2. **Materialized Views** (Future): For dashboard aggregations
-3. **Connection Pooling**: SQLx pool with 5-20 connections
+3. **Connection Pooling**: Diesel r2d2 pool with 5-20 connections
 4. **Query Optimization**: Use EXPLAIN ANALYZE for slow queries
 5. **Indexes**: Monitor and add indexes based on query patterns
 

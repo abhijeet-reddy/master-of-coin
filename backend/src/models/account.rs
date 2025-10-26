@@ -1,41 +1,35 @@
 use chrono::{DateTime, Utc};
+use diesel::{Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "account_type", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum AccountType {
-    Checking,
-    Savings,
-    CreditCard,
-    Investment,
-    Cash,
-}
+use crate::schema::accounts;
+use crate::types::{AccountType, CurrencyCode};
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "currency_code", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum CurrencyCode {
-    Usd,
-    Eur,
-    Gbp,
-    Inr,
-    Jpy,
-    Aud,
-    Cad,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+#[diesel(table_name = accounts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Account {
     pub id: Uuid,
     pub user_id: Uuid,
     pub name: String,
-    #[sqlx(rename = "type")]
+    #[diesel(column_name = type_)]
     pub account_type: AccountType,
-    pub currency: CurrencyCode,
+    pub currency: Option<CurrencyCode>,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = accounts)]
+pub struct NewAccount<'a> {
+    pub user_id: Uuid,
+    pub name: &'a str,
+    #[diesel(column_name = type_)]
+    pub account_type: AccountType,
+    pub currency: Option<CurrencyCode>,
+    pub notes: Option<&'a str>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -23,13 +23,13 @@ pub struct Account {
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = accounts)]
-pub struct NewAccount<'a> {
+pub struct NewAccount {
     pub user_id: Uuid,
-    pub name: &'a str,
+    pub name: String,
     #[diesel(column_name = type_)]
     pub account_type: AccountType,
-    pub currency: Option<CurrencyCode>,
-    pub notes: Option<&'a str>,
+    pub currency: CurrencyCode,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,8 +43,6 @@ pub struct CreateAccount {
 #[derive(Debug, Deserialize)]
 pub struct UpdateAccount {
     pub name: Option<String>,
-    pub account_type: Option<AccountType>,
-    pub currency: Option<CurrencyCode>,
     pub notes: Option<String>,
 }
 

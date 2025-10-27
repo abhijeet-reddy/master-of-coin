@@ -7,6 +7,7 @@ use crate::schema::people;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = people)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Person {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -20,12 +21,12 @@ pub struct Person {
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = people)]
-pub struct NewPerson<'a> {
+pub struct NewPerson {
     pub user_id: Uuid,
-    pub name: &'a str,
-    pub email: Option<&'a str>,
-    pub phone: Option<&'a str>,
-    pub notes: Option<&'a str>,
+    pub name: String,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -5,8 +5,8 @@ CREATE TABLE budget_ranges (
     period budget_period NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT valid_date_range CHECK (end_date >= start_date),
     CONSTRAINT positive_limit CHECK (limit_amount > 0)
 );

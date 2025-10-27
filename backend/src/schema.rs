@@ -44,8 +44,8 @@ diesel::table! {
         period -> BudgetPeriod,
         start_date -> Date,
         end_date -> Date,
-        created_at -> Nullable<Timestamptz>,
-        updated_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -56,8 +56,8 @@ diesel::table! {
         #[max_length = 255]
         name -> Varchar,
         filters -> Jsonb,
-        created_at -> Nullable<Timestamptz>,
-        updated_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -72,8 +72,8 @@ diesel::table! {
         #[max_length = 7]
         color -> Nullable<Varchar>,
         parent_category_id -> Nullable<Uuid>,
-        created_at -> Nullable<Timestamptz>,
-        updated_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -88,8 +88,8 @@ diesel::table! {
         #[max_length = 50]
         phone -> Nullable<Varchar>,
         notes -> Nullable<Text>,
-        created_at -> Nullable<Timestamptz>,
-        updated_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -99,8 +99,8 @@ diesel::table! {
         transaction_id -> Uuid,
         person_id -> Uuid,
         amount -> Numeric,
-        created_at -> Nullable<Timestamptz>,
-        updated_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -115,8 +115,8 @@ diesel::table! {
         amount -> Numeric,
         date -> Timestamptz,
         notes -> Nullable<Text>,
-        created_at -> Nullable<Timestamptz>,
-        updated_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 

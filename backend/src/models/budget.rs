@@ -8,6 +8,7 @@ use crate::schema::budgets;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = budgets)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Budget {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -19,9 +20,9 @@ pub struct Budget {
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = budgets)]
-pub struct NewBudget<'a> {
+pub struct NewBudget {
     pub user_id: Uuid,
-    pub name: &'a str,
+    pub name: String,
     pub filters: JsonValue,
 }
 

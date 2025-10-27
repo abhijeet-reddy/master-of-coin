@@ -8,7 +8,6 @@ async fn main() {
     dotenvy::dotenv().ok();
 
     let config = Config::from_env().expect("Failed to load configuration");
-    config.validate().expect("Invalid configuration");
 
     // Initialize tracing
     tracing_subscriber::fmt()

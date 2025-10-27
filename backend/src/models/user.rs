@@ -21,11 +21,11 @@ pub struct User {
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = users)]
-pub struct NewUser<'a> {
-    pub username: &'a str,
-    pub email: &'a str,
-    pub password_hash: &'a str,
-    pub name: &'a str,
+pub struct NewUser {
+    pub username: String,
+    pub email: String,
+    pub password_hash: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]

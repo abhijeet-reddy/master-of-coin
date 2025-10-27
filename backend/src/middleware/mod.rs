@@ -1,1 +1,2 @@
-// HTTP middleware will be defined here
+// HTTP middleware
+pub mod auth;

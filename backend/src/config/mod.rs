@@ -1,7 +1,7 @@
-use std::env;
+use serde::Deserialize;
 
 /// Main configuration structure
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
@@ -9,65 +9,73 @@ pub struct Config {
 }
 
 /// Server configuration
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
 }
 
 /// Database configuration
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct DatabaseConfig {
     pub url: String,
     pub max_connections: u32,
 }
 
 /// JWT configuration
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct JwtConfig {
     pub secret: String,
-    pub expiration: i64,
+    pub expiration_hours: i64,
 }
 
 impl Config {
     /// Load configuration from environment variables
     pub fn from_env() -> Result<Self, ConfigError> {
-        Ok(Config {
+        // Load .env file if it exists
+        dotenvy::dotenv().ok();
+
+        let config = Config {
             server: ServerConfig {
-                host: env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
-                port: env::var("SERVER_PORT")
+                host: std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
+                port: std::env::var("SERVER_PORT")
                     .unwrap_or_else(|_| "13153".to_string())
                     .parse()
                     .map_err(|_| ConfigError::InvalidPort)?,
             },
             database: DatabaseConfig {
-                url: env::var("DATABASE_URL")
+                url: std::env::var("DATABASE_URL")
                     .map_err(|_| ConfigError::MissingEnvVar("DATABASE_URL".to_string()))?,
-                max_connections: env::var("DATABASE_MAX_CONNECTIONS")
+                max_connections: std::env::var("DATABASE_MAX_CONNECTIONS")
                     .unwrap_or_else(|_| "10".to_string())
                     .parse()
                     .unwrap_or(10),
             },
             jwt: JwtConfig {
-                secret: env::var("JWT_SECRET")
+                secret: std::env::var("JWT_SECRET")
                     .map_err(|_| ConfigError::MissingEnvVar("JWT_SECRET".to_string()))?,
-                expiration: env::var("JWT_EXPIRATION")
-                    .unwrap_or_else(|_| "86400".to_string())
+                expiration_hours: std::env::var("JWT_EXPIRATION_HOURS")
+                    .unwrap_or_else(|_| "24".to_string())
                     .parse()
-                    .unwrap_or(86400), // Default: 24 hours
+                    .unwrap_or(24),
             },
-        })
+        };
+
+        // Validate configuration
+        config.validate()?;
+
+        Ok(config)
     }
 
     /// Validate configuration
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    fn validate(&self) -> Result<(), ConfigError> {
         if self.jwt.secret.len() < 32 {
             return Err(ConfigError::InvalidConfig(
                 "JWT secret must be at least 32 characters".to_string(),
             ));
         }
 
-        if self.jwt.expiration <= 0 {
+        if self.jwt.expiration_hours <= 0 {
             return Err(ConfigError::InvalidConfig(
                 "JWT expiration must be positive".to_string(),
             ));

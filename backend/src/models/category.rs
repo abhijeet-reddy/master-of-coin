@@ -7,6 +7,7 @@ use crate::schema::categories;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = categories)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Category {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -20,11 +21,11 @@ pub struct Category {
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = categories)]
-pub struct NewCategory<'a> {
+pub struct NewCategory {
     pub user_id: Uuid,
-    pub name: &'a str,
-    pub icon: Option<&'a str>,
-    pub color: Option<&'a str>,
+    pub name: String,
+    pub icon: Option<String>,
+    pub color: Option<String>,
     pub parent_category_id: Option<Uuid>,
 }
 

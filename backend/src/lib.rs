@@ -1,3 +1,32 @@
+//! # Master of Coin Backend
+//!
+//! A comprehensive personal finance management API built with Axum and Diesel.
+//!
+//! ## Features
+//!
+//! - **User Authentication**: JWT-based authentication with Argon2 password hashing
+//! - **Multi-Account Management**: Support for multiple accounts with different types and currencies
+//! - **Transaction Tracking**: Income, expenses, and transfers with optional splits for shared expenses
+//! - **Budget Management**: Flexible budgets with date ranges and category/account filters
+//! - **Debt Tracking**: Track shared expenses and settle debts between people
+//! - **Analytics Dashboard**: Net worth calculation, spending trends, and category breakdowns
+//!
+//! ## Architecture
+//!
+//! The application follows a layered architecture:
+//!
+//! - **Handlers** ([`handlers`]): HTTP request/response handling with Axum
+//! - **Services** ([`services`]): Business logic and validation
+//! - **Repositories** ([`repositories`]): Data access layer with Diesel ORM
+//! - **Models** ([`models`]): Data structures and DTOs with validation
+//! - **Middleware** ([`middleware`]): Authentication, CORS, and logging
+//!
+//! ## Database
+//!
+//! Uses PostgreSQL with Diesel ORM for type-safe queries and compile-time guarantees.
+//! All database operations use connection pooling via r2d2 and are executed in
+//! blocking tasks to work with Axum's async runtime.
+
 // Core modules
 pub mod config;
 pub mod db;

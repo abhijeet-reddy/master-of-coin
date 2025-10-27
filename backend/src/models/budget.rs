@@ -60,6 +60,15 @@ pub struct BudgetResponse {
     pub user_id: Uuid,
     pub name: String,
     pub filters: JsonValue,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+}
+
+impl From<Budget> for BudgetResponse {
+    fn from(budget: Budget) -> Self {
+        Self {
+            id: budget.id,
+            user_id: budget.user_id,
+            name: budget.name,
+            filters: budget.filters,
+        }
+    }
 }

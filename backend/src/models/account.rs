@@ -15,7 +15,7 @@ pub struct Account {
     pub name: String,
     #[diesel(column_name = type_)]
     pub account_type: AccountType,
-    pub currency: Option<CurrencyCode>,
+    pub currency: CurrencyCode,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -36,7 +36,7 @@ pub struct NewAccount {
 pub struct CreateAccount {
     pub name: String,
     pub account_type: AccountType,
-    pub currency: Option<CurrencyCode>,
+    pub currency: CurrencyCode,
     pub notes: Option<String>,
 }
 
@@ -52,7 +52,7 @@ pub struct CreateAccountRequest {
     #[validate(length(min = 1, max = 100))]
     pub name: String,
     pub account_type: AccountType,
-    pub currency: CurrencyCode,
+    pub currency: Option<CurrencyCode>,
     #[validate(range(min = 0.0))]
     pub initial_balance: Option<f64>,
     #[validate(length(max = 500))]
@@ -79,6 +79,4 @@ pub struct AccountResponse {
     pub balance: f64,
     pub is_active: bool,
     pub notes: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }

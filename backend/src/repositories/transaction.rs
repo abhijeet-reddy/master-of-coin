@@ -125,7 +125,7 @@ pub async fn list_transactions(
         query = query.order(transactions::date.desc());
 
         // Apply pagination
-        let limit = filters.limit.unwrap_or(50).min(100);
+        let limit = filters.limit.unwrap_or(50).min(100); // TODO: Make default limit (50) and max (100) configurable
         let offset = filters.offset.unwrap_or(0);
 
         query

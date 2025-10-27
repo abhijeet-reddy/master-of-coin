@@ -79,6 +79,17 @@ pub struct PersonResponse {
     pub email: Option<String>,
     pub phone: Option<String>,
     pub notes: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+}
+
+impl From<Person> for PersonResponse {
+    fn from(person: Person) -> Self {
+        Self {
+            id: person.id,
+            user_id: person.user_id,
+            name: person.name,
+            email: person.email,
+            phone: person.phone,
+            notes: person.notes,
+        }
+    }
 }

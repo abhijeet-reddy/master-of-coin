@@ -1,1 +1,8 @@
-// HTTP request handlers will be defined here
+// HTTP request handlers
+pub mod accounts;
+pub mod auth;
+pub mod budgets;
+pub mod categories;
+pub mod dashboard;
+pub mod people;
+pub mod transactions;

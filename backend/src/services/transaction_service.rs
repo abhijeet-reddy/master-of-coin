@@ -8,7 +8,7 @@ use crate::{
     errors::ApiError,
     models::{
         CreateTransactionRequest, NewTransaction, NewTransactionSplit, TransactionFilter,
-        TransactionResponse, UpdateTransactionRequest, transaction::TransactionSplitResponse,
+        TransactionResponse, UpdateTransactionRequest,
     },
     repositories,
 };
@@ -122,15 +122,7 @@ pub async fn create_transaction(
 
     // Build response
     let mut response = TransactionResponse::from(transaction);
-    response.splits = splits.map(|s| {
-        s.into_iter()
-            .map(|split| TransactionSplitResponse {
-                id: split.id,
-                person_id: split.person_id,
-                amount: split.amount.to_string(),
-            })
-            .collect()
-    });
+    response.splits = splits.map(|s| s.into_iter().map(|split| split.into()).collect());
 
     Ok(response)
 }
@@ -161,11 +153,7 @@ pub async fn get_transaction(
     let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id)
         .await?
         .into_iter()
-        .map(|split| TransactionSplitResponse {
-            id: split.id,
-            person_id: split.person_id,
-            amount: split.amount.to_string(),
-        })
+        .map(|split| split.into())
         .collect::<Vec<_>>();
 
     let mut response = TransactionResponse::from(transaction);

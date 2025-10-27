@@ -76,6 +76,17 @@ pub struct BudgetRangeResponse {
     pub period: BudgetPeriod,
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+}
+
+impl From<BudgetRange> for BudgetRangeResponse {
+    fn from(range: BudgetRange) -> Self {
+        Self {
+            id: range.id,
+            budget_id: range.budget_id,
+            limit_amount: range.limit_amount.to_string(),
+            period: range.period,
+            start_date: range.start_date,
+            end_date: range.end_date,
+        }
+    }
 }

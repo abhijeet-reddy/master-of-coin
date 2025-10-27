@@ -31,7 +31,7 @@ pub use user::NewUser;
 pub use account::{CreateAccountRequest, UpdateAccountRequest};
 pub use budget::{CreateBudgetRequest, UpdateBudgetRequest};
 pub use budget_range::{CreateBudgetRangeRequest, UpdateBudgetRangeRequest};
-pub use category::{CategoryType, CreateCategoryRequest, UpdateCategoryRequest};
+pub use category::{CreateCategoryRequest, UpdateCategoryRequest};
 pub use person::{CreatePersonRequest, UpdatePersonRequest};
 pub use transaction::{
     CreateTransactionRequest, TransactionFilter, TransactionType, UpdateTransactionRequest,
@@ -45,6 +45,7 @@ pub use budget_range::BudgetRangeResponse;
 pub use category::CategoryResponse;
 pub use person::PersonResponse;
 pub use transaction::TransactionResponse;
+pub use transaction_split::TransactionSplitResponse;
 pub use user::UserResponse;
 
 // Re-export types from types module for convenience

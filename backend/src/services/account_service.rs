@@ -34,12 +34,12 @@ pub async fn create_account(
         None
     };
 
-    // Create account
+    // Create account with currency defaulting to EUR if not provided
     let new_account = NewAccount {
         user_id,
         name: request.name.clone(),
         account_type: request.account_type,
-        currency: request.currency,
+        currency: request.currency.unwrap_or(crate::types::CurrencyCode::Eur),
         notes: request.notes.clone(),
     };
 
@@ -54,10 +54,10 @@ pub async fn create_account(
                 user_id,
                 account_id: account.id,
                 category_id: None,
-                title: "Initial Balance".to_string(),
+                title: "Initial Balance".to_string(), // TODO: Consider making this configurable or translatable
                 amount: balance,
                 date: chrono::Utc::now(),
-                notes: Some("Initial account balance".to_string()),
+                notes: Some("Initial account balance".to_string()), // TODO: Consider making this configurable or translatable
             };
 
             repositories::transaction::create_transaction(pool, user_id, initial_transaction)
@@ -78,12 +78,10 @@ pub async fn create_account(
         user_id: account.user_id,
         name: account.name,
         account_type: account.account_type,
-        currency: account.currency.unwrap_or(request.currency),
+        currency: account.currency,
         balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-        is_active: true,
+        is_active: true, // TODO: Add is_active field to database schema for account archiving
         notes: account.notes,
-        created_at: account.created_at,
-        updated_at: account.updated_at,
     })
 }
 
@@ -117,12 +115,10 @@ pub async fn get_account(
         user_id: account.user_id,
         name: account.name,
         account_type: account.account_type,
-        currency: account.currency.unwrap_or(crate::types::CurrencyCode::Usd),
+        currency: account.currency,
         balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-        is_active: true,
+        is_active: true, // TODO: Add is_active field to database schema
         notes: account.notes,
-        created_at: account.created_at,
-        updated_at: account.updated_at,
     })
 }
 
@@ -141,12 +137,10 @@ pub async fn list_accounts(pool: &DbPool, user_id: Uuid) -> Result<Vec<AccountRe
             user_id: account.user_id,
             name: account.name,
             account_type: account.account_type,
-            currency: account.currency.unwrap_or(crate::types::CurrencyCode::Usd),
+            currency: account.currency,
             balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-            is_active: true,
+            is_active: true, // TODO: Add is_active field to database schema
             notes: account.notes,
-            created_at: account.created_at,
-            updated_at: account.updated_at,
         });
     }
 
@@ -199,12 +193,10 @@ pub async fn update_account(
         user_id: updated.user_id,
         name: updated.name,
         account_type: updated.account_type,
-        currency: updated.currency.unwrap_or(crate::types::CurrencyCode::Usd),
+        currency: updated.currency,
         balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-        is_active: true,
+        is_active: true, // TODO: Add is_active field to database schema if account archiving is needed
         notes: updated.notes,
-        created_at: updated.created_at,
-        updated_at: updated.updated_at,
     })
 }
 

@@ -101,23 +101,17 @@ pub fn validate_splits_sum(
 #[derive(Debug, Serialize)]
 pub struct TransactionSplitResponse {
     pub id: Uuid,
-    pub transaction_id: Uuid,
     pub person_id: Uuid,
     /// BigDecimal as string for JSON serialization
     pub amount: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
 impl From<TransactionSplit> for TransactionSplitResponse {
     fn from(split: TransactionSplit) -> Self {
         TransactionSplitResponse {
             id: split.id,
-            transaction_id: split.transaction_id,
             person_id: split.person_id,
             amount: split.amount.to_string(),
-            created_at: split.created_at,
-            updated_at: split.updated_at,
         }
     }
 }

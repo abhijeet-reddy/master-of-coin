@@ -26,7 +26,7 @@ diesel::table! {
         name -> Varchar,
         #[sql_name = "type"]
         type_ -> AccountType,
-        currency -> Nullable<CurrencyCode>,
+        currency -> CurrencyCode,
         notes -> Nullable<Text>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
@@ -71,7 +71,7 @@ diesel::table! {
         icon -> Nullable<Varchar>,
         #[max_length = 7]
         color -> Nullable<Varchar>,
-        parent_category_id -> Nullable<Uuid>,
+        parent_id -> Nullable<Uuid>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }

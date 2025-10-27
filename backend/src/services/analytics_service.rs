@@ -213,7 +213,7 @@ pub async fn get_dashboard_summary(
 ) -> Result<DashboardSummary, ApiError> {
     // Calculate date range for last 30 days
     let end_date = Utc::now();
-    let start_date = end_date - chrono::Duration::days(30);
+    let start_date = end_date - chrono::Duration::days(30); // TODO: Make time range configurable (30 days hardcoded)
 
     // Run queries in parallel using tokio::join!
     let (net_worth_result, recent_transactions_result, budgets_result, category_breakdown_result) = tokio::join!(
@@ -230,7 +230,7 @@ pub async fn get_dashboard_summary(
     let category_breakdown = category_breakdown_result?;
 
     // Get top 5 spending categories
-    let top_spending_categories = category_breakdown.iter().take(5).cloned().collect();
+    let top_spending_categories = category_breakdown.iter().take(5).cloned().collect(); // TODO: Make top N configurable
 
     Ok(DashboardSummary {
         net_worth: net_worth.total,
@@ -254,7 +254,7 @@ async fn get_recent_transactions(
         min_amount: None,
         max_amount: None,
         search: None,
-        limit: Some(10),
+        limit: Some(10), // TODO: Make recent transaction limit configurable
         offset: None,
     };
 

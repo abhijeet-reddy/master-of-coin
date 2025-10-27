@@ -3,7 +3,7 @@ CREATE TABLE accounts (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     type account_type NOT NULL,
-    currency currency_code DEFAULT 'EUR',
+    currency currency_code NOT NULL DEFAULT 'EUR',
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP

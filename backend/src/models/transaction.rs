@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use super::transaction_split;
+use super::transaction_split::{self, TransactionSplitResponse};
 use crate::schema::transactions;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
@@ -203,17 +203,8 @@ pub struct TransactionResponse {
     pub amount: String,
     pub date: DateTime<Utc>,
     pub notes: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
     /// Splits associated with this transaction
     pub splits: Option<Vec<TransactionSplitResponse>>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct TransactionSplitResponse {
-    pub id: Uuid,
-    pub person_id: Uuid,
-    pub amount: String,
 }
 
 impl From<Transaction> for TransactionResponse {
@@ -227,8 +218,6 @@ impl From<Transaction> for TransactionResponse {
             amount: transaction.amount.to_string(),
             date: transaction.date,
             notes: transaction.notes,
-            created_at: transaction.created_at,
-            updated_at: transaction.updated_at,
             splits: None, // Populated separately when needed
         }
     }

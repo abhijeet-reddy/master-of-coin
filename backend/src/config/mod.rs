@@ -1,6 +1,23 @@
+//! Application configuration management.
+//!
+//! This module handles loading and validating configuration from environment variables.
+//! Configuration is loaded from a `.env` file (if present) and environment variables.
+//!
+//! ## Required Environment Variables
+//!
+//! - `DATABASE_URL`: PostgreSQL connection string
+//! - `JWT_SECRET`: Secret key for JWT token signing (minimum 32 characters)
+//!
+//! ## Optional Environment Variables
+//!
+//! - `SERVER_HOST`: Server bind address (default: "127.0.0.1")
+//! - `SERVER_PORT`: Server port (default: "13153")
+//! - `DATABASE_MAX_CONNECTIONS`: Maximum database connections (default: 10)
+//! - `JWT_EXPIRATION_HOURS`: JWT token expiration in hours (default: 24)
+
 use serde::Deserialize;
 
-/// Main configuration structure
+/// Main configuration structure containing all application settings
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,

@@ -122,16 +122,12 @@ pub async fn update_category(
                     ApiError::from(e)
                 })?;
         }
-        if let Some(parent_category_id) = updates.parent_category_id {
+        if let Some(parent_id) = updates.parent_id {
             diesel::update(categories::table.find(category_id))
-                .set(categories::parent_category_id.eq(parent_category_id))
+                .set(categories::parent_id.eq(parent_id))
                 .execute(&mut conn)
                 .map_err(|e| {
-                    tracing::error!(
-                        "Failed to update category parent_category_id {}: {}",
-                        category_id,
-                        e
-                    );
+                    tracing::error!("Failed to update category parent_id {}: {}", category_id, e);
                     ApiError::from(e)
                 })?;
         }

@@ -47,14 +47,7 @@ pub async fn create_budget(
 
     tracing::info!("Created budget {} for user {}", budget.id, user_id);
 
-    Ok(BudgetResponse {
-        id: budget.id,
-        user_id: budget.user_id,
-        name: budget.name,
-        filters: budget.filters,
-        created_at: budget.created_at,
-        updated_at: budget.updated_at,
-    })
+    Ok(budget.into())
 }
 
 /// Get a budget with current spending status
@@ -79,31 +72,14 @@ pub async fn get_budget(
         ));
     }
 
-    Ok(BudgetResponse {
-        id: budget.id,
-        user_id: budget.user_id,
-        name: budget.name,
-        filters: budget.filters,
-        created_at: budget.created_at,
-        updated_at: budget.updated_at,
-    })
+    Ok(budget.into())
 }
 
 /// List all budgets for a user
 pub async fn list_budgets(pool: &DbPool, user_id: Uuid) -> Result<Vec<BudgetResponse>, ApiError> {
     let budgets = repositories::budget::list_by_user(pool, user_id).await?;
 
-    let responses = budgets
-        .into_iter()
-        .map(|budget| BudgetResponse {
-            id: budget.id,
-            user_id: budget.user_id,
-            name: budget.name,
-            filters: budget.filters,
-            created_at: budget.created_at,
-            updated_at: budget.updated_at,
-        })
-        .collect();
+    let responses = budgets.into_iter().map(|budget| budget.into()).collect();
 
     Ok(responses)
 }
@@ -146,14 +122,7 @@ pub async fn update_budget(
 
     tracing::info!("Updated budget {} for user {}", budget_id, user_id);
 
-    Ok(BudgetResponse {
-        id: updated.id,
-        user_id: updated.user_id,
-        name: updated.name,
-        filters: updated.filters,
-        created_at: updated.created_at,
-        updated_at: updated.updated_at,
-    })
+    Ok(updated.into())
 }
 
 /// Delete a budget
@@ -233,16 +202,7 @@ pub async fn add_range(
 
     tracing::info!("Created range {} for budget {}", range.id, budget_id);
 
-    Ok(BudgetRangeResponse {
-        id: range.id,
-        budget_id: range.budget_id,
-        limit_amount: range.limit_amount.to_string(),
-        period: range.period,
-        start_date: range.start_date,
-        end_date: range.end_date,
-        created_at: range.created_at,
-        updated_at: range.updated_at,
-    })
+    Ok(range.into())
 }
 
 /// Calculate budget status for current period
@@ -276,8 +236,8 @@ pub async fn calculate_budget_status(
     let mut filter = TransactionFilter {
         account_id: None,
         category_id: None,
-        start_date: Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()),
-        end_date: Some(range.end_date.and_hms_opt(23, 59, 59).unwrap().and_utc()),
+        start_date: Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()), // Start of day (00:00:00)
+        end_date: Some(range.end_date.and_hms_opt(23, 59, 59).unwrap().and_utc()), // End of day (23:59:59)
         min_amount: None,
         max_amount: None,
         search: None,

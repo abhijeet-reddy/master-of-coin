@@ -4,7 +4,7 @@ CREATE TABLE categories (
     name VARCHAR(255) NOT NULL,
     icon VARCHAR(50),
     color VARCHAR(7),
-    parent_category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, name)

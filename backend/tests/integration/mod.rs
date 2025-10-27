@@ -9,10 +9,6 @@
 //! - Async/sync bridge pattern works with tokio::spawn_blocking
 //! - Transactions work correctly (commit and rollback)
 
+mod api;
 mod common;
-mod test_async_bridge;
-mod test_connection;
-mod test_custom_types;
-mod test_relationships;
-mod test_transactions;
-mod test_user_crud;
+mod database;

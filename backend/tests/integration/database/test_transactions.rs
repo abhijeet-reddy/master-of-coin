@@ -2,9 +2,10 @@ use super::common;
 
 use diesel::prelude::*;
 use master_of_coin_backend::db::{create_pool, run_migrations};
-use master_of_coin_backend::models::{NewUser, User};
+use master_of_coin_backend::models::User;
 use master_of_coin_backend::schema::users;
 use serial_test::serial;
+use uuid::Uuid;
 
 #[test]
 #[serial]
@@ -17,23 +18,18 @@ fn test_transaction_rollback() {
     common::cleanup_test_data(&mut conn);
 
     // Test that we can use transactions
-    let result: Result<(), diesel::result::Error> = conn
+    let unique_id = Uuid::new_v4();
+    let result: Result<User, diesel::result::Error> = conn
         .transaction::<_, diesel::result::Error, _>(|conn| {
-            let new_user = NewUser {
-                username: "transaction_test",
-                email: "transaction@test.com",
-                password_hash: "hash",
-                name: "Transaction Test",
-            };
-
-            let user: User = diesel::insert_into(users::table)
-                .values(&new_user)
-                .get_result(conn)?;
+            let user = common::create_test_user(
+                conn,
+                &format!("transaction_{}", &unique_id.to_string()[..8]),
+            )?;
 
             // Verify user exists within transaction
             let found: User = users::table.filter(users::id.eq(user.id)).first(conn)?;
 
-            assert_eq!(found.username, "transaction_test");
+            assert!(found.username.contains("transaction_"));
 
             // Rollback by returning an error
             Err(diesel::result::Error::RollbackTransaction)
@@ -43,7 +39,7 @@ fn test_transaction_rollback() {
 
     // Verify user doesn't exist after rollback
     let find_result: Result<User, _> = users::table
-        .filter(users::username.eq("transaction_test"))
+        .filter(users::username.like(format!("%transaction_{}%", &unique_id.to_string()[..8])))
         .first(&mut conn);
 
     assert!(find_result.is_err(), "User should not exist after rollback");
@@ -64,17 +60,7 @@ fn test_transaction_commit() {
     // Test successful transaction
     let user_id = conn
         .transaction::<_, diesel::result::Error, _>(|conn| {
-            let new_user = NewUser {
-                username: "commit_test",
-                email: "commit@test.com",
-                password_hash: "hash",
-                name: "Commit Test",
-            };
-
-            let user: User = diesel::insert_into(users::table)
-                .values(&new_user)
-                .get_result(conn)?;
-
+            let user = common::create_test_user(conn, "commit")?;
             Ok(user.id)
         })
         .expect("Transaction should succeed");
@@ -85,7 +71,7 @@ fn test_transaction_commit() {
         .first(&mut conn)
         .expect("User should exist after commit");
 
-    assert_eq!(found_user.username, "commit_test");
+    assert!(found_user.username.starts_with("testuser_commit_"));
 
     common::cleanup_test_data(&mut conn);
 }

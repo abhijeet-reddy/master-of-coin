@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [[test]]
-name = "integration"
-path = "tests/integration/mod.rs"
+name = "integration_database"
+path = "tests/integration/database/mod.rs"
+
+[[test]]
+name = "integration_api"
+path = "tests/integration/api/mod.rs"
 
 [dependencies]
 axum = "0.7"
@@ -43,3 +47,7 @@ validator = { version = "0.18", features = ["derive"] }
 
 [dev-dependencies]
 serial_test = "3.0"
+axum-test = "15.0"
+tower = "0.4"
+hyper = "1.0"
+http-body-util = "0.1"

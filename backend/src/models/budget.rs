@@ -54,7 +54,7 @@ pub struct UpdateBudgetRequest {
 }
 
 // Response DTOs
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BudgetResponse {
     pub id: Uuid,
     pub user_id: Uuid,

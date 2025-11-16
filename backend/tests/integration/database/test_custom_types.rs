@@ -29,9 +29,9 @@ fn test_account_type_enum() {
     for (idx, account_type) in account_types.iter().enumerate() {
         let new_account = NewAccount {
             user_id: user.id,
-            name: &format!("Test Account {}", idx),
+            name: format!("Test Account {}", idx),
             account_type: *account_type,
-            currency: Some(CurrencyCode::Usd),
+            currency: CurrencyCode::Usd,
             notes: None,
         };
 
@@ -78,9 +78,9 @@ fn test_currency_code_enum() {
     for (idx, currency) in currencies.iter().enumerate() {
         let new_account = NewAccount {
             user_id: user.id,
-            name: &format!("Currency Test {}", idx),
+            name: format!("Currency Test {}", idx),
             account_type: AccountType::Checking,
-            currency: Some(*currency),
+            currency: *currency,
             notes: None,
         };
 
@@ -89,7 +89,7 @@ fn test_currency_code_enum() {
             .get_result(&mut conn)
             .expect("Failed to create account with currency");
 
-        assert_eq!(created_account.currency, Some(*currency));
+        assert_eq!(created_account.currency, *currency);
 
         // Verify we can query it back
         let found_account: Account = accounts::table
@@ -97,7 +97,7 @@ fn test_currency_code_enum() {
             .first(&mut conn)
             .expect("Failed to find account");
 
-        assert_eq!(found_account.currency, Some(*currency));
+        assert_eq!(found_account.currency, *currency);
     }
 
     common::cleanup_test_data(&mut conn);
@@ -137,10 +137,10 @@ fn test_account_with_all_custom_types() {
     // Create an account with custom enum types
     let new_account = NewAccount {
         user_id: user.id,
-        name: "Savings Account",
+        name: "Savings Account".to_string(),
         account_type: AccountType::Savings,
-        currency: Some(CurrencyCode::Eur),
-        notes: Some("Test savings account"),
+        currency: CurrencyCode::Eur,
+        notes: Some("Test savings account".to_string()),
     };
 
     let created_account: Account = diesel::insert_into(accounts::table)
@@ -151,7 +151,7 @@ fn test_account_with_all_custom_types() {
     // Verify all fields
     assert_eq!(created_account.name, "Savings Account");
     assert_eq!(created_account.account_type, AccountType::Savings);
-    assert_eq!(created_account.currency, Some(CurrencyCode::Eur));
+    assert_eq!(created_account.currency, CurrencyCode::Eur);
     assert_eq!(
         created_account.notes,
         Some("Test savings account".to_string())
@@ -165,7 +165,7 @@ fn test_account_with_all_custom_types() {
         .expect("Failed to find account");
 
     assert_eq!(found_account.account_type, AccountType::Savings);
-    assert_eq!(found_account.currency, Some(CurrencyCode::Eur));
+    assert_eq!(found_account.currency, CurrencyCode::Eur);
 
     common::cleanup_test_data(&mut conn);
 }

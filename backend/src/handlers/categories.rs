@@ -10,6 +10,7 @@ use axum::{
     http::StatusCode,
 };
 use uuid::Uuid;
+use validator::Validate;
 
 /// List all categories for the authenticated user
 /// GET /categories
@@ -36,6 +37,11 @@ pub async fn create(
 ) -> Result<(StatusCode, Json<CategoryResponse>), ApiError> {
     tracing::info!("Creating category for user {}", user.id);
 
+    // Validate request
+    request
+        .validate()
+        .map_err(|e| ApiError::Validation(format!("Validation failed: {}", e)))?;
+
     let new_category: crate::models::NewCategory = crate::models::NewCategory {
         user_id: user.id,
         name: request.name,
@@ -60,10 +66,15 @@ pub async fn update(
 ) -> Result<Json<CategoryResponse>, ApiError> {
     tracing::info!("Updating category {} for user {}", id, user.id);
 
+    // Validate request
+    request
+        .validate()
+        .map_err(|e| ApiError::Validation(format!("Validation failed: {}", e)))?;
+
     // Verify ownership
     let category = repositories::category::find_by_id(&state.db, id).await?;
     if category.user_id != user.id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Category does not belong to user".to_string(),
         ));
     }
@@ -92,7 +103,7 @@ pub async fn delete(
     // Verify ownership
     let category = repositories::category::find_by_id(&state.db, id).await?;
     if category.user_id != user.id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Category does not belong to user".to_string(),
         ));
     }

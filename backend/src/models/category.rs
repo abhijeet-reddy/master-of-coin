@@ -68,7 +68,7 @@ pub struct UpdateCategoryRequest {
 }
 
 // Response DTOs
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CategoryResponse {
     pub id: Uuid,
     pub name: String,

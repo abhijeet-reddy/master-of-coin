@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Debt information for a person
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct PersonDebt {
     pub person_id: Uuid,
     pub person_name: String,
@@ -33,7 +33,7 @@ pub async fn calculate_debt_for_person(
             person_id,
             person.user_id
         );
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Person does not belong to user".to_string(),
         ));
     }
@@ -97,7 +97,7 @@ pub async fn settle_debt(
             person_id,
             person.user_id
         );
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Person does not belong to user".to_string(),
         ));
     }
@@ -105,7 +105,7 @@ pub async fn settle_debt(
     // Verify account ownership
     let account = repositories::account::find_by_id(pool, account_id).await?;
     if account.user_id != user_id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Account does not belong to user".to_string(),
         ));
     }

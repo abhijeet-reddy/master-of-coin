@@ -88,12 +88,12 @@ pub async fn delete(
 pub async fn add_range(
     State(state): State<AppState>,
     Extension(user): Extension<User>,
-    Path(id): Path<Uuid>,
+    Path(budget_id): Path<Uuid>,
     Json(request): Json<CreateBudgetRangeRequest>,
 ) -> Result<(StatusCode, Json<crate::models::BudgetRangeResponse>), ApiError> {
-    tracing::info!("Adding range to budget {} for user {}", id, user.id);
+    tracing::info!("Adding range to budget {} for user {}", budget_id, user.id);
 
-    let range = budget_service::add_range(&state.db, id, user.id, request).await?;
+    let range = budget_service::add_range(&state.db, budget_id, user.id, request).await?;
 
     Ok((StatusCode::CREATED, Json(range)))
 }

@@ -33,6 +33,9 @@ pub enum ApiError {
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
 
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
     #[error("Validation error: {0}")]
     Validation(String),
 
@@ -72,9 +75,13 @@ impl IntoResponse for ApiError {
                 tracing::warn!("Unauthorized: {}", msg);
                 (StatusCode::UNAUTHORIZED, msg.clone())
             }
+            ApiError::Forbidden(msg) => {
+                tracing::warn!("Forbidden: {}", msg);
+                (StatusCode::FORBIDDEN, msg.clone())
+            }
             ApiError::Validation(msg) => {
                 tracing::warn!("Validation error: {}", msg);
-                (StatusCode::BAD_REQUEST, msg.clone())
+                (StatusCode::UNPROCESSABLE_ENTITY, msg.clone())
             }
             ApiError::Conflict(msg) => {
                 tracing::warn!("Conflict: {}", msg);

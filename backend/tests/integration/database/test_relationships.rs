@@ -2,7 +2,7 @@ use super::common;
 
 use diesel::prelude::*;
 use master_of_coin_backend::db::{create_pool, run_migrations};
-use master_of_coin_backend::models::{Account, NewAccount, NewUser, User};
+use master_of_coin_backend::models::{Account, NewAccount, User};
 use master_of_coin_backend::schema::{accounts, users};
 use master_of_coin_backend::types::{AccountType, CurrencyCode};
 use serial_test::serial;
@@ -21,17 +21,17 @@ fn test_user_has_many_accounts() {
     // Create multiple accounts for the user
     let account1 = NewAccount {
         user_id: user.id,
-        name: "Checking Account",
+        name: "Checking Account".to_string(),
         account_type: AccountType::Checking,
-        currency: Some(CurrencyCode::Usd),
+        currency: CurrencyCode::Usd,
         notes: None,
     };
 
     let account2 = NewAccount {
         user_id: user.id,
-        name: "Savings Account",
+        name: "Savings Account".to_string(),
         account_type: AccountType::Savings,
-        currency: Some(CurrencyCode::Usd),
+        currency: CurrencyCode::Usd,
         notes: None,
     };
 
@@ -68,44 +68,26 @@ fn test_multiple_users_with_accounts() {
     run_migrations(&mut conn).expect("Failed to run migrations");
 
     // Create two users
-    let user1 = NewUser {
-        username: "user1",
-        email: "user1@test.com",
-        password_hash: "hash1",
-        name: "User One",
-    };
+    let created_user1 =
+        common::create_test_user(&mut conn, "multi_user1").expect("Failed to create user1");
 
-    let user2 = NewUser {
-        username: "user2",
-        email: "user2@test.com",
-        password_hash: "hash2",
-        name: "User Two",
-    };
-
-    let created_user1: User = diesel::insert_into(users::table)
-        .values(&user1)
-        .get_result(&mut conn)
-        .expect("Failed to create user1");
-
-    let created_user2: User = diesel::insert_into(users::table)
-        .values(&user2)
-        .get_result(&mut conn)
-        .expect("Failed to create user2");
+    let created_user2 =
+        common::create_test_user(&mut conn, "multi_user2").expect("Failed to create user2");
 
     // Create accounts for each user
     let account1 = NewAccount {
         user_id: created_user1.id,
-        name: "User1 Checking",
+        name: "User1 Checking".to_string(),
         account_type: AccountType::Checking,
-        currency: Some(CurrencyCode::Usd),
+        currency: CurrencyCode::Usd,
         notes: None,
     };
 
     let account2 = NewAccount {
         user_id: created_user2.id,
-        name: "User2 Savings",
+        name: "User2 Savings".to_string(),
         account_type: AccountType::Savings,
-        currency: Some(CurrencyCode::Eur),
+        currency: CurrencyCode::Eur,
         notes: None,
     };
 
@@ -155,9 +137,9 @@ fn test_account_belongs_to_user() {
 
     let new_account = NewAccount {
         user_id: user.id,
-        name: "Test Account",
+        name: "Test Account".to_string(),
         account_type: AccountType::Checking,
-        currency: Some(CurrencyCode::Usd),
+        currency: CurrencyCode::Usd,
         notes: None,
     };
 

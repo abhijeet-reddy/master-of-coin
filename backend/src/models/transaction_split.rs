@@ -98,7 +98,7 @@ pub fn validate_splits_sum(
 }
 
 // Response DTOs
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TransactionSplitResponse {
     pub id: Uuid,
     pub person_id: Uuid,
@@ -111,7 +111,7 @@ impl From<TransactionSplit> for TransactionSplitResponse {
         TransactionSplitResponse {
             id: split.id,
             person_id: split.person_id,
-            amount: split.amount.to_string(),
+            amount: format!("{:.2}", split.amount),
         }
     }
 }

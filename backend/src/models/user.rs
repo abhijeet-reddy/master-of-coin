@@ -44,7 +44,7 @@ pub struct UpdateUser {
 }
 
 // Request DTOs
-#[derive(Debug, Deserialize, validator::Validate)]
+#[derive(Debug, Serialize, Deserialize, validator::Validate)]
 pub struct CreateUserRequest {
     #[validate(length(min = 3, max = 50))]
     pub username: String,
@@ -56,7 +56,7 @@ pub struct CreateUserRequest {
     pub name: String,
 }
 
-#[derive(Debug, Deserialize, validator::Validate)]
+#[derive(Debug, Serialize, Deserialize, validator::Validate)]
 pub struct LoginRequest {
     #[validate(email)]
     pub email: String,
@@ -65,7 +65,7 @@ pub struct LoginRequest {
 }
 
 // Response DTOs
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserResponse {
     pub id: Uuid,
     pub username: String,
@@ -86,7 +86,7 @@ impl From<User> for UserResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub token: String,
     pub user: UserResponse,

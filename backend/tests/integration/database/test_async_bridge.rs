@@ -2,7 +2,7 @@ use super::common;
 
 use diesel::prelude::*;
 use master_of_coin_backend::db::{create_pool, run_migrations};
-use master_of_coin_backend::models::{NewUser, User};
+use master_of_coin_backend::models::User;
 use master_of_coin_backend::schema::users;
 use serial_test::serial;
 
@@ -19,23 +19,13 @@ async fn test_spawn_blocking_basic() {
         run_migrations(&mut conn).expect("Failed to run migrations");
         common::cleanup_test_data(&mut conn);
 
-        let new_user = NewUser {
-            username: "async_basic",
-            email: "async_basic@test.com",
-            password_hash: "async_hash",
-            name: "Async Basic User",
-        };
-
-        diesel::insert_into(users::table)
-            .values(&new_user)
-            .get_result::<User>(&mut conn)
-            .expect("Failed to create user")
+        common::create_test_user(&mut conn, "async_basic").expect("Failed to create user")
     })
     .await;
 
     assert!(result.is_ok(), "Async spawn_blocking failed");
     let user = result.unwrap();
-    assert_eq!(user.username, "async_basic");
+    assert!(user.username.starts_with("testuser_async_basic_"));
 
     // Cleanup
     let pool_clone = pool.clone();

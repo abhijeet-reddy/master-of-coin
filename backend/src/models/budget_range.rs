@@ -50,7 +50,6 @@ pub struct UpdateBudgetRange {
 // Request DTOs
 #[derive(Debug, Deserialize, validator::Validate)]
 pub struct CreateBudgetRangeRequest {
-    pub budget_id: Uuid,
     #[validate(range(min = 0.01))]
     pub limit_amount: f64,
     pub period: BudgetPeriod,
@@ -68,7 +67,7 @@ pub struct UpdateBudgetRangeRequest {
 }
 
 // Response DTOs
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BudgetRangeResponse {
     pub id: Uuid,
     pub budget_id: Uuid,

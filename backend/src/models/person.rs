@@ -71,7 +71,7 @@ pub struct UpdatePersonRequest {
 }
 
 // Response DTOs
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PersonResponse {
     pub id: Uuid,
     pub user_id: Uuid,

@@ -192,7 +192,7 @@ pub struct TransactionFilter {
 }
 
 // Response DTOs
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TransactionResponse {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -215,7 +215,7 @@ impl From<Transaction> for TransactionResponse {
             account_id: transaction.account_id,
             category_id: transaction.category_id,
             title: transaction.title,
-            amount: transaction.amount.to_string(),
+            amount: format!("{:.2}", transaction.amount),
             date: transaction.date,
             notes: transaction.notes,
             splits: None, // Populated separately when needed

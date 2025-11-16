@@ -1,10 +1,12 @@
 use axum::{
+    Json,
     body::Body,
     extract::{Request, State},
     http::{StatusCode, header},
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
 };
+use serde_json::json;
 
 use crate::{auth::jwt, db::DbPool, repositories::user};
 
@@ -40,7 +42,11 @@ pub async fn require_auth(
         Some(header) => header,
         None => {
             tracing::warn!("Missing Authorization header");
-            return Err(StatusCode::UNAUTHORIZED);
+            return Ok((
+                StatusCode::UNAUTHORIZED,
+                Json(json!({"error": "Missing authentication token"})),
+            )
+                .into_response());
         }
     };
 
@@ -49,7 +55,11 @@ pub async fn require_auth(
         Some(token) => token,
         None => {
             tracing::warn!("Invalid Authorization header format");
-            return Err(StatusCode::UNAUTHORIZED);
+            return Ok((
+                StatusCode::UNAUTHORIZED,
+                Json(json!({"error": "Invalid authorization header format"})),
+            )
+                .into_response());
         }
     };
 
@@ -60,16 +70,30 @@ pub async fn require_auth(
     })?;
 
     // Verify token
-    let claims = jwt::verify_token(token, &jwt_secret).map_err(|e| {
-        tracing::warn!("Token verification failed: {}", e);
-        StatusCode::UNAUTHORIZED
-    })?;
+    let claims = match jwt::verify_token(token, &jwt_secret) {
+        Ok(claims) => claims,
+        Err(e) => {
+            tracing::warn!("Token verification failed: {}", e);
+            return Ok((
+                StatusCode::UNAUTHORIZED,
+                Json(json!({"error": "Invalid or expired token"})),
+            )
+                .into_response());
+        }
+    };
 
     // Fetch user from database to ensure they still exist
-    let user = user::find_by_id(&pool, claims.sub).await.map_err(|e| {
-        tracing::warn!("User not found for token: {}", e);
-        StatusCode::UNAUTHORIZED
-    })?;
+    let user = match user::find_by_id(&pool, claims.sub).await {
+        Ok(user) => user,
+        Err(e) => {
+            tracing::warn!("User not found for token: {}", e);
+            return Ok((
+                StatusCode::UNAUTHORIZED,
+                Json(json!({"error": "Invalid token: user not found"})),
+            )
+                .into_response());
+        }
+    };
 
     // Add user to request extensions
     req.extensions_mut().insert(user);

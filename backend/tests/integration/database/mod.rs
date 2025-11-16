@@ -8,6 +8,9 @@
 // - Transaction handling
 // - Async/sync bridge pattern
 
+#[path = "../common/mod.rs"]
+mod common;
+
 mod test_async_bridge;
 mod test_connection;
 mod test_custom_types;

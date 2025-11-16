@@ -13,6 +13,7 @@ use axum::{
 };
 use serde::Deserialize;
 use uuid::Uuid;
+use validator::Validate;
 
 /// Request DTO for settling debt
 #[derive(Debug, Deserialize)]
@@ -45,6 +46,11 @@ pub async fn create(
 ) -> Result<(StatusCode, Json<PersonResponse>), ApiError> {
     tracing::info!("Creating person for user {}", user.id);
 
+    // Validate request
+    request
+        .validate()
+        .map_err(|e| ApiError::Validation(format!("Validation failed: {}", e)))?;
+
     let new_person = NewPerson {
         user_id: user.id,
         name: request.name,
@@ -73,7 +79,7 @@ pub async fn get(
 
     // Verify ownership
     if person.user_id != user.id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Person does not belong to user".to_string(),
         ));
     }
@@ -93,10 +99,15 @@ pub async fn update(
 ) -> Result<Json<PersonResponse>, ApiError> {
     tracing::info!("Updating person {} for user {}", id, user.id);
 
+    // Validate request
+    request
+        .validate()
+        .map_err(|e| ApiError::Validation(format!("Validation failed: {}", e)))?;
+
     // Verify ownership
     let person = repositories::person::find_by_id(&state.db, id).await?;
     if person.user_id != user.id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Person does not belong to user".to_string(),
         ));
     }
@@ -127,7 +138,7 @@ pub async fn delete(
     // Verify ownership
     let person = repositories::person::find_by_id(&state.db, id).await?;
     if person.user_id != user.id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Person does not belong to user".to_string(),
         ));
     }
@@ -149,7 +160,7 @@ pub async fn get_debts(
     // Verify ownership
     let person = repositories::person::find_by_id(&state.db, id).await?;
     if person.user_id != user.id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Person does not belong to user".to_string(),
         ));
     }

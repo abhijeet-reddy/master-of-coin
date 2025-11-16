@@ -67,7 +67,7 @@ pub async fn get_budget(
             budget_id,
             budget.user_id
         );
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Budget does not belong to user".to_string(),
         ));
     }
@@ -106,7 +106,7 @@ pub async fn update_budget(
             budget_id,
             budget.user_id
         );
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Budget does not belong to user".to_string(),
         ));
     }
@@ -136,7 +136,7 @@ pub async fn delete_budget(pool: &DbPool, budget_id: Uuid, user_id: Uuid) -> Res
             budget_id,
             budget.user_id
         );
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Budget does not belong to user".to_string(),
         ));
     }
@@ -171,7 +171,7 @@ pub async fn add_range(
             budget_id,
             budget.user_id
         );
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Budget does not belong to user".to_string(),
         ));
     }
@@ -214,7 +214,7 @@ pub async fn calculate_budget_status(
     // Verify budget ownership
     let budget = repositories::budget::find_by_id(pool, budget_id).await?;
     if budget.user_id != user_id {
-        return Err(ApiError::Unauthorized(
+        return Err(ApiError::Forbidden(
             "Budget does not belong to user".to_string(),
         ));
     }

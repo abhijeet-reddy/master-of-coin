@@ -41,7 +41,7 @@ pub async fn register(
                 "Registration attempt with existing username: {}",
                 request.username
             );
-            return Err(ApiError::Validation("Username already exists".to_string()));
+            return Err(ApiError::Conflict("Username already exists".to_string()));
         }
         Err(ApiError::Database(diesel::result::Error::NotFound)) => {
             // Username doesn't exist, continue
@@ -56,7 +56,7 @@ pub async fn register(
                 "Registration attempt with existing email: {}",
                 request.email
             );
-            return Err(ApiError::Validation("Email already exists".to_string()));
+            return Err(ApiError::Conflict("Email already exists".to_string()));
         }
         Err(ApiError::Database(diesel::result::Error::NotFound)) => {
             // Email doesn't exist, continue

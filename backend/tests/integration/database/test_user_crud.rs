@@ -16,21 +16,12 @@ fn test_user_create() {
     run_migrations(&mut conn).expect("Failed to run migrations");
     common::cleanup_test_data(&mut conn);
 
-    let new_user = NewUser {
-        username: "create_test_user",
-        email: "create@test.com",
-        password_hash: "test_hash_123",
-        name: "Create Test User",
-    };
+    let created_user =
+        common::create_test_user(&mut conn, "create").expect("Failed to create user");
 
-    let created_user: User = diesel::insert_into(users::table)
-        .values(&new_user)
-        .get_result(&mut conn)
-        .expect("Failed to create user");
-
-    assert_eq!(created_user.username, "create_test_user");
-    assert_eq!(created_user.email, "create@test.com");
-    assert_eq!(created_user.name, "Create Test User");
+    assert!(created_user.username.starts_with("testuser_create_"));
+    assert!(created_user.email.starts_with("test_create_"));
+    assert_eq!(created_user.name, "Test User create");
     assert!(!created_user.id.is_nil(), "User ID should not be nil");
 
     common::cleanup_test_data(&mut conn);

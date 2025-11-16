@@ -144,9 +144,7 @@ pub async fn get_transaction(
             transaction_id,
             transaction.user_id
         );
-        return Err(ApiError::Unauthorized(
-            "Transaction does not belong to user".to_string(),
-        ));
+        return Err(ApiError::Forbidden("Access denied".to_string()));
     }
 
     // Fetch splits
@@ -232,9 +230,7 @@ pub async fn update_transaction(
             transaction_id,
             transaction.user_id
         );
-        return Err(ApiError::Unauthorized(
-            "Transaction does not belong to user".to_string(),
-        ));
+        return Err(ApiError::Forbidden("Access denied".to_string()));
     }
 
     // If updating account, verify new account ownership
@@ -305,9 +301,7 @@ pub async fn delete_transaction(
             transaction_id,
             transaction.user_id
         );
-        return Err(ApiError::Unauthorized(
-            "Transaction does not belong to user".to_string(),
-        ));
+        return Err(ApiError::Forbidden("Access denied".to_string()));
     }
 
     // Delete splits first

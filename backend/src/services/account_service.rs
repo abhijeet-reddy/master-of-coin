@@ -102,9 +102,7 @@ pub async fn get_account(
             account_id,
             account.user_id
         );
-        return Err(ApiError::Unauthorized(
-            "Account does not belong to user".to_string(),
-        ));
+        return Err(ApiError::Forbidden("Access denied".to_string()));
     }
 
     // Calculate current balance
@@ -169,9 +167,7 @@ pub async fn update_account(
             account_id,
             account.user_id
         );
-        return Err(ApiError::Unauthorized(
-            "Account does not belong to user".to_string(),
-        ));
+        return Err(ApiError::Forbidden("Access denied".to_string()));
     }
 
     // Create update struct
@@ -215,9 +211,7 @@ pub async fn delete_account(
             account_id,
             account.user_id
         );
-        return Err(ApiError::Unauthorized(
-            "Account does not belong to user".to_string(),
-        ));
+        return Err(ApiError::Forbidden("Access denied".to_string()));
     }
 
     // Check if account has transactions

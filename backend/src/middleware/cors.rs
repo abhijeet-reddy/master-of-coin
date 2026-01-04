@@ -16,8 +16,17 @@ use tower_http::cors::{Any, CorsLayer};
 /// - Use environment variables to configure allowed origins
 /// - Consider using `allow_origin()` with specific origins instead of `Any`
 pub fn create_cors_layer() -> CorsLayer {
+    use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+
+    // For development, allow localhost origins
+    // In production, this should be configured via environment variables
+    let allowed_origins = [
+        "http://localhost:3000".parse().unwrap(),
+        "http://127.0.0.1:3000".parse().unwrap(),
+    ];
+
     CorsLayer::new()
-        .allow_origin(Any) // TODO: Restrict in production using environment variables
+        .allow_origin(allowed_origins)
         .allow_methods([
             Method::GET,
             Method::POST,
@@ -25,6 +34,6 @@ pub fn create_cors_layer() -> CorsLayer {
             Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_headers(Any)
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
         .allow_credentials(true)
 }

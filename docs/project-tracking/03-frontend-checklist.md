@@ -1,9 +1,11 @@
 # Frontend Checklist
 
 ## Overview
+
 This checklist covers the React + TypeScript frontend implementation using Vite, Chakra UI, and React Query, with strict adherence to the hook constraints (max 1 useState, 1 useEffect per hook).
 
 **References:**
+
 - [`docs/system-design/01-frontend/component-architecture.md`](../system-design/01-frontend/component-architecture.md)
 - [`docs/system-design/01-frontend/ui-design-system.md`](../system-design/01-frontend/ui-design-system.md)
 - [`docs/system-design/01-frontend/routing-navigation.md`](../system-design/01-frontend/routing-navigation.md)
@@ -13,28 +15,30 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Project Setup
 
 ### Vite + React + TypeScript
-- [ ] Initialize Vite project (already done in setup)
-- [ ] Verify TypeScript configuration
-  - [ ] Enable strict mode
-  - [ ] Configure path aliases (@/ for src/)
-  - [ ] Set up proper type checking
-- [ ] Configure Vite for production builds
-  - [ ] Enable code splitting
-  - [ ] Configure asset optimization
-  - [ ] Set up environment variables
+
+- [x] Initialize Vite project (already done in setup)
+- [x] Verify TypeScript configuration
+  - [x] Enable strict mode
+  - [x] Configure path aliases (@/ for src/)
+  - [x] Set up proper type checking
+- [x] Configure Vite for production builds
+  - [x] Enable code splitting
+  - [x] Configure asset optimization
+  - [x] Set up environment variables
 
 ### Dependencies Installation
-- [ ] Verify all core dependencies installed (from setup checklist)
-  - [ ] Chakra UI + dependencies
-  - [ ] React Router DOM
-  - [ ] React Query (TanStack Query)
-  - [ ] React Hook Form + Zod
-  - [ ] Recharts
-  - [ ] Axios
-  - [ ] date-fns
-  - [ ] React Icons
-- [ ] Install additional dependencies if needed
-  - [ ] @tanstack/react-table (for advanced tables)
+
+- [x] Verify all core dependencies installed (from setup checklist)
+  - [x] Chakra UI + dependencies
+  - [x] React Router DOM
+  - [x] React Query (TanStack Query)
+  - [x] React Hook Form + Zod
+  - [x] Recharts
+  - [x] Axios
+  - [x] date-fns
+  - [x] React Icons
+- [x] Install additional dependencies if needed
+  - [x] @tanstack/react-table (for advanced tables)
   - [ ] @tanstack/react-virtual (for virtual scrolling)
 
 ---
@@ -42,6 +46,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Chakra UI Configuration
 
 ### Theme Setup (`src/theme/index.ts`)
+
 - [ ] Create custom theme extending Chakra defaults
   - [ ] Define brand colors (primary: #2196f3)
   - [ ] Define semantic colors (success, warning, error, income, expense)
@@ -61,6 +66,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
   - [ ] Define dark mode color overrides
 
 ### Theme Provider Setup (`src/main.tsx`)
+
 - [ ] Wrap app with ChakraProvider
 - [ ] Apply custom theme
 - [ ] Add ColorModeScript for SSR support
@@ -71,6 +77,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## React Router Setup
 
 ### Route Configuration (`src/App.tsx`)
+
 - [ ] Install and configure React Router
 - [ ] Define route structure
   ```typescript
@@ -95,6 +102,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## State Management Setup
 
 ### React Query Configuration (`src/lib/queryClient.ts`)
+
 - [ ] Create QueryClient instance
   ```typescript
   const queryClient = new QueryClient({
@@ -113,6 +121,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test query caching behavior
 
 ### Axios Configuration (`src/lib/axios.ts`)
+
 - [ ] Create Axios instance with base URL
 - [ ] Add request interceptor for JWT token
 - [ ] Add response interceptor for error handling
@@ -125,6 +134,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Authentication System
 
 ### Auth Context (`src/contexts/AuthContext.tsx`)
+
 - [ ] Create AuthContext and AuthProvider
 - [ ] Implement useAuth hook (max 1 useState for user)
   - [ ] Store user state
@@ -137,6 +147,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test authentication flow
 
 ### Auth Pages
+
 - [ ] Create LoginPage (`src/pages/LoginPage.tsx`)
   - [ ] Email/username input
   - [ ] Password input
@@ -165,6 +176,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ### API Hooks (`src/hooks/api/`)
 
 #### Transaction Hooks
+
 - [ ] `useTransactions.ts` - Fetch transactions with filters
   - [ ] ONE useState for local filter state (if needed)
   - [ ] Use React Query for data fetching
@@ -176,6 +188,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all transaction hooks
 
 #### Account Hooks
+
 - [ ] `useAccounts.ts` - Fetch all accounts
 - [ ] `useAccount.ts` - Fetch single account
 - [ ] `useCreateAccount.ts` - Create account mutation
@@ -184,6 +197,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all account hooks
 
 #### Budget Hooks
+
 - [ ] `useBudgets.ts` - Fetch all budgets
 - [ ] `useBudget.ts` - Fetch single budget
 - [ ] `useCreateBudget.ts` - Create budget mutation
@@ -193,6 +207,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all budget hooks
 
 #### People Hooks
+
 - [ ] `usePeople.ts` - Fetch all people
 - [ ] `usePerson.ts` - Fetch single person
 - [ ] `useCreatePerson.ts` - Create person mutation
@@ -202,6 +217,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all people hooks
 
 #### Category Hooks
+
 - [ ] `useCategories.ts` - Fetch all categories
 - [ ] `useCreateCategory.ts` - Create category mutation
 - [ ] `useUpdateCategory.ts` - Update category mutation
@@ -209,12 +225,14 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all category hooks
 
 #### Dashboard Hook
+
 - [ ] `useDashboardSummary.ts` - Fetch dashboard data
   - [ ] Aggregate multiple data sources
   - [ ] Use React Query for caching
 - [ ] Test dashboard hook
 
 ### Form Hooks (`src/hooks/forms/`)
+
 - [ ] `useTransactionForm.ts`
   - [ ] ONE useState for form data
   - [ ] Handle form changes
@@ -232,6 +250,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all form hooks
 
 ### UI State Hooks (`src/hooks/ui/`)
+
 - [ ] `useTableSort.ts`
   - [ ] ONE useState for sort state (key + order)
   - [ ] Handle sort toggle
@@ -244,6 +263,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all UI hooks
 
 ### Business Logic Hooks (`src/hooks/business/`)
+
 - [ ] `useSplitCalculator.ts`
   - [ ] ONE useState for splits array
   - [ ] Calculate remaining amount (derived)
@@ -260,6 +280,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test all business logic hooks
 
 ### Effect Hooks (`src/hooks/effects/`)
+
 - [ ] `useDocumentTitle.ts`
   - [ ] ONE useEffect to set document title
 - [ ] `useAutoSave.ts` (optional)
@@ -271,6 +292,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Layout Components
 
 ### Main Layout (`src/components/layout/Layout.tsx`)
+
 - [ ] Create responsive layout structure
   - [ ] Sidebar (desktop) / Drawer (mobile)
   - [ ] Header with user menu
@@ -279,6 +301,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test layout on different screen sizes
 
 ### Sidebar (`src/components/layout/Sidebar.tsx`)
+
 - [ ] Create navigation menu
   - [ ] Dashboard link with icon
   - [ ] Transactions link with icon
@@ -293,6 +316,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test navigation
 
 ### Header (`src/components/layout/Header.tsx`)
+
 - [ ] Page title display
 - [ ] Mobile menu toggle button
 - [ ] User menu dropdown
@@ -307,6 +331,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Dashboard Page Components
 
 ### Dashboard Page (`src/pages/DashboardPage.tsx`)
+
 - [ ] Create dashboard layout
   - [ ] Grid layout with responsive columns
   - [ ] Account summary section (horizontal scroll)
@@ -321,6 +346,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test dashboard rendering
 
 ### Dashboard Widgets
+
 - [ ] `NetWorthWidget.tsx`
   - [ ] Display net worth amount
   - [ ] Show change percentage
@@ -358,6 +384,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Transactions Page Components
 
 ### Transactions Page (`src/pages/TransactionsPage.tsx`)
+
 - [ ] Create page layout
   - [ ] Month navigation tabs (horizontal scroll)
   - [ ] Month summary (spent, income, net)
@@ -370,6 +397,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test page functionality
 
 ### Transaction Components
+
 - [ ] `TransactionList.tsx`
   - [ ] Group transactions by date
   - [ ] Date headers with daily totals
@@ -413,6 +441,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Accounts Page Components
 
 ### Accounts Page (`src/pages/AccountsPage.tsx`)
+
 - [ ] Create page layout
   - [ ] Page header with add button
   - [ ] Account list/grid
@@ -422,6 +451,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test page functionality
 
 ### Account Components
+
 - [ ] `AccountList.tsx`
   - [ ] List of account cards
   - [ ] Responsive grid layout
@@ -446,6 +476,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Budgets Page Components
 
 ### Budgets Page (`src/pages/BudgetsPage.tsx`)
+
 - [ ] Create page layout
   - [ ] Month selector
   - [ ] Overall progress summary
@@ -457,6 +488,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test page functionality
 
 ### Budget Components
+
 - [ ] `BudgetList.tsx`
   - [ ] List of budget cards
   - [ ] Sort by status/name
@@ -484,6 +516,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## People Page Components
 
 ### People Page (`src/pages/PeoplePage.tsx`)
+
 - [ ] Create page layout
   - [ ] Debt summary card
   - [ ] People list
@@ -494,6 +527,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test page functionality
 
 ### People Components
+
 - [ ] `PeopleList.tsx`
   - [ ] List of person cards
   - [ ] Sort by debt amount
@@ -531,6 +565,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Reports Page Components
 
 ### Reports Page (`src/pages/ReportsPage.tsx`)
+
 - [ ] Create page layout
   - [ ] Report type selector
   - [ ] Period selector
@@ -542,6 +577,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test page functionality
 
 ### Report Components
+
 - [ ] `MonthlyReport.tsx`
   - [ ] Income vs expenses chart
   - [ ] Category breakdown
@@ -566,6 +602,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Settings Page Components
 
 ### Settings Page (`src/pages/SettingsPage.tsx`)
+
 - [ ] Create settings layout
   - [ ] Profile settings
   - [ ] Preferences
@@ -579,6 +616,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Common/Shared Components
 
 ### UI Components (`src/components/common/`)
+
 - [ ] `LoadingSpinner.tsx`
   - [ ] Chakra Spinner with branding
   - [ ] Full page and inline variants
@@ -605,6 +643,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Form Handling & Validation
 
 ### React Hook Form Integration
+
 - [ ] Set up form validation with Zod schemas
 - [ ] Create validation schemas for:
   - [ ] Transaction form
@@ -616,6 +655,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test form validation
 
 ### Form Components
+
 - [ ] Create reusable form field components
   - [ ] TextInput with validation
   - [ ] NumberInput with validation
@@ -629,6 +669,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Chart Integration (Recharts)
 
 ### Chart Components (`src/components/charts/`)
+
 - [ ] `LineChart.tsx` - Spending trends
   - [ ] Responsive container
   - [ ] Tooltip
@@ -652,6 +693,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Responsive Design Implementation
 
 ### Mobile Optimizations
+
 - [ ] Test all pages on mobile viewport
 - [ ] Implement mobile-specific layouts
   - [ ] Drawer navigation instead of sidebar
@@ -662,12 +704,14 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Verify FAB positioning
 
 ### Tablet Optimizations
+
 - [ ] Test all pages on tablet viewport
 - [ ] Adjust grid columns for tablet
 - [ ] Test navigation on tablet
 - [ ] Verify touch interactions
 
 ### Desktop Optimizations
+
 - [ ] Test all pages on desktop viewport
 - [ ] Verify sidebar navigation
 - [ ] Test hover states
@@ -678,12 +722,14 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Error Handling & Loading States
 
 ### Error Boundaries
+
 - [ ] Implement global error boundary
 - [ ] Add error boundaries for major sections
 - [ ] Create error fallback UI
 - [ ] Test error scenarios
 
 ### Loading States
+
 - [ ] Implement skeleton loaders for:
   - [ ] Dashboard widgets
   - [ ] Transaction list
@@ -696,6 +742,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test loading states
 
 ### Empty States
+
 - [ ] Create empty state components for:
   - [ ] No transactions
   - [ ] No accounts
@@ -710,6 +757,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Authentication Flow
 
 ### Login Flow
+
 - [ ] Implement login page
 - [ ] Handle login form submission
 - [ ] Store JWT token
@@ -718,6 +766,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test login flow
 
 ### Registration Flow
+
 - [ ] Implement registration page
 - [ ] Handle registration form
 - [ ] Validate password strength
@@ -726,12 +775,14 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test registration flow
 
 ### Protected Routes
+
 - [ ] Implement route guards
 - [ ] Redirect to login if not authenticated
 - [ ] Preserve intended destination
 - [ ] Test protected route access
 
 ### Logout Flow
+
 - [ ] Implement logout function
 - [ ] Clear JWT token
 - [ ] Clear React Query cache
@@ -743,26 +794,30 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Performance Optimization
 
 ### Code Splitting
+
 - [ ] Implement lazy loading for routes
   ```typescript
-  const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-  const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
+  const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+  const TransactionsPage = lazy(() => import("./pages/TransactionsPage"));
   ```
 - [ ] Add Suspense boundaries with loading fallbacks
 - [ ] Test code splitting
 
 ### Memoization
+
 - [ ] Use `useMemo` for expensive calculations
 - [ ] Use `useCallback` for event handlers in lists
 - [ ] Memoize chart data transformations
 - [ ] Test performance improvements
 
 ### Virtual Scrolling (Optional)
+
 - [ ] Implement virtual scrolling for long transaction lists
 - [ ] Use @tanstack/react-virtual
 - [ ] Test with large datasets
 
 ### Image Optimization
+
 - [ ] Optimize icon usage
 - [ ] Use SVG icons where possible
 - [ ] Lazy load images
@@ -773,22 +828,26 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Accessibility (A11y)
 
 ### ARIA Labels
+
 - [ ] Add aria-labels to all icon buttons
 - [ ] Add aria-labels to interactive elements
 - [ ] Test with screen reader
 
 ### Keyboard Navigation
+
 - [ ] Test tab navigation through forms
 - [ ] Test keyboard shortcuts (if any)
 - [ ] Ensure focus indicators visible
 - [ ] Test modal focus trapping
 
 ### Color Contrast
+
 - [ ] Verify color contrast ratios (WCAG AA)
 - [ ] Test in dark mode
 - [ ] Ensure text readability
 
 ### Screen Reader Support
+
 - [ ] Test with VoiceOver (Mac) or NVDA (Windows)
 - [ ] Add descriptive labels
 - [ ] Test form error announcements
@@ -798,6 +857,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Testing
 
 ### Component Tests (React Testing Library)
+
 - [ ] Test authentication components
   - [ ] Login form
   - [ ] Register form
@@ -814,12 +874,14 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test loading states
 
 ### Hook Tests
+
 - [ ] Test custom hooks with renderHook
 - [ ] Test form hooks
 - [ ] Test business logic hooks
 - [ ] Test API hooks (with MSW)
 
 ### Integration Tests
+
 - [ ] Test complete user flows
   - [ ] Login → Dashboard
   - [ ] Create transaction
@@ -833,12 +895,14 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Build & Optimization
 
 ### Production Build
+
 - [ ] Run production build: `npm run build`
 - [ ] Verify build output in `dist/`
 - [ ] Check bundle sizes
 - [ ] Analyze bundle with `vite-plugin-visualizer`
 
 ### Build Optimization
+
 - [ ] Enable code splitting
 - [ ] Minimize bundle size
 - [ ] Optimize images and assets
@@ -846,6 +910,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 - [ ] Test production build locally
 
 ### Environment Configuration
+
 - [ ] Set up environment variables
   - [ ] `VITE_API_URL` for backend URL
   - [ ] Different configs for dev/prod
@@ -857,12 +922,14 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 ## Documentation
 
 ### Component Documentation
+
 - [ ] Add JSDoc comments to components
 - [ ] Document prop types
 - [ ] Add usage examples
 - [ ] Document custom hooks
 
 ### Code Comments
+
 - [ ] Comment complex logic
 - [ ] Explain business rules
 - [ ] Document workarounds

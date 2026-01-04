@@ -1,35 +1,59 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route } from 'react-router-dom';
+import { ColorModeProvider } from '@/components/ui/color-mode';
+import { Layout } from '@/components/layout/Layout';
+import { DashboardPage } from '@/pages/Dashboard';
+import { TransactionsPage } from '@/pages/Transactions';
+import { PlaceholderPage } from '@/pages/PlaceholderPage';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <ColorModeProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="transactions" element={<TransactionsPage />} />
+          <Route
+            path="accounts"
+            element={
+              <PlaceholderPage title="Accounts" subtitle="Manage your accounts" phase="Phase 7" />
+            }
+          />
+          <Route
+            path="budgets"
+            element={
+              <PlaceholderPage title="Budgets" subtitle="Track your budgets" phase="Phase 8" />
+            }
+          />
+          <Route
+            path="people"
+            element={
+              <PlaceholderPage
+                title="People"
+                subtitle="Manage people and split payments"
+                phase="Phase 9"
+              />
+            }
+          />
+          <Route
+            path="reports"
+            element={
+              <PlaceholderPage title="Reports" subtitle="View financial reports" phase="Phase 10" />
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <PlaceholderPage
+                title="Settings"
+                subtitle="Configure your preferences"
+                phase="Phase 10"
+              />
+            }
+          />
+        </Route>
+      </Routes>
+    </ColorModeProvider>
+  );
 }
 
-export default App
+export default App;

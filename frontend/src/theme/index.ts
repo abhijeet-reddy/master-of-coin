@@ -1,118 +1,118 @@
-import { extendTheme } from '@chakra-ui/react';
+import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
 
-// Theme configuration
-const config = {
-  initialColorMode: 'light',
-  useSystemColorMode: false,
-};
-
-// Custom colors
-const colors = {
-  brand: {
-    50: '#e3f2fd',
-    100: '#bbdefb',
-    200: '#90caf9',
-    300: '#64b5f6',
-    400: '#42a5f5',
-    500: '#2196f3',
-    600: '#1e88e5',
-    700: '#1976d2',
-    800: '#1565c0',
-    900: '#0d47a1',
-  },
-  success: {
-    50: '#e8f5e9',
-    100: '#c8e6c9',
-    200: '#a5d6a7',
-    300: '#81c784',
-    400: '#66bb6a',
-    500: '#4caf50',
-    600: '#43a047',
-    700: '#388e3c',
-    800: '#2e7d32',
-    900: '#1b5e20',
-  },
-  warning: {
-    50: '#fff3e0',
-    100: '#ffe0b2',
-    200: '#ffcc80',
-    300: '#ffb74d',
-    400: '#ffa726',
-    500: '#ff9800',
-    600: '#fb8c00',
-    700: '#f57c00',
-    800: '#ef6c00',
-    900: '#e65100',
-  },
-  danger: {
-    50: '#ffebee',
-    100: '#ffcdd2',
-    200: '#ef9a9a',
-    300: '#e57373',
-    400: '#ef5350',
-    500: '#f44336',
-    600: '#e53935',
-    700: '#d32f2f',
-    800: '#c62828',
-    900: '#b71c1c',
-  },
-};
-
-// Custom fonts
-const fonts = {
-  heading: `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`,
-  body: `'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`,
-};
-
-// Custom component styles
-const components = {
-  Button: {
-    defaultProps: {
-      colorScheme: 'brand',
-    },
-    variants: {
-      solid: {
-        borderRadius: 'md',
+const customConfig = defineConfig({
+  theme: {
+    tokens: {
+      colors: {
+        brand: {
+          50: { value: '#e3f2fd' },
+          100: { value: '#bbdefb' },
+          200: { value: '#90caf9' },
+          300: { value: '#64b5f6' },
+          400: { value: '#42a5f5' },
+          500: { value: '#2196f3' },
+          600: { value: '#1e88e5' },
+          700: { value: '#1976d2' },
+          800: { value: '#1565c0' },
+          900: { value: '#0d47a1' },
+        },
+        success: {
+          50: { value: '#e8f5e9' },
+          100: { value: '#c8e6c9' },
+          200: { value: '#a5d6a7' },
+          300: { value: '#81c784' },
+          400: { value: '#66bb6a' },
+          500: { value: '#4caf50' },
+          600: { value: '#43a047' },
+          700: { value: '#388e3c' },
+          800: { value: '#2e7d32' },
+          900: { value: '#1b5e20' },
+        },
+        warning: {
+          50: { value: '#fff3e0' },
+          100: { value: '#ffe0b2' },
+          200: { value: '#ffcc80' },
+          300: { value: '#ffb74d' },
+          400: { value: '#ffa726' },
+          500: { value: '#ff9800' },
+          600: { value: '#fb8c00' },
+          700: { value: '#f57c00' },
+          800: { value: '#ef6c00' },
+          900: { value: '#e65100' },
+        },
+        error: {
+          50: { value: '#ffebee' },
+          100: { value: '#ffcdd2' },
+          200: { value: '#ef9a9a' },
+          300: { value: '#e57373' },
+          400: { value: '#ef5350' },
+          500: { value: '#f44336' },
+          600: { value: '#e53935' },
+          700: { value: '#d32f2f' },
+          800: { value: '#c62828' },
+          900: { value: '#b71c1c' },
+        },
+        income: {
+          50: { value: '#e8f5e9' },
+          100: { value: '#c8e6c9' },
+          200: { value: '#a5d6a7' },
+          300: { value: '#81c784' },
+          400: { value: '#66bb6a' },
+          500: { value: '#4caf50' },
+          600: { value: '#43a047' },
+          700: { value: '#388e3c' },
+          800: { value: '#2e7d32' },
+          900: { value: '#1b5e20' },
+        },
+        expense: {
+          50: { value: '#ffebee' },
+          100: { value: '#ffcdd2' },
+          200: { value: '#ef9a9a' },
+          300: { value: '#e57373' },
+          400: { value: '#ef5350' },
+          500: { value: '#f44336' },
+          600: { value: '#e53935' },
+          700: { value: '#d32f2f' },
+          800: { value: '#c62828' },
+          900: { value: '#b71c1c' },
+        },
+      },
+      fonts: {
+        heading: { value: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` },
+        body: { value: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` },
+        mono: { value: `'JetBrains Mono', 'Fira Code', monospace` },
+      },
+      fontSizes: {
+        xs: { value: '0.75rem' },
+        sm: { value: '0.875rem' },
+        md: { value: '1rem' },
+        lg: { value: '1.125rem' },
+        xl: { value: '1.25rem' },
+        '2xl': { value: '1.5rem' },
+        '3xl': { value: '1.875rem' },
+        '4xl': { value: '2.25rem' },
+        '5xl': { value: '3rem' },
+      },
+      shadows: {
+        sm: { value: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' },
+        base: { value: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)' },
+        md: { value: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' },
+        lg: { value: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' },
+        xl: { value: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' },
+      },
+      radii: {
+        none: { value: '0' },
+        sm: { value: '0.25rem' },
+        base: { value: '0.5rem' },
+        md: { value: '0.75rem' },
+        lg: { value: '1rem' },
+        xl: { value: '1.5rem' },
+        full: { value: '9999px' },
       },
     },
   },
-  Card: {
-    baseStyle: {
-      container: {
-        borderRadius: 'lg',
-        boxShadow: 'sm',
-      },
-    },
-  },
-  Input: {
-    defaultProps: {
-      focusBorderColor: 'brand.500',
-    },
-  },
-  Select: {
-    defaultProps: {
-      focusBorderColor: 'brand.500',
-    },
-  },
-};
-
-// Global styles
-const styles = {
-  global: {
-    body: {
-      bg: 'gray.50',
-      color: 'gray.800',
-    },
-  },
-};
-
-// Create and export theme
-const theme = extendTheme({
-  config,
-  colors,
-  fonts,
-  components,
-  styles,
 });
 
-export default theme;
+const system = createSystem(defaultConfig, customConfig);
+
+export default system;

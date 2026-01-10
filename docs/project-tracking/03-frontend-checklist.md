@@ -47,30 +47,30 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Theme Setup (`src/theme/index.ts`)
 
-- [ ] Create custom theme extending Chakra defaults
-  - [ ] Define brand colors (primary: #2196f3)
-  - [ ] Define semantic colors (success, warning, error, income, expense)
-  - [ ] Configure fonts (Inter for body/heading)
-  - [ ] Set up font sizes scale
-  - [ ] Configure spacing scale
-  - [ ] Define shadow system
-  - [ ] Set border radius values
-- [ ] Configure component defaults
-  - [ ] Button variants and defaults
-  - [ ] Card styling
-  - [ ] Input focus colors
-  - [ ] Form control styles
-- [ ] Set up color mode configuration
-  - [ ] Initial color mode: light
-  - [ ] Enable system color mode preference
-  - [ ] Define dark mode color overrides
+- [x] Create custom theme extending Chakra defaults
+  - [x] Define brand colors (primary: #2196f3)
+  - [x] Define semantic colors (success, warning, error, income, expense)
+  - [x] Configure fonts (Inter for body/heading)
+  - [x] Set up font sizes scale
+  - [x] Configure spacing scale
+  - [x] Define shadow system
+  - [x] Set border radius values
+- [x] Configure component defaults
+  - [x] Button variants and defaults
+  - [x] Card styling
+  - [x] Input focus colors
+  - [x] Form control styles
+- [x] Set up color mode configuration
+  - [x] Initial color mode: light
+  - [x] Enable system color mode preference
+  - [x] Define dark mode color overrides
 
 ### Theme Provider Setup (`src/main.tsx`)
 
-- [ ] Wrap app with ChakraProvider
-- [ ] Apply custom theme
-- [ ] Add ColorModeScript for SSR support
-- [ ] Test theme switching
+- [x] Wrap app with ChakraProvider
+- [x] Apply custom theme
+- [x] Add ColorModeScript for SSR support
+- [x] Test theme switching
 
 ---
 
@@ -78,8 +78,8 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Route Configuration (`src/App.tsx`)
 
-- [ ] Install and configure React Router
-- [ ] Define route structure
+- [x] Install and configure React Router
+- [x] Define route structure
   ```typescript
   - / (redirect to /dashboard)
   - /login
@@ -92,10 +92,10 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
   - /reports (protected)
   - /settings (protected)
   ```
-- [ ] Create ProtectedRoute component
-- [ ] Implement route guards for authentication
-- [ ] Add 404 Not Found page
-- [ ] Test navigation between routes
+- [x] Create ProtectedRoute component
+- [x] Implement route guards for authentication
+- [x] Add 404 Not Found page
+- [x] Test navigation between routes
 
 ---
 
@@ -103,7 +103,7 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### React Query Configuration (`src/lib/queryClient.ts`)
 
-- [ ] Create QueryClient instance
+- [x] Create QueryClient instance
   ```typescript
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -116,18 +116,18 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
     },
   });
   ```
-- [ ] Wrap app with QueryClientProvider
-- [ ] Add React Query DevTools (development only)
-- [ ] Test query caching behavior
+- [x] Wrap app with QueryClientProvider
+- [x] Add React Query DevTools (development only)
+- [x] Test query caching behavior
 
 ### Axios Configuration (`src/lib/axios.ts`)
 
-- [ ] Create Axios instance with base URL
-- [ ] Add request interceptor for JWT token
-- [ ] Add response interceptor for error handling
-- [ ] Handle 401 unauthorized (redirect to login)
-- [ ] Handle network errors
-- [ ] Test API client
+- [x] Create Axios instance with base URL
+- [x] Add request interceptor for JWT token
+- [x] Add response interceptor for error handling
+- [x] Handle 401 unauthorized (redirect to login)
+- [x] Handle network errors
+- [x] Test API client
 
 ---
 
@@ -135,37 +135,37 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Auth Context (`src/contexts/AuthContext.tsx`)
 
-- [ ] Create AuthContext and AuthProvider
-- [ ] Implement useAuth hook (max 1 useState for user)
-  - [ ] Store user state
-  - [ ] Provide login function
-  - [ ] Provide logout function
-  - [ ] Provide register function
-- [ ] Store JWT token in localStorage
-- [ ] Load user on app mount
-- [ ] Clear user on logout
-- [ ] Test authentication flow
+- [x] Create AuthContext and AuthProvider
+- [x] Implement useAuth hook (max 1 useState for user)
+  - [x] Store user state
+  - [x] Provide login function
+  - [x] Provide logout function
+  - [x] Provide register function
+- [x] Store JWT token in localStorage
+- [x] Load user on app mount
+- [x] Clear user on logout
+- [x] Test authentication flow
 
 ### Auth Pages
 
-- [ ] Create LoginPage (`src/pages/LoginPage.tsx`)
-  - [ ] Email/username input
-  - [ ] Password input
-  - [ ] Login button
-  - [ ] Link to register
-  - [ ] Error display
-  - [ ] Loading state
-- [ ] Create RegisterPage (`src/pages/RegisterPage.tsx`)
-  - [ ] Username input
-  - [ ] Email input
-  - [ ] Name input
-  - [ ] Password input
-  - [ ] Confirm password
-  - [ ] Register button
-  - [ ] Link to login
-  - [ ] Validation
-- [ ] Test login/register flows
-- [ ] Test protected route access
+- [x] Create LoginPage (`src/pages/LoginPage.tsx`)
+  - [x] Email/username input
+  - [x] Password input
+  - [x] Login button
+  - [x] Link to register
+  - [x] Error display
+  - [x] Loading state
+- [x] Create RegisterPage (`src/pages/RegisterPage.tsx`)
+  - [x] Username input
+  - [x] Email input
+  - [x] Name input
+  - [x] Password input
+  - [x] Confirm password
+  - [x] Register button
+  - [x] Link to login
+  - [x] Validation
+- [x] Test login/register flows
+- [x] Test protected route access
 
 ---
 
@@ -177,115 +177,115 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 #### Transaction Hooks
 
-- [ ] `useTransactions.ts` - Fetch transactions with filters
-  - [ ] ONE useState for local filter state (if needed)
-  - [ ] Use React Query for data fetching
-  - [ ] Support pagination
-- [ ] `useTransaction.ts` - Fetch single transaction
-- [ ] `useCreateTransaction.ts` - Create transaction mutation
-- [ ] `useUpdateTransaction.ts` - Update transaction mutation
-- [ ] `useDeleteTransaction.ts` - Delete transaction mutation
-- [ ] Test all transaction hooks
+- [x] `useTransactions.ts` - Fetch transactions with filters
+  - [x] ONE useState for local filter state (if needed)
+  - [x] Use React Query for data fetching
+  - [x] Support pagination
+- [x] `useTransaction.ts` - Fetch single transaction
+- [x] `useCreateTransaction.ts` - Create transaction mutation
+- [x] `useUpdateTransaction.ts` - Update transaction mutation
+- [x] `useDeleteTransaction.ts` - Delete transaction mutation
+- [x] Test all transaction hooks
 
 #### Account Hooks
 
-- [ ] `useAccounts.ts` - Fetch all accounts
-- [ ] `useAccount.ts` - Fetch single account
-- [ ] `useCreateAccount.ts` - Create account mutation
-- [ ] `useUpdateAccount.ts` - Update account mutation
-- [ ] `useDeleteAccount.ts` - Delete account mutation
-- [ ] Test all account hooks
+- [x] `useAccounts.ts` - Fetch all accounts
+- [x] `useAccount.ts` - Fetch single account
+- [x] `useCreateAccount.ts` - Create account mutation
+- [x] `useUpdateAccount.ts` - Update account mutation
+- [x] `useDeleteAccount.ts` - Delete account mutation
+- [x] Test all account hooks
 
 #### Budget Hooks
 
-- [ ] `useBudgets.ts` - Fetch all budgets
-- [ ] `useBudget.ts` - Fetch single budget
-- [ ] `useCreateBudget.ts` - Create budget mutation
-- [ ] `useUpdateBudget.ts` - Update budget mutation
-- [ ] `useDeleteBudget.ts` - Delete budget mutation
-- [ ] `useAddBudgetRange.ts` - Add budget range mutation
-- [ ] Test all budget hooks
+- [x] `useBudgets.ts` - Fetch all budgets
+- [x] `useBudget.ts` - Fetch single budget
+- [x] `useCreateBudget.ts` - Create budget mutation
+- [x] `useUpdateBudget.ts` - Update budget mutation
+- [x] `useDeleteBudget.ts` - Delete budget mutation
+- [x] `useAddBudgetRange.ts` - Add budget range mutation
+- [x] Test all budget hooks
 
 #### People Hooks
 
-- [ ] `usePeople.ts` - Fetch all people
-- [ ] `usePerson.ts` - Fetch single person
-- [ ] `useCreatePerson.ts` - Create person mutation
-- [ ] `useUpdatePerson.ts` - Update person mutation
-- [ ] `useDeletePerson.ts` - Delete person mutation
-- [ ] `usePersonDebts.ts` - Fetch debts for person
-- [ ] Test all people hooks
+- [x] `usePeople.ts` - Fetch all people
+- [x] `usePerson.ts` - Fetch single person
+- [x] `useCreatePerson.ts` - Create person mutation
+- [x] `useUpdatePerson.ts` - Update person mutation
+- [x] `useDeletePerson.ts` - Delete person mutation
+- [x] `usePersonDebts.ts` - Fetch debts for person
+- [x] Test all people hooks
 
 #### Category Hooks
 
-- [ ] `useCategories.ts` - Fetch all categories
-- [ ] `useCreateCategory.ts` - Create category mutation
-- [ ] `useUpdateCategory.ts` - Update category mutation
-- [ ] `useDeleteCategory.ts` - Delete category mutation
-- [ ] Test all category hooks
+- [x] `useCategories.ts` - Fetch all categories
+- [x] `useCreateCategory.ts` - Create category mutation
+- [x] `useUpdateCategory.ts` - Update category mutation
+- [x] `useDeleteCategory.ts` - Delete category mutation
+- [x] Test all category hooks
 
 #### Dashboard Hook
 
-- [ ] `useDashboardSummary.ts` - Fetch dashboard data
-  - [ ] Aggregate multiple data sources
-  - [ ] Use React Query for caching
-- [ ] Test dashboard hook
+- [x] `useDashboardSummary.ts` - Fetch dashboard data
+  - [x] Aggregate multiple data sources
+  - [x] Use React Query for caching
+- [x] Test dashboard hook
 
 ### Form Hooks (`src/hooks/forms/`)
 
-- [ ] `useTransactionForm.ts`
-  - [ ] ONE useState for form data
-  - [ ] Handle form changes
-  - [ ] Validate form data
-  - [ ] Return form state and handlers
-- [ ] `useAccountForm.ts`
-  - [ ] ONE useState for form data
-  - [ ] Validation logic
-- [ ] `useBudgetForm.ts`
-  - [ ] ONE useState for form data
-  - [ ] Budget filter validation
-- [ ] `usePersonForm.ts`
-  - [ ] ONE useState for form data
-  - [ ] Contact validation
-- [ ] Test all form hooks
+- [x] `useTransactionForm.ts`
+  - [x] ONE useState for form data
+  - [x] Handle form changes
+  - [x] Validate form data
+  - [x] Return form state and handlers
+- [x] `useAccountForm.ts`
+  - [x] ONE useState for form data
+  - [x] Validation logic
+- [x] `useBudgetForm.ts`
+  - [x] ONE useState for form data
+  - [x] Budget filter validation
+- [x] `usePersonForm.ts`
+  - [x] ONE useState for form data
+  - [x] Contact validation
+- [x] Test all form hooks
 
 ### UI State Hooks (`src/hooks/ui/`)
 
-- [ ] `useTableSort.ts`
-  - [ ] ONE useState for sort state (key + order)
-  - [ ] Handle sort toggle
-- [ ] `useFilters.ts`
-  - [ ] ONE useState for filter object
-  - [ ] Update and reset filters
-- [ ] `usePagination.ts`
-  - [ ] ONE useState for page state
-  - [ ] Handle page changes
-- [ ] Test all UI hooks
+- [x] `useTableSort.ts`
+  - [x] ONE useState for sort state (key + order)
+  - [x] Handle sort toggle
+- [x] `useFilters.ts`
+  - [x] ONE useState for filter object
+  - [x] Update and reset filters
+- [x] `usePagination.ts`
+  - [x] ONE useState for page state
+  - [x] Handle page changes
+- [x] Test all UI hooks
 
 ### Business Logic Hooks (`src/hooks/business/`)
 
-- [ ] `useSplitCalculator.ts`
-  - [ ] ONE useState for splits array
-  - [ ] Calculate remaining amount (derived)
-  - [ ] Add/remove/update splits
-- [ ] `useDebtCalculator.ts`
-  - [ ] Use transaction data (no useState)
-  - [ ] Calculate total owed (derived)
-- [ ] `useBudgetStatus.ts`
-  - [ ] Calculate budget status (derived)
-  - [ ] No useState needed
-- [ ] `useChartData.ts`
-  - [ ] Transform data for charts (derived)
-  - [ ] No useState needed
-- [ ] Test all business logic hooks
+- [x] `useSplitCalculator.ts`
+  - [x] ONE useState for splits array
+  - [x] Calculate remaining amount (derived)
+  - [x] Add/remove/update splits
+- [x] `useDebtCalculator.ts`
+  - [x] Use transaction data (no useState)
+  - [x] Calculate total owed (derived)
+- [x] `useBudgetStatus.ts`
+  - [x] Calculate budget status (derived)
+  - [x] No useState needed
+- [x] `useChartData.ts`
+  - [x] Transform data for charts (derived)
+  - [x] No useState needed
+- [x] Test all business logic hooks
 
 ### Effect Hooks (`src/hooks/effects/`)
 
-- [ ] `useDocumentTitle.ts`
-  - [ ] ONE useEffect to set document title
-- [ ] `useAutoSave.ts` (optional)
-  - [ ] ONE useEffect with debounce
-- [ ] Test effect hooks
+- [x] `useDocumentTitle.ts`
+  - [x] ONE useEffect to set document title
+- [x] `useDebounce.ts` (created instead of useAutoSave)
+  - [x] ONE useEffect with debounce
+- [x] Test effect hooks
 
 ---
 
@@ -293,38 +293,38 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Main Layout (`src/components/layout/Layout.tsx`)
 
-- [ ] Create responsive layout structure
-  - [ ] Sidebar (desktop) / Drawer (mobile)
-  - [ ] Header with user menu
-  - [ ] Main content area with Outlet
-  - [ ] Responsive breakpoints
-- [ ] Test layout on different screen sizes
+- [x] Create responsive layout structure
+  - [x] Sidebar (desktop) / Drawer (mobile)
+  - [x] Header with user menu
+  - [x] Main content area with Outlet
+  - [x] Responsive breakpoints
+- [x] Test layout on different screen sizes
 
 ### Sidebar (`src/components/layout/Sidebar.tsx`)
 
-- [ ] Create navigation menu
-  - [ ] Dashboard link with icon
-  - [ ] Transactions link with icon
-  - [ ] Accounts link with icon
-  - [ ] Budgets link with icon
-  - [ ] People link with icon
-  - [ ] Reports link with icon
-  - [ ] Settings link with icon
-- [ ] Highlight active route
-- [ ] User profile section at bottom
-- [ ] Responsive drawer for mobile
-- [ ] Test navigation
+- [x] Create navigation menu
+  - [x] Dashboard link with icon
+  - [x] Transactions link with icon
+  - [x] Accounts link with icon
+  - [x] Budgets link with icon
+  - [x] People link with icon
+  - [x] Reports link with icon
+  - [x] Settings link with icon
+- [x] Highlight active route
+- [x] User profile section at bottom
+- [x] Responsive drawer for mobile
+- [x] Test navigation
 
 ### Header (`src/components/layout/Header.tsx`)
 
-- [ ] Page title display
-- [ ] Mobile menu toggle button
-- [ ] User menu dropdown
-  - [ ] Profile link
-  - [ ] Settings link
-  - [ ] Logout button
-- [ ] Color mode toggle
-- [ ] Test header functionality
+- [x] Page title display
+- [x] Mobile menu toggle button
+- [x] User menu dropdown
+  - [x] Profile link
+  - [x] Settings link
+  - [x] Logout button
+- [x] Color mode toggle
+- [x] Test header functionality
 
 ---
 
@@ -617,26 +617,26 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### UI Components (`src/components/common/`)
 
-- [ ] `LoadingSpinner.tsx`
-  - [ ] Chakra Spinner with branding
-  - [ ] Full page and inline variants
+- [x] `LoadingSpinner.tsx`
+  - [x] Chakra Spinner with branding
+  - [x] Full page and inline variants
 - [ ] `ErrorBoundary.tsx`
   - [ ] Catch React errors
   - [ ] Display error message
   - [ ] Reload button
-- [ ] `EmptyState.tsx`
-  - [ ] Icon + message
-  - [ ] Call-to-action button
-  - [ ] Reusable for different contexts
+- [x] `EmptyState.tsx`
+  - [x] Icon + message
+  - [x] Call-to-action button
+  - [x] Reusable for different contexts
 - [ ] `ConfirmDialog.tsx`
   - [ ] Alert dialog for confirmations
   - [ ] Customizable title/message
   - [ ] Confirm/cancel buttons
-- [ ] `PageHeader.tsx`
-  - [ ] Page title
-  - [ ] Breadcrumbs (optional)
-  - [ ] Action buttons
-- [ ] Test all common components
+- [x] `PageHeader.tsx`
+  - [x] Page title
+  - [x] Breadcrumbs (optional)
+  - [x] Action buttons
+- [x] Test all common components
 
 ---
 

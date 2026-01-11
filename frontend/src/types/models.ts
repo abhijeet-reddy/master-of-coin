@@ -13,13 +13,11 @@ export type AccountType =
 export interface Account {
   id: string;
   name: string;
-  type: AccountType;
+  account_type: AccountType;
   currency: string;
-  balance: string;
-  transaction_count: number;
+  balance: number;
+  is_active: boolean;
   notes?: string;
-  created_at: string;
-  updated_at: string;
 }
 
 // Category types

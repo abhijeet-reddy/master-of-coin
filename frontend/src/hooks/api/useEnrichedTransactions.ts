@@ -40,7 +40,7 @@ export default function useEnrichedTransactions(
         account: {
           id: account.id,
           name: account.name,
-          type: account.type,
+          type: account.account_type,
         },
         category: category
           ? {

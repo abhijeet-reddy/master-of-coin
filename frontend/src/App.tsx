@@ -7,6 +7,8 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import Dashboard from '@/pages/Dashboard';
 import { TransactionsPage } from '@/pages/Transactions';
+import { Accounts } from '@/pages/Accounts';
+import { Budgets } from '@/pages/Budgets';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
 
 function App() {
@@ -30,18 +32,8 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="transactions" element={<TransactionsPage />} />
-            <Route
-              path="accounts"
-              element={
-                <PlaceholderPage title="Accounts" subtitle="Manage your accounts" phase="Phase 7" />
-              }
-            />
-            <Route
-              path="budgets"
-              element={
-                <PlaceholderPage title="Budgets" subtitle="Track your budgets" phase="Phase 8" />
-              }
-            />
+            <Route path="accounts" element={<Accounts />} />
+            <Route path="budgets" element={<Budgets />} />
             <Route
               path="people"
               element={

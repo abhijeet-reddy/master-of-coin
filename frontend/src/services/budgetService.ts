@@ -19,10 +19,28 @@ export async function getBudget(id: string): Promise<Budget> {
 
 /**
  * Create a new budget
+ * Note: Backend expects a two-step process:
+ * 1. Create budget with name and filters
+ * 2. Add ranges separately via POST /budgets/:id/ranges
  */
 export async function createBudget(data: CreateBudgetRequest): Promise<Budget> {
-  const response = await apiClient.post<ApiResponse<Budget>>('/budgets', data);
-  return response.data.data;
+  // Step 1: Create the budget (name and filters only)
+  const budgetPayload = {
+    name: data.name,
+    filters: data.filters,
+  };
+
+  const budgetResponse = await apiClient.post<Budget>('/budgets', budgetPayload);
+  const createdBudget = budgetResponse.data;
+
+  // Step 2: Add ranges if provided
+  if (data.ranges && data.ranges.length > 0) {
+    for (const range of data.ranges) {
+      await addBudgetRange(createdBudget.id, range);
+    }
+  }
+
+  return createdBudget;
 }
 
 /**
@@ -54,7 +72,14 @@ export async function addBudgetRange(
     start_date: string;
     end_date?: string;
   }
-): Promise<Budget> {
-  const response = await apiClient.post<ApiResponse<Budget>>(`/budgets/${budgetId}/ranges`, data);
-  return response.data.data;
+): Promise<void> {
+  // Convert limit_amount from string to number for backend
+  const rangePayload = {
+    limit_amount: parseFloat(data.limit_amount),
+    period: data.period,
+    start_date: data.start_date,
+    end_date: data.end_date,
+  };
+
+  await apiClient.post(`/budgets/${budgetId}/ranges`, rangePayload);
 }

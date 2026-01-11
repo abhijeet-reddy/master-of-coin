@@ -19,7 +19,7 @@ export default function useUpdateAccount() {
       id: string;
       data: Partial<{
         name: string;
-        type: AccountType;
+        account_type: AccountType;
         currency: string;
         notes: string;
       }>;

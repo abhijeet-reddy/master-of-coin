@@ -12,8 +12,12 @@ export default function useCreateAccount() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; type: AccountType; currency: string; notes?: string }) =>
-      createAccount(data),
+    mutationFn: (data: {
+      name: string;
+      account_type: AccountType;
+      currency: string;
+      notes?: string;
+    }) => createAccount(data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['accounts'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });

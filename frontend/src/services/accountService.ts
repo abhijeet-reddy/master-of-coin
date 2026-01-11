@@ -22,7 +22,7 @@ export async function getAccount(id: string): Promise<Account> {
  */
 export async function createAccount(data: {
   name: string;
-  type: string;
+  account_type: string;
   currency: string;
   notes?: string;
 }): Promise<Account> {
@@ -37,7 +37,7 @@ export async function updateAccount(
   id: string,
   data: Partial<{
     name: string;
-    type: string;
+    account_type: string;
     currency: string;
     notes: string;
   }>

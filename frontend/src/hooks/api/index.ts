@@ -33,5 +33,7 @@ export { default as useCreateCategory } from './useCreateCategory';
 export { default as useUpdateCategory } from './useUpdateCategory';
 export { default as useDeleteCategory } from './useDeleteCategory';
 
-// Dashboard hook
+// Dashboard hooks
 export { default as useDashboardSummary } from './useDashboardSummary';
+export { default as useEnrichedTransactions } from './useEnrichedTransactions';
+export { default as useEnrichedBudgetStatuses } from './useEnrichedBudgetStatuses';

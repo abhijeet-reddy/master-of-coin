@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { transactionService } from '@/services/transactionService';
-import type { TransactionFilters } from '@/types/api';
+import { getTransactions } from '@/services/transactionService';
+import type { QueryParams } from '@/types/api';
 
 /**
  * Hook to fetch transactions with optional filters
@@ -9,9 +9,9 @@ import type { TransactionFilters } from '@/types/api';
  * @param filters - Optional filters for transactions (date range, account, category, etc.)
  * @returns React Query result with transactions data
  */
-export default function useTransactions(filters?: TransactionFilters) {
+export default function useTransactions(filters?: QueryParams) {
   return useQuery({
     queryKey: ['transactions', filters],
-    queryFn: () => transactionService.getAll(filters),
+    queryFn: () => getTransactions(filters),
   });
 }

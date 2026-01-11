@@ -5,8 +5,8 @@ import type { Person, PersonDebtDetail, ApiResponse } from '@/types';
  * Get all people with debt summaries
  */
 export async function getPeople(): Promise<Person[]> {
-  const response = await apiClient.get<ApiResponse<Person[]>>('/people');
-  return response.data.data;
+  const response = await apiClient.get<Person[]>('/people');
+  return response.data;
 }
 
 /**

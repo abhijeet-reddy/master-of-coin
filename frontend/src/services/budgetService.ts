@@ -5,8 +5,8 @@ import type { Budget, CreateBudgetRequest, ApiResponse } from '@/types';
  * Get all budgets with optional active filter
  */
 export async function getBudgets(params?: { active?: boolean }): Promise<Budget[]> {
-  const response = await apiClient.get<ApiResponse<Budget[]>>('/budgets', { params });
-  return response.data.data;
+  const response = await apiClient.get<Budget[]>('/budgets', { params });
+  return response.data;
 }
 
 /**

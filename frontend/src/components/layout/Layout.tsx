@@ -42,7 +42,13 @@ export const Layout = () => {
         </DrawerRoot>
 
         {/* Main Content */}
-        <Box flex={1} overflowY="auto" bg="gray.50" p={{ base: 4, md: 6 }}>
+        <Box
+          flex={1}
+          overflowY="auto"
+          bg="gray.50"
+          px={{ base: 4, md: 6, lg: 8 }}
+          py={{ base: 4, md: 6 }}
+        >
           <Outlet />
         </Box>
       </Box>

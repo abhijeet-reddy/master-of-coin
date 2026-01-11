@@ -5,8 +5,8 @@ import type { Category, ApiResponse } from '@/types';
  * Get all categories for the current user
  */
 export async function getCategories(): Promise<Category[]> {
-  const response = await apiClient.get<ApiResponse<Category[]>>('/categories');
-  return response.data.data;
+  const response = await apiClient.get<Category[]>('/categories');
+  return response.data;
 }
 
 /**

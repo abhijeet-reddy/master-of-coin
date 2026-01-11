@@ -5,8 +5,8 @@ import type { Account, ApiResponse } from '@/types';
  * Get all accounts for the current user
  */
 export async function getAccounts(): Promise<Account[]> {
-  const response = await apiClient.get<ApiResponse<Account[]>>('/accounts');
-  return response.data.data;
+  const response = await apiClient.get<Account[]>('/accounts');
+  return response.data;
 }
 
 /**

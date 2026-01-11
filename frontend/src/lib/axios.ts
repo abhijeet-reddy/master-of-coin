@@ -3,7 +3,7 @@ import type { ApiError } from '@/types';
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8080/api',
+  baseURL: (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8080/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

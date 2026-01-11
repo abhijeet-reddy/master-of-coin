@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Layout } from '@/components/layout/Layout';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
-import { DashboardPage } from '@/pages/Dashboard';
+import Dashboard from '@/pages/Dashboard';
 import { TransactionsPage } from '@/pages/Transactions';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
 
@@ -28,7 +28,7 @@ function App() {
             }
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="transactions" element={<TransactionsPage />} />
             <Route
               path="accounts"

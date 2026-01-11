@@ -1,13 +1,78 @@
-import { Box, Text } from '@chakra-ui/react';
+import { Box, VStack, Text, Alert, Grid, GridItem } from '@chakra-ui/react';
+import { useDocumentTitle } from '@/hooks/effects';
+import {
+  useDashboardSummary,
+  useEnrichedTransactions,
+  useEnrichedBudgetStatuses,
+} from '@/hooks/api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import {
+  NetWorthWidget,
+  BudgetProgress,
+  CategoryBreakdown,
+  RecentTransactions,
+} from '@/components/dashboard';
 
-export const DashboardPage = () => {
+export default function Dashboard() {
+  useDocumentTitle('Dashboard');
+  const { data, isLoading, error } = useDashboardSummary();
+
+  // Enrich transactions with account and category details using cached data
+  const enrichedTransactions = useEnrichedTransactions(data?.recent_transactions);
+
+  // Enrich budget statuses with budget details using cached data
+  const enrichedBudgetStatuses = useEnrichedBudgetStatuses(data?.budget_statuses);
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading dashboard..." />;
+  }
+
+  if (error) {
+    return (
+      <Box>
+        <PageHeader title="Dashboard" />
+        <Alert.Root status="error">
+          <Alert.Indicator />
+          <Alert.Title>Error loading dashboard</Alert.Title>
+          <Alert.Description>
+            {error instanceof Error ? error.message : 'Failed to load dashboard data'}
+          </Alert.Description>
+        </Alert.Root>
+      </Box>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Box>
+        <PageHeader title="Dashboard" />
+        <Text color="gray.500">No dashboard data available</Text>
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      <PageHeader title="Dashboard" subtitle="Overview of your finances" />
-      <Box bg="white" p={6} borderRadius="lg" boxShadow="sm">
-        <Text>Dashboard content will be implemented in Phase 5</Text>
-      </Box>
+      <PageHeader title="Dashboard" subtitle="Overview of your financial health" />
+
+      <VStack gap={6} alignItems="stretch">
+        {/* Row 1: Net Worth Widget (full width) */}
+        <NetWorthWidget netWorth={data.net_worth} changePercentage={0} />
+
+        {/* Row 2: Budget Progress (full width) */}
+        <BudgetProgress budgets={enrichedBudgetStatuses} />
+
+        {/* Row 3: Grid layout for Category Breakdown and Recent Transactions */}
+        <Grid templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }} gap={6}>
+          <GridItem>
+            <CategoryBreakdown data={data.category_breakdown} />
+          </GridItem>
+          <GridItem>
+            <RecentTransactions transactions={enrichedTransactions} />
+          </GridItem>
+        </Grid>
+      </VStack>
     </Box>
   );
-};
+}

@@ -14,11 +14,19 @@ import type {
 export async function getTransactions(
   params?: QueryParams
 ): Promise<PaginatedResponse<Transaction>> {
-  const response = await apiClient.get<ApiResponse<PaginatedResponse<Transaction>>>(
-    '/transactions',
-    { params }
-  );
-  return response.data.data;
+  const response = await apiClient.get<Transaction[]>('/transactions', { params });
+
+  // Backend returns a simple array directly (not wrapped in ApiResponse)
+  const transactions = response.data;
+  return {
+    data: transactions,
+    pagination: {
+      total: transactions.length,
+      limit: params?.limit || 100,
+      offset: params?.offset || 0,
+      has_more: false,
+    },
+  };
 }
 
 /**

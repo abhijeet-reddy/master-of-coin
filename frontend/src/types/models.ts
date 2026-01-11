@@ -72,7 +72,24 @@ export interface TransactionSplit {
   amount: string;
 }
 
+// Base transaction from API
 export interface Transaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  category_id?: string;
+  title: string;
+  amount: string;
+  date: string;
+  notes?: string;
+  splits?: TransactionSplit[];
+  user_share?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Enriched transaction
+export interface EnrichedTransaction {
   id: string;
   title: string;
   amount: string;
@@ -96,7 +113,7 @@ export interface Transaction {
 
 export interface CreateTransactionRequest {
   title: string;
-  amount: string;
+  amount: number; // Backend expects f64 (number)
   date: string;
   account_id: string;
   category_id?: string;
@@ -109,7 +126,7 @@ export interface CreateTransactionRequest {
 
 export interface UpdateTransactionRequest {
   title?: string;
-  amount?: string;
+  amount?: number; // Backend expects f64 (number)
   date?: string;
   account_id?: string;
   category_id?: string;
@@ -122,7 +139,7 @@ export interface UpdateTransactionRequest {
 
 // Budget types
 export type BudgetPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
-export type BudgetStatus = 'OK' | 'WARNING' | 'EXCEEDED';
+export type BudgetStatusType = 'OK' | 'WARNING' | 'EXCEEDED';
 
 export interface BudgetFilters {
   category_id?: string;
@@ -163,41 +180,39 @@ export interface CreateBudgetRequest {
 }
 
 // Dashboard types
-export interface NetWorth {
-  total_assets: string;
-  total_liabilities: string;
-  net_worth: string;
-  change_from_last_year?: string;
-  change_percentage_yoy?: number;
+// Raw budget status from backend API
+export interface BudgetStatus {
+  budget_id: string;
+  current_spending: string;
+  limit_amount: string;
+  percentage_used: number;
+  is_over_budget: boolean;
 }
 
-export interface BudgetSummary {
-  id: string;
-  name: string;
-  spent: string;
-  limit: string;
+// Enriched budget status with full details
+export interface EnrichedBudgetStatus {
+  budget_id: string;
+  budget_name: string;
+  limit_amount: string;
+  current_spending: string;
   percentage: number;
-  status: BudgetStatus;
+  status: BudgetStatusType;
+  period: BudgetPeriod;
+  start_date: string;
+  end_date?: string;
 }
 
-export interface SpendingTrendPoint {
-  month: string;
-  amount: string;
-}
-
-export interface CategoryBreakdown {
-  category_id: string;
-  category_name: string;
-  category_icon: string;
-  amount: string;
+export interface CategoryBreakdownItem {
+  category_id?: string;
+  category_name?: string;
+  total: string;
   percentage: number;
 }
 
 export interface DashboardSummary {
-  net_worth: NetWorth;
-  accounts: Account[];
-  budgets: BudgetSummary[];
+  net_worth: string;
   recent_transactions: Transaction[];
-  spending_trend: SpendingTrendPoint[];
-  category_breakdown: CategoryBreakdown[];
+  budget_statuses: BudgetStatus[];
+  category_breakdown: CategoryBreakdownItem[];
+  top_spending_categories: CategoryBreakdownItem[];
 }

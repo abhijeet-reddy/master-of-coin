@@ -157,13 +157,21 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
               flex="1"
               disabled
               title="Budget editing is temporarily disabled - backend doesn't support updating budget ranges"
+              aria-label={`Edit budget ${budget.budget_name}`}
             >
               <Icon mr={1}>
                 <FiEdit2 />
               </Icon>
               Edit
             </Button>
-            <Button size="sm" variant="outline" colorScheme="red" onClick={onDelete} flex="1">
+            <Button
+              size="sm"
+              variant="outline"
+              colorScheme="red"
+              onClick={onDelete}
+              flex="1"
+              aria-label={`Delete budget ${budget.budget_name}`}
+            >
               <Icon mr={1}>
                 <FiTrash2 />
               </Icon>

@@ -9,6 +9,9 @@ import Dashboard from '@/pages/Dashboard';
 import { TransactionsPage } from '@/pages/Transactions';
 import { Accounts } from '@/pages/Accounts';
 import { Budgets } from '@/pages/Budgets';
+import { People } from '@/pages/People';
+import Reports from '@/pages/Reports';
+import { Settings } from '@/pages/Settings';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
 
 function App() {
@@ -34,36 +37,9 @@ function App() {
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="accounts" element={<Accounts />} />
             <Route path="budgets" element={<Budgets />} />
-            <Route
-              path="people"
-              element={
-                <PlaceholderPage
-                  title="People"
-                  subtitle="Manage people and split payments"
-                  phase="Phase 9"
-                />
-              }
-            />
-            <Route
-              path="reports"
-              element={
-                <PlaceholderPage
-                  title="Reports"
-                  subtitle="View financial reports"
-                  phase="Phase 10"
-                />
-              }
-            />
-            <Route
-              path="settings"
-              element={
-                <PlaceholderPage
-                  title="Settings"
-                  subtitle="Configure your preferences"
-                  phase="Phase 10"
-                />
-              }
-            />
+            <Route path="people" element={<People />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* 404 Not Found */}

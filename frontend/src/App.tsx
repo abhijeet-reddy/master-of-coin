@@ -13,47 +13,50 @@ import { People } from '@/pages/People';
 import Reports from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 function App() {
   return (
     <ColorModeProvider>
       <AuthProvider>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+        <ErrorBoundary>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-          {/* Protected routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="transactions" element={<TransactionsPage />} />
-            <Route path="accounts" element={<Accounts />} />
-            <Route path="budgets" element={<Budgets />} />
-            <Route path="people" element={<People />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="transactions" element={<TransactionsPage />} />
+              <Route path="accounts" element={<Accounts />} />
+              <Route path="budgets" element={<Budgets />} />
+              <Route path="people" element={<People />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
 
-          {/* 404 Not Found */}
-          <Route
-            path="*"
-            element={
-              <PlaceholderPage
-                title="404 - Page Not Found"
-                subtitle="The page you're looking for doesn't exist"
-                phase=""
-              />
-            }
-          />
-        </Routes>
+            {/* 404 Not Found */}
+            <Route
+              path="*"
+              element={
+                <PlaceholderPage
+                  title="404 - Page Not Found"
+                  subtitle="The page you're looking for doesn't exist"
+                  phase=""
+                />
+              }
+            />
+          </Routes>
+        </ErrorBoundary>
       </AuthProvider>
     </ColorModeProvider>
   );

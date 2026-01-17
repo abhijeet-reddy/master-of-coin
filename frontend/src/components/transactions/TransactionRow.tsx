@@ -46,6 +46,15 @@ export const TransactionRow = ({ transaction, onClick }: TransactionRowProps) =>
       _hover={{ bg: 'gray.50', borderColor: 'gray.300' }}
       onClick={onClick}
       transition="all 0.2s"
+      role="button"
+      tabIndex={0}
+      aria-label={`View transaction: ${transaction.title}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       <HStack justify="space-between" align="start">
         {/* Left side - Icon and details */}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Button } from '@chakra-ui/react';
-import { PageHeader } from '@/components/common';
+import { PageHeader, ConfirmDialog } from '@/components/common';
 import { TotalBalanceCard, AccountList, AccountFormModal } from '@/components/accounts';
 import { useDocumentTitle } from '@/hooks';
 import useAccounts from '@/hooks/api/useAccounts';
@@ -12,9 +12,13 @@ export const Accounts = () => {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | undefined>(undefined);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; account: Account | null }>({
+    isOpen: false,
+    account: null,
+  });
 
   const { data: accounts = [], isLoading, error } = useAccounts();
-  const { mutate: deleteAccount } = useDeleteAccount();
+  const deleteMutation = useDeleteAccount();
 
   // Error state
   if (error) {
@@ -63,9 +67,7 @@ export const Accounts = () => {
           setIsFormOpen(true);
         }}
         onDelete={(account) => {
-          if (confirm(`Are you sure you want to delete "${account.name}"?`)) {
-            deleteAccount(account.id);
-          }
+          setDeleteDialog({ isOpen: true, account });
         }}
       />
 
@@ -81,6 +83,26 @@ export const Accounts = () => {
           setIsFormOpen(false);
           setSelectedAccount(undefined);
         }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, account: null })}
+        onConfirm={() => {
+          if (deleteDialog.account) {
+            deleteMutation.mutate(deleteDialog.account.id, {
+              onSuccess: () => {
+                setDeleteDialog({ isOpen: false, account: null });
+              },
+            });
+          }
+        }}
+        title="Delete Account"
+        message={`Are you sure you want to delete "${deleteDialog.account?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        colorScheme="red"
+        isLoading={deleteMutation.isPending}
       />
     </Box>
   );

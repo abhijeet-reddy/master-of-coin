@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Button } from '@chakra-ui/react';
-import { PageHeader } from '@/components/common';
+import { PageHeader, ConfirmDialog } from '@/components/common';
 import { DebtSummary, PeopleList, PersonFormModal, SettleDebtModal } from '@/components/people';
 import { useDocumentTitle, usePeople, useDeletePerson } from '@/hooks';
 import type { Person } from '@/types';
@@ -11,9 +11,13 @@ export const People = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettleOpen, setIsSettleOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | undefined>(undefined);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; person: Person | null }>({
+    isOpen: false,
+    person: null,
+  });
 
   const { data: people = [], isLoading, error } = usePeople();
-  const { mutate: deletePerson } = useDeletePerson();
+  const deleteMutation = useDeletePerson();
 
   // Error state
   if (error) {
@@ -62,9 +66,7 @@ export const People = () => {
           setIsFormOpen(true);
         }}
         onDelete={(person) => {
-          if (confirm(`Are you sure you want to delete "${person.name}"?`)) {
-            deletePerson(person.id);
-          }
+          setDeleteDialog({ isOpen: true, person });
         }}
         onSettle={(person) => {
           setSelectedPerson(person);
@@ -102,6 +104,26 @@ export const People = () => {
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, person: null })}
+        onConfirm={() => {
+          if (deleteDialog.person) {
+            deleteMutation.mutate(deleteDialog.person.id, {
+              onSuccess: () => {
+                setDeleteDialog({ isOpen: false, person: null });
+              },
+            });
+          }
+        }}
+        title="Delete Person"
+        message={`Are you sure you want to delete "${deleteDialog.person?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        colorScheme="red"
+        isLoading={deleteMutation.isPending}
+      />
     </Box>
   );
 };

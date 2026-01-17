@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Button } from '@chakra-ui/react';
-import { PageHeader } from '@/components/common';
+import { PageHeader, ConfirmDialog } from '@/components/common';
 import { OverallProgressCard, BudgetList, BudgetFormModal } from '@/components/budgets';
 import { useDocumentTitle } from '@/hooks';
 import useBudgets from '@/hooks/api/useBudgets';
@@ -14,10 +14,17 @@ export const Budgets = () => {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<EnrichedBudgetStatus | undefined>(undefined);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    budget: EnrichedBudgetStatus | null;
+  }>({
+    isOpen: false,
+    budget: null,
+  });
 
   const { data: budgets = [], isLoading: budgetsLoading, error: budgetsError } = useBudgets();
   const { data: dashboardData } = useDashboardSummary();
-  const { mutate: deleteBudget } = useDeleteBudget();
+  const deleteMutation = useDeleteBudget();
 
   // Get enriched budget statuses with spending data
   const enrichedBudgets = useEnrichedBudgetStatuses(dashboardData?.budget_statuses);
@@ -50,10 +57,7 @@ export const Budgets = () => {
 
   // Handle delete
   const handleDelete = (enrichedBudget: EnrichedBudgetStatus) => {
-    const budget = budgets.find((b) => b.id === enrichedBudget.budget_id);
-    if (budget && confirm(`Are you sure you want to delete "${budget.name}"?`)) {
-      deleteBudget(budget.id);
-    }
+    setDeleteDialog({ isOpen: true, budget: enrichedBudget });
   };
 
   return (
@@ -99,6 +103,29 @@ export const Budgets = () => {
           setIsFormOpen(false);
           setSelectedBudget(undefined);
         }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, budget: null })}
+        onConfirm={() => {
+          if (deleteDialog.budget) {
+            const budget = budgets.find((b) => b.id === deleteDialog.budget!.budget_id);
+            if (budget) {
+              deleteMutation.mutate(budget.id, {
+                onSuccess: () => {
+                  setDeleteDialog({ isOpen: false, budget: null });
+                },
+              });
+            }
+          }
+        }}
+        title="Delete Budget"
+        message={`Are you sure you want to delete "${budgets.find((b) => b.id === deleteDialog.budget?.budget_id)?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        colorScheme="red"
+        isLoading={deleteMutation.isPending}
       />
     </Box>
   );

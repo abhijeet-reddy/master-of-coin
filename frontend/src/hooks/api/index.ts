@@ -26,6 +26,7 @@ export { default as usePerson } from './usePerson';
 export { default as useCreatePerson } from './useCreatePerson';
 export { default as useUpdatePerson } from './useUpdatePerson';
 export { default as useDeletePerson } from './useDeletePerson';
+export { default as useSettleDebt } from './useSettleDebt';
 
 // Category hooks
 export { default as useCategories } from './useCategories';

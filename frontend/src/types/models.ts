@@ -118,7 +118,7 @@ export interface CreateTransactionRequest {
   notes?: string;
   splits?: {
     person_id: string;
-    amount: string;
+    amount: number; // Backend expects f64 (number)
   }[];
 }
 
@@ -131,7 +131,7 @@ export interface UpdateTransactionRequest {
   notes?: string;
   splits?: {
     person_id: string;
-    amount: string;
+    amount: number; // Backend expects f64 (number)
   }[];
 }
 

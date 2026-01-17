@@ -15,7 +15,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Field } from '@/components/ui/field';
 import { SplitPaymentForm } from './SplitPaymentForm';
-import type { Account, Category, Person, Transaction, TransactionSplit } from '@/types';
+import type {
+  Account,
+  Category,
+  Person,
+  Transaction,
+  TransactionSplit,
+  CreateTransactionRequest,
+} from '@/types';
 
 // Validation schema
 const transactionSchema = z.object({
@@ -48,12 +55,6 @@ const transactionSchema = z.object({
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
-// Type for the data sent to the API (with amount as number)
-type TransactionSubmitData = Omit<TransactionFormData, 'amount'> & {
-  amount: number;
-  splits?: TransactionSplit[];
-};
-
 interface TransactionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -61,7 +62,7 @@ interface TransactionFormModalProps {
   accounts: Account[];
   categories: Category[];
   people: Person[];
-  onSubmit: (data: TransactionSubmitData) => Promise<void>;
+  onSubmit: (data: CreateTransactionRequest) => Promise<void>;
 }
 
 export const TransactionFormModal = ({
@@ -141,7 +142,13 @@ export const TransactionFormModal = ({
         category_id:
           data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
         notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
-        splits: isSplitEnabled && splits.length > 0 ? splits : undefined,
+        splits:
+          isSplitEnabled && splits.length > 0
+            ? splits.map((split) => ({
+                person_id: split.person_id,
+                amount: parseFloat(split.amount), // Convert string to number
+              }))
+            : undefined,
       };
 
       await onSubmit(finalData);

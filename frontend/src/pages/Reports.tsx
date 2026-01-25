@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, HStack, VStack, Alert, Tabs } from '@chakra-ui/react';
+import { Box, Button, HStack, VStack, Tabs } from '@chakra-ui/react';
 import { useDocumentTitle } from '@/hooks/effects';
 import {
   useDashboardSummary,
@@ -7,8 +7,7 @@ import {
   useEnrichedBudgetStatuses,
   useAccounts,
 } from '@/hooks/api';
-import { PageHeader } from '@/components/common/PageHeader';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
 import { MonthlyReport, CategoryReport, BudgetReport, NetWorthReport } from '@/components/reports';
 
 type ReportType = 'monthly' | 'category' | 'budget' | 'networth';
@@ -37,15 +36,7 @@ export default function Reports() {
     return (
       <Box>
         <PageHeader title="Reports" />
-        <Alert.Root status="error">
-          <Alert.Indicator />
-          <Alert.Title>Error loading reports</Alert.Title>
-          <Alert.Description>
-            {dashboardError instanceof Error
-              ? dashboardError.message
-              : 'Failed to load report data'}
-          </Alert.Description>
-        </Alert.Root>
+        <ErrorAlert title="Error loading reports" error={dashboardError} />
       </Box>
     );
   }

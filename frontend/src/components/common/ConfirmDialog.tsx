@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogCloseTrigger,
   DialogActionTrigger,
+  DialogBackdrop,
 } from '@chakra-ui/react';
 
 interface ConfirmDialogProps {
@@ -54,7 +55,16 @@ export const ConfirmDialog = ({
 
   return (
     <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="md">
-      <DialogContent>
+      <DialogBackdrop />
+      <DialogContent
+        css={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999,
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogCloseTrigger />

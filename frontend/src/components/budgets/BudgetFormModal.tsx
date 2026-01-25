@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { addDays, addWeeks, addMonths, addYears, format } from 'date-fns';
 import { Field } from '@/components/ui/field';
+import { ErrorAlert } from '@/components/common';
 import useCreateBudget from '@/hooks/api/useCreateBudget';
 import useUpdateBudget from '@/hooks/api/useUpdateBudget';
 import useCategories from '@/hooks/api/useCategories';
@@ -178,6 +179,7 @@ export const BudgetFormModal = ({ isOpen, onClose, budget, onSuccess }: BudgetFo
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const mutationError = createMutation.error || updateMutation.error;
 
   return (
     <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="lg">
@@ -206,6 +208,8 @@ export const BudgetFormModal = ({ isOpen, onClose, budget, onSuccess }: BudgetFo
             }}
           >
             <VStack align="stretch" gap={4}>
+              {/* Error Alert */}
+              {mutationError && <ErrorAlert error={mutationError} />}
               {/* Budget Name */}
               <Field label="Budget Name" required errorText={errors.name?.message}>
                 <Input {...register('name')} placeholder="e.g., Monthly Groceries" />

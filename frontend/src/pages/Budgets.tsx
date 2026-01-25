@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Button } from '@chakra-ui/react';
-import { PageHeader, ConfirmDialog } from '@/components/common';
+import { PageHeader, ConfirmDialog, ErrorAlert } from '@/components/common';
 import { OverallProgressCard, BudgetList, BudgetFormModal } from '@/components/budgets';
 import { useDocumentTitle } from '@/hooks';
 import useBudgets from '@/hooks/api/useBudgets';
@@ -32,19 +32,12 @@ export const Budgets = () => {
   const isLoading = budgetsLoading;
   const error = budgetsError;
 
-  // Error state
+  // Query error state
   if (error) {
     return (
       <Box>
         <PageHeader title="Budgets" />
-        <Box bg="red.50" p={6} borderRadius="lg" border="1px solid" borderColor="red.200">
-          <Box color="red.800" fontWeight="semibold" mb={2}>
-            Error loading budgets
-          </Box>
-          <Box color="red.600" fontSize="sm">
-            {error instanceof Error ? error.message : 'An unexpected error occurred'}
-          </Box>
-        </Box>
+        <ErrorAlert title="Failed to load budgets" error={error} />
       </Box>
     );
   }
@@ -62,6 +55,11 @@ export const Budgets = () => {
 
   return (
     <Box>
+      {/* Delete Error Alert */}
+      {deleteMutation.isError && deleteMutation.error && (
+        <ErrorAlert title="Failed to delete budget" error={deleteMutation.error} />
+      )}
+
       <PageHeader
         title="Budgets"
         subtitle="Track and manage your spending goals"

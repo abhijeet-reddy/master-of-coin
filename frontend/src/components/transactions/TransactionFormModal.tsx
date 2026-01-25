@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Field } from '@/components/ui/field';
+import { ErrorAlert } from '@/components/common';
 import { SplitPaymentForm } from './SplitPaymentForm';
 import type {
   Account,
@@ -77,6 +78,7 @@ export const TransactionFormModal = ({
   const [isSplitEnabled, setIsSplitEnabled] = useState(false);
   const [splits, setSplits] = useState<TransactionSplit[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -129,6 +131,7 @@ export const TransactionFormModal = ({
 
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const dateValue = data.date || new Date().toISOString().split('T')[0];
       const formattedDate = new Date(dateValue + 'T00:00:00Z').toISOString();
@@ -155,6 +158,7 @@ export const TransactionFormModal = ({
       onClose();
     } catch (error) {
       console.error('Failed to submit transaction:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Failed to save transaction');
     } finally {
       setIsSubmitting(false);
     }
@@ -187,8 +191,16 @@ export const TransactionFormModal = ({
         </DialogHeader>
 
         <DialogBody>
-          <form id="transaction-form" onSubmit={handleSubmit(handleFormSubmit)}>
+          <form
+            id="transaction-form"
+            onSubmit={(e) => {
+              void handleSubmit(handleFormSubmit)(e);
+            }}
+          >
             <VStack align="stretch" gap={4}>
+              {/* Error Alert */}
+              {submitError && <ErrorAlert error={new Error(submitError)} />}
+
               {/* Title */}
               <Field label="Title" required errorText={errors.title?.message}>
                 <Input {...register('title')} placeholder="e.g., Grocery shopping" />

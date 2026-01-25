@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Field } from '@/components/ui/field';
+import { ErrorAlert } from '@/components/common';
 import { useCreatePerson, useUpdatePerson } from '@/hooks';
 import type { Person } from '@/types';
 
@@ -109,6 +110,7 @@ export const PersonFormModal = ({ isOpen, onClose, person, onSuccess }: PersonFo
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const mutationError = createMutation.error || updateMutation.error;
 
   return (
     <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="lg">
@@ -137,6 +139,8 @@ export const PersonFormModal = ({ isOpen, onClose, person, onSuccess }: PersonFo
             }}
           >
             <VStack align="stretch" gap={4}>
+              {/* Error Alert */}
+              {mutationError && <ErrorAlert error={mutationError} />}
               {/* Name */}
               <Field label="Name" required errorText={errors.name?.message}>
                 <Input {...register('name')} placeholder="e.g., John Doe" />

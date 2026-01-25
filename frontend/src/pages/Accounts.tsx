@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Button } from '@chakra-ui/react';
-import { PageHeader, ConfirmDialog } from '@/components/common';
+import { PageHeader, ConfirmDialog, ErrorAlert } from '@/components/common';
 import { TotalBalanceCard, AccountList, AccountFormModal } from '@/components/accounts';
 import { useDocumentTitle } from '@/hooks';
 import useAccounts from '@/hooks/api/useAccounts';
@@ -20,25 +20,23 @@ export const Accounts = () => {
   const { data: accounts = [], isLoading, error } = useAccounts();
   const deleteMutation = useDeleteAccount();
 
-  // Error state
+  // Query error state
   if (error) {
     return (
       <Box>
         <PageHeader title="Accounts" />
-        <Box bg="red.50" p={6} borderRadius="lg" border="1px solid" borderColor="red.200">
-          <Box color="red.800" fontWeight="semibold" mb={2}>
-            Error loading accounts
-          </Box>
-          <Box color="red.600" fontSize="sm">
-            {error instanceof Error ? error.message : 'An unexpected error occurred'}
-          </Box>
-        </Box>
+        <ErrorAlert title="Failed to load accounts" error={error} />
       </Box>
     );
   }
 
   return (
     <Box>
+      {/* Delete Error Alert */}
+      {deleteMutation.isError && deleteMutation.error && (
+        <ErrorAlert title="Failed to delete account" error={deleteMutation.error} />
+      )}
+
       <PageHeader
         title="Accounts"
         subtitle="Manage your financial accounts"

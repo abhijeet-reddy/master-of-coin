@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Box, Button, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { FiPlus, FiFilter } from 'react-icons/fi';
-import { PageHeader } from '@/components/common/PageHeader';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
 import {
   MonthNavigator,
   MonthSummary,
@@ -49,7 +48,11 @@ export const TransactionsPage = () => {
   const monthEnd = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
   monthEnd.setHours(23, 59, 59, 999);
 
-  const { data: transactionsData, isLoading } = useTransactions({
+  const {
+    data: transactionsData,
+    isLoading,
+    error,
+  } = useTransactions({
     start_date: monthStart.toISOString(),
     end_date: monthEnd.toISOString(),
   });
@@ -156,6 +159,15 @@ export const TransactionsPage = () => {
 
   if (isLoading) {
     return <LoadingSpinner />;
+  }
+
+  if (error) {
+    return (
+      <Box>
+        <PageHeader title="Transactions" />
+        <ErrorAlert title="Failed to load transactions" error={error} />
+      </Box>
+    );
   }
 
   return (

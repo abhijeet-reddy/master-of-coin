@@ -1,12 +1,11 @@
-import { Box, VStack, Text, Alert, Grid, GridItem } from '@chakra-ui/react';
+import { Box, VStack, Text, Grid, GridItem } from '@chakra-ui/react';
 import { useDocumentTitle } from '@/hooks/effects';
 import {
   useDashboardSummary,
   useEnrichedTransactions,
   useEnrichedBudgetStatuses,
 } from '@/hooks/api';
-import { PageHeader } from '@/components/common/PageHeader';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
 import {
   NetWorthWidget,
   BudgetProgress,
@@ -32,13 +31,7 @@ export default function Dashboard() {
     return (
       <Box>
         <PageHeader title="Dashboard" />
-        <Alert.Root status="error">
-          <Alert.Indicator />
-          <Alert.Title>Error loading dashboard</Alert.Title>
-          <Alert.Description>
-            {error instanceof Error ? error.message : 'Failed to load dashboard data'}
-          </Alert.Description>
-        </Alert.Root>
+        <ErrorAlert title="Error loading dashboard" error={error} />
       </Box>
     );
   }

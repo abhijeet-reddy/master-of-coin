@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  backend:
+  server:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: master-of-coin-backend
+    container_name: master-of-coin-server
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-master_of_coin}
       - JWT_SECRET=${JWT_SECRET:-change_this_to_a_secure_secret_min_32_chars}

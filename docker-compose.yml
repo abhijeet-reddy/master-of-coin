@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: master-of-coin-backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-master_of_coin}
+      - JWT_SECRET=${JWT_SECRET:-change_this_to_a_secure_secret_min_32_chars}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=13153
+      - RUST_LOG=${RUST_LOG:-info}
+    ports:
+      - "13153:13153"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
   postgres:
     image: postgres:16-alpine
     container_name: master-of-coin-db
@@ -11,12 +31,14 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   redis:
     image: redis:7-alpine
@@ -24,13 +46,15 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - ${DATA_DIR:-./data}/redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
-volumes:
-  postgres_data:
-  redis_data:
+networks:
+  app-network:
+    driver: bridge

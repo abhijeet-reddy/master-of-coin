@@ -332,52 +332,52 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Dashboard Page (`src/pages/DashboardPage.tsx`)
 
-- [ ] Create dashboard layout
-  - [ ] Grid layout with responsive columns
-  - [ ] Account summary section (horizontal scroll)
-  - [ ] Budget progress section (horizontal scroll)
-  - [ ] Net worth widget
-  - [ ] Spending chart
-  - [ ] Category breakdown
-  - [ ] Recent transactions list
-- [ ] Use `useDashboardSummary` hook
-- [ ] Handle loading states
-- [ ] Handle error states
-- [ ] Test dashboard rendering
+- [x] Create dashboard layout
+  - [x] Grid layout with responsive columns
+  - [x] Account summary section (horizontal scroll)
+  - [x] Budget progress section (horizontal scroll)
+  - [x] Net worth widget
+  - [x] Spending chart
+  - [x] Category breakdown
+  - [x] Recent transactions list
+- [x] Use `useDashboardSummary` hook
+- [x] Handle loading states
+- [x] Handle error states
+- [x] Test dashboard rendering
 
 ### Dashboard Widgets
 
-- [ ] `NetWorthWidget.tsx`
-  - [ ] Display net worth amount
-  - [ ] Show change percentage
-  - [ ] Up/down arrow indicator
-  - [ ] Icon for visual appeal
-- [ ] `AccountSummary.tsx`
-  - [ ] Horizontal scrollable cards
-  - [ ] Account icon + name
-  - [ ] Balance display
-  - [ ] Account type indicator
-- [ ] `BudgetProgress.tsx`
-  - [ ] Horizontal scrollable cards
-  - [ ] Category icon + name
-  - [ ] Progress bar
-  - [ ] Spent / Limit display
-  - [ ] Warning for over-budget
-- [ ] `SpendingChart.tsx`
-  - [ ] Line chart with Recharts
-  - [ ] Monthly spending trend
-  - [ ] Responsive sizing
-- [ ] `CategoryBreakdown.tsx`
-  - [ ] Pie chart or bar chart
-  - [ ] Category percentages
-  - [ ] Color-coded categories
-- [ ] `RecentTransactions.tsx`
-  - [ ] List of recent 5-10 transactions
-  - [ ] Transaction icon + title
-  - [ ] Amount with color
-  - [ ] Date display
-  - [ ] Link to view all
-- [ ] Test all widgets with mock data
+- [x] `NetWorthWidget.tsx`
+  - [x] Display net worth amount
+  - [x] Show change percentage
+  - [x] Up/down arrow indicator
+  - [x] Icon for visual appeal
+- [x] `AccountSummary.tsx`
+  - [x] Horizontal scrollable cards
+  - [x] Account icon + name
+  - [x] Balance display
+  - [x] Account type indicator
+- [x] `BudgetProgress.tsx`
+  - [x] Horizontal scrollable cards
+  - [x] Category icon + name
+  - [x] Progress bar
+  - [x] Spent / Limit display
+  - [x] Warning for over-budget
+- [x] `SpendingChart.tsx`
+  - [x] Line chart with Recharts
+  - [x] Monthly spending trend
+  - [x] Responsive sizing
+- [x] `CategoryBreakdown.tsx`
+  - [x] Pie chart or bar chart
+  - [x] Category percentages
+  - [x] Color-coded categories
+- [x] `RecentTransactions.tsx`
+  - [x] List of recent 5-10 transactions
+  - [x] Transaction icon + title
+  - [x] Amount with color
+  - [x] Date display
+  - [x] Link to view all
+- [x] Test all widgets with mock data
 
 ---
 
@@ -385,56 +385,56 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Transactions Page (`src/pages/TransactionsPage.tsx`)
 
-- [ ] Create page layout
-  - [ ] Month navigation tabs (horizontal scroll)
-  - [ ] Month summary (spent, income, net)
-  - [ ] Transaction list grouped by date
-  - [ ] Floating action button for add
-- [ ] Use `useTransactions` hook with filters
-- [ ] Implement month navigation
-- [ ] Handle loading states
-- [ ] Handle empty states
-- [ ] Test page functionality
+- [x] Create page layout
+  - [x] Month navigation tabs (horizontal scroll)
+  - [x] Month summary (spent, income, net)
+  - [x] Transaction list grouped by date
+  - [x] Floating action button for add
+- [x] Use `useTransactions` hook with filters
+- [x] Implement month navigation
+- [x] Handle loading states
+- [x] Handle empty states
+- [x] Test page functionality
 
 ### Transaction Components
 
-- [ ] `TransactionList.tsx`
-  - [ ] Group transactions by date
-  - [ ] Date headers with daily totals
-  - [ ] Transaction rows
-  - [ ] Infinite scroll or pagination
-  - [ ] Loading skeleton
-- [ ] `TransactionRow.tsx`
-  - [ ] Category icon
-  - [ ] Transaction title
-  - [ ] Account indicator
-  - [ ] Amount with color (red/green)
-  - [ ] Split payment indicator
-  - [ ] Click to view details
-- [ ] `TransactionFilters.tsx`
-  - [ ] Account filter
-  - [ ] Category filter
-  - [ ] Date range filter
-  - [ ] Amount range filter
-  - [ ] Clear filters button
-- [ ] `TransactionFormModal.tsx`
-  - [ ] Modal with form
-  - [ ] Title input
-  - [ ] Amount input
-  - [ ] Account select
-  - [ ] Category select
-  - [ ] Date picker
-  - [ ] Notes textarea
-  - [ ] Split payment toggle
-  - [ ] Save/Cancel buttons
-- [ ] `SplitPaymentForm.tsx`
-  - [ ] Person selector
-  - [ ] Amount input per person
-  - [ ] Add/remove person buttons
-  - [ ] My share calculation
-  - [ ] Total split display
-  - [ ] Validation (splits <= total)
-- [ ] Test all transaction components
+- [x] `TransactionList.tsx`
+  - [x] Group transactions by date
+  - [x] Date headers with daily totals
+  - [x] Transaction rows
+  - [x] Infinite scroll or pagination
+  - [x] Loading skeleton
+- [x] `TransactionRow.tsx`
+  - [x] Category icon
+  - [x] Transaction title
+  - [x] Account indicator
+  - [x] Amount with color (red/green)
+  - [x] Split payment indicator
+  - [x] Click to view details
+- [x] `TransactionFilters.tsx`
+  - [x] Account filter
+  - [x] Category filter
+  - [x] Date range filter
+  - [x] Amount range filter
+  - [x] Clear filters button
+- [x] `TransactionFormModal.tsx`
+  - [x] Modal with form
+  - [x] Title input
+  - [x] Amount input
+  - [x] Account select
+  - [x] Category select
+  - [x] Date picker
+  - [x] Notes textarea
+  - [x] Split payment toggle
+  - [x] Save/Cancel buttons
+- [x] `SplitPaymentForm.tsx`
+  - [x] Person selector
+  - [x] Amount input per person
+  - [x] Add/remove person buttons
+  - [x] My share calculation
+  - [x] Total split display
+  - [x] Validation (splits <= total)
+- [x] Test all transaction components
 
 ---
 
@@ -442,34 +442,34 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Accounts Page (`src/pages/AccountsPage.tsx`)
 
-- [ ] Create page layout
-  - [ ] Page header with add button
-  - [ ] Account list/grid
-  - [ ] Total balance summary
-- [ ] Use `useAccounts` hook
-- [ ] Handle loading/error states
-- [ ] Test page functionality
+- [x] Create page layout
+  - [x] Page header with add button
+  - [x] Account list/grid
+  - [x] Total balance summary
+- [x] Use `useAccounts` hook
+- [x] Handle loading/error states
+- [x] Test page functionality
 
 ### Account Components
 
-- [ ] `AccountList.tsx`
-  - [ ] List of account cards
-  - [ ] Responsive grid layout
-- [ ] `AccountCard.tsx`
-  - [ ] Account icon + name
-  - [ ] Account type badge
-  - [ ] Balance display
-  - [ ] Recent activity sparkline (optional)
-  - [ ] Edit/delete buttons
-  - [ ] Click to view details
-- [ ] `AccountFormModal.tsx`
-  - [ ] Account name input
-  - [ ] Account type select
-  - [ ] Currency select
-  - [ ] Notes textarea
-  - [ ] Save/Cancel buttons
-  - [ ] Validation
-- [ ] Test all account components
+- [x] `AccountList.tsx`
+  - [x] List of account cards
+  - [x] Responsive grid layout
+- [x] `AccountCard.tsx`
+  - [x] Account icon + name
+  - [x] Account type badge
+  - [x] Balance display
+  - [x] Recent activity sparkline (optional)
+  - [x] Edit/delete buttons
+  - [x] Click to view details
+- [x] `AccountFormModal.tsx`
+  - [x] Account name input
+  - [x] Account type select
+  - [x] Currency select
+  - [x] Notes textarea
+  - [x] Save/Cancel buttons
+  - [x] Validation
+- [x] Test all account components
 
 ---
 
@@ -477,39 +477,39 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Budgets Page (`src/pages/BudgetsPage.tsx`)
 
-- [ ] Create page layout
-  - [ ] Month selector
-  - [ ] Overall progress summary
-  - [ ] Budget list
-  - [ ] Add budget button
-- [ ] Use `useBudgets` hook
-- [ ] Calculate budget statuses
-- [ ] Handle loading/error states
-- [ ] Test page functionality
+- [x] Create page layout
+  - [x] Month selector
+  - [x] Overall progress summary
+  - [x] Budget list
+  - [x] Add budget button
+- [x] Use `useBudgets` hook
+- [x] Calculate budget statuses
+- [x] Handle loading/error states
+- [x] Test page functionality
 
 ### Budget Components
 
-- [ ] `BudgetList.tsx`
-  - [ ] List of budget cards
-  - [ ] Sort by status/name
-- [ ] `BudgetCard.tsx`
-  - [ ] Category icon + name
-  - [ ] Progress bar with percentage
-  - [ ] Spent / Limit display
-  - [ ] Days remaining
-  - [ ] Warning indicator for over-budget
-  - [ ] Edit/delete buttons
-- [ ] `BudgetFormModal.tsx`
-  - [ ] Budget name input
-  - [ ] Filter configuration
-    - [ ] Category selector
-    - [ ] Account selector (optional)
-    - [ ] Date range
-  - [ ] Limit amount input
-  - [ ] Period selector (monthly, weekly, etc.)
-  - [ ] Save/Cancel buttons
-  - [ ] Validation
-- [ ] Test all budget components
+- [x] `BudgetList.tsx`
+  - [x] List of budget cards
+  - [x] Sort by status/name
+- [x] `BudgetCard.tsx`
+  - [x] Category icon + name
+  - [x] Progress bar with percentage
+  - [x] Spent / Limit display
+  - [x] Days remaining
+  - [x] Warning indicator for over-budget
+  - [x] Edit/delete buttons
+- [x] `BudgetFormModal.tsx`
+  - [x] Budget name input
+  - [x] Filter configuration
+    - [x] Category selector
+    - [x] Account selector (optional)
+    - [x] Date range
+  - [x] Limit amount input
+  - [x] Period selector (monthly, weekly, etc.)
+  - [x] Save/Cancel buttons
+  - [x] Validation
+- [x] Test all budget components
 
 ---
 
@@ -517,48 +517,48 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### People Page (`src/pages/PeoplePage.tsx`)
 
-- [ ] Create page layout
-  - [ ] Debt summary card
-  - [ ] People list
-  - [ ] Add person button
-- [ ] Use `usePeople` hook
-- [ ] Calculate debt totals
-- [ ] Handle loading/error states
-- [ ] Test page functionality
+- [x] Create page layout
+  - [x] Debt summary card
+  - [x] People list
+  - [x] Add person button
+- [x] Use `usePeople` hook
+- [x] Calculate debt totals
+- [x] Handle loading/error states
+- [x] Test page functionality
 
 ### People Components
 
-- [ ] `PeopleList.tsx`
-  - [ ] List of person cards
-  - [ ] Sort by debt amount
-- [ ] `PersonCard.tsx`
-  - [ ] Person avatar/icon
-  - [ ] Person name
-  - [ ] Email/phone display
-  - [ ] Debt amount (owes me / I owe)
-  - [ ] Recent transactions list
-  - [ ] Settle up button
-  - [ ] Edit/delete buttons
-- [ ] `PersonFormModal.tsx`
-  - [ ] Name input
-  - [ ] Email input
-  - [ ] Phone input
-  - [ ] Notes textarea
-  - [ ] Save/Cancel buttons
-  - [ ] Validation
-- [ ] `DebtSummary.tsx`
-  - [ ] Total owed to me
-  - [ ] Total I owe
-  - [ ] Net amount
-  - [ ] Visual indicator
-- [ ] `SettleDebtModal.tsx`
-  - [ ] Person name display
-  - [ ] Amount owed
-  - [ ] Settlement amount input
-  - [ ] Settlement date
-  - [ ] Notes
-  - [ ] Confirm button
-- [ ] Test all people components
+- [x] `PeopleList.tsx`
+  - [x] List of person cards
+  - [x] Sort by debt amount
+- [x] `PersonCard.tsx`
+  - [x] Person avatar/icon
+  - [x] Person name
+  - [x] Email/phone display
+  - [x] Debt amount (owes me / I owe)
+  - [x] Recent transactions list
+  - [x] Settle up button
+  - [x] Edit/delete buttons
+- [x] `PersonFormModal.tsx`
+  - [x] Name input
+  - [x] Email input
+  - [x] Phone input
+  - [x] Notes textarea
+  - [x] Save/Cancel buttons
+  - [x] Validation
+- [x] `DebtSummary.tsx`
+  - [x] Total owed to me
+  - [x] Total I owe
+  - [x] Net amount
+  - [x] Visual indicator
+- [x] `SettleDebtModal.tsx`
+  - [x] Person name display
+  - [x] Amount owed
+  - [x] Settlement amount input
+  - [x] Settlement date
+  - [x] Notes
+  - [x] Confirm button
+- [x] Test all people components
 
 ---
 
@@ -566,36 +566,36 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Reports Page (`src/pages/ReportsPage.tsx`)
 
-- [ ] Create page layout
-  - [ ] Report type selector
-  - [ ] Period selector
-  - [ ] Generate button
-  - [ ] Export buttons (PDF, CSV)
-  - [ ] Report display area
-- [ ] Implement report generation
-- [ ] Handle loading states
-- [ ] Test page functionality
+- [x] Create page layout
+  - [x] Report type selector
+  - [x] Period selector
+  - [x] Generate button
+  - [x] Export buttons (PDF, CSV)
+  - [x] Report display area
+- [x] Implement report generation
+- [x] Handle loading states
+- [x] Test page functionality
 
 ### Report Components
 
-- [ ] `MonthlyReport.tsx`
-  - [ ] Income vs expenses chart
-  - [ ] Category breakdown
-  - [ ] Spending trends
-  - [ ] Key insights
-- [ ] `CategoryReport.tsx`
-  - [ ] Category spending analysis
-  - [ ] Comparison charts
-  - [ ] Trends over time
-- [ ] `BudgetReport.tsx`
-  - [ ] Budget performance
-  - [ ] Over/under budget analysis
-  - [ ] Recommendations
-- [ ] `NetWorthReport.tsx`
-  - [ ] Net worth trend chart
-  - [ ] Asset/liability breakdown
-  - [ ] Growth analysis
-- [ ] Test all report components
+- [x] `MonthlyReport.tsx`
+  - [x] Income vs expenses chart
+  - [x] Category breakdown
+  - [x] Spending trends
+  - [x] Key insights
+- [x] `CategoryReport.tsx`
+  - [x] Category spending analysis
+  - [x] Comparison charts
+  - [x] Trends over time
+- [x] `BudgetReport.tsx`
+  - [x] Budget performance
+  - [x] Over/under budget analysis
+  - [x] Recommendations
+- [x] `NetWorthReport.tsx`
+  - [x] Net worth trend chart
+  - [x] Asset/liability breakdown
+  - [x] Growth analysis
+- [x] Test all report components
 
 ---
 
@@ -603,13 +603,13 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Settings Page (`src/pages/SettingsPage.tsx`)
 
-- [ ] Create settings layout
-  - [ ] Profile settings
-  - [ ] Preferences
-  - [ ] Security settings
-  - [ ] About section
-- [ ] Implement settings updates
-- [ ] Test settings functionality
+- [x] Create settings layout
+  - [x] Profile settings
+  - [x] Preferences
+  - [x] Security settings
+  - [x] About section
+- [x] Implement settings updates
+- [x] Test settings functionality
 
 ---
 
@@ -694,28 +694,28 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Mobile Optimizations
 
-- [ ] Test all pages on mobile viewport
-- [ ] Implement mobile-specific layouts
-  - [ ] Drawer navigation instead of sidebar
-  - [ ] Stacked layouts instead of grids
-  - [ ] Touch-friendly buttons (min 44x44px)
-- [ ] Test horizontal scrolling sections
-- [ ] Test form inputs on mobile
-- [ ] Verify FAB positioning
+- [x] Test all pages on mobile viewport
+- [x] Implement mobile-specific layouts
+  - [x] Drawer navigation instead of sidebar
+  - [x] Stacked layouts instead of grids
+  - [x] Touch-friendly buttons (min 44x44px)
+- [x] Test horizontal scrolling sections
+- [x] Test form inputs on mobile
+- [x] Verify FAB positioning
 
 ### Tablet Optimizations
 
-- [ ] Test all pages on tablet viewport
-- [ ] Adjust grid columns for tablet
-- [ ] Test navigation on tablet
-- [ ] Verify touch interactions
+- [x] Test all pages on tablet viewport
+- [x] Adjust grid columns for tablet
+- [x] Test navigation on tablet
+- [x] Verify touch interactions
 
 ### Desktop Optimizations
 
-- [ ] Test all pages on desktop viewport
-- [ ] Verify sidebar navigation
-- [ ] Test hover states
-- [ ] Verify keyboard navigation
+- [x] Test all pages on desktop viewport
+- [x] Verify sidebar navigation
+- [x] Test hover states
+- [x] Verify keyboard navigation
 
 ---
 
@@ -723,34 +723,34 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### Error Boundaries
 
-- [ ] Implement global error boundary
-- [ ] Add error boundaries for major sections
-- [ ] Create error fallback UI
-- [ ] Test error scenarios
+- [x] Implement global error boundary
+- [x] Add error boundaries for major sections
+- [x] Create error fallback UI
+- [x] Test error scenarios
 
 ### Loading States
 
-- [ ] Implement skeleton loaders for:
-  - [ ] Dashboard widgets
-  - [ ] Transaction list
-  - [ ] Account cards
-  - [ ] Budget cards
-- [ ] Add loading spinners for:
-  - [ ] Form submissions
-  - [ ] Data mutations
-  - [ ] Page transitions
-- [ ] Test loading states
+- [x] Implement skeleton loaders for:
+  - [x] Dashboard widgets
+  - [x] Transaction list
+  - [x] Account cards
+  - [x] Budget cards
+- [x] Add loading spinners for:
+  - [x] Form submissions
+  - [x] Data mutations
+  - [x] Page transitions
+- [x] Test loading states
 
 ### Empty States
 
-- [ ] Create empty state components for:
-  - [ ] No transactions
-  - [ ] No accounts
-  - [ ] No budgets
-  - [ ] No people
-  - [ ] No data in reports
-- [ ] Add call-to-action buttons
-- [ ] Test empty states
+- [x] Create empty state components for:
+  - [x] No transactions
+  - [x] No accounts
+  - [x] No budgets
+  - [x] No people
+  - [x] No data in reports
+- [x] Add call-to-action buttons
+- [x] Test empty states
 
 ---
 
@@ -829,28 +829,28 @@ This checklist covers the React + TypeScript frontend implementation using Vite,
 
 ### ARIA Labels
 
-- [ ] Add aria-labels to all icon buttons
-- [ ] Add aria-labels to interactive elements
-- [ ] Test with screen reader
+- [x] Add aria-labels to all icon buttons
+- [x] Add aria-labels to interactive elements
+- [x] Test with screen reader
 
 ### Keyboard Navigation
 
-- [ ] Test tab navigation through forms
-- [ ] Test keyboard shortcuts (if any)
-- [ ] Ensure focus indicators visible
-- [ ] Test modal focus trapping
+- [x] Test tab navigation through forms
+- [x] Test keyboard shortcuts (if any)
+- [x] Ensure focus indicators visible
+- [x] Test modal focus trapping
 
 ### Color Contrast
 
-- [ ] Verify color contrast ratios (WCAG AA)
-- [ ] Test in dark mode
-- [ ] Ensure text readability
+- [x] Verify color contrast ratios (WCAG AA)
+- [x] Test in dark mode
+- [x] Ensure text readability
 
 ### Screen Reader Support
 
-- [ ] Test with VoiceOver (Mac) or NVDA (Windows)
-- [ ] Add descriptive labels
-- [ ] Test form error announcements
+- [x] Test with VoiceOver (Mac) or NVDA (Windows)
+- [x] Add descriptive labels
+- [x] Test form error announcements
 
 ---
 

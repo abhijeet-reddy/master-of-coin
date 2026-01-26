@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Budget, BudgetStatus } from '@/types';
+import type { Budget, BudgetStatusType } from '@/types';
 
 /**
  * Calculate budget status from budget data
@@ -10,7 +10,7 @@ import type { Budget, BudgetStatus } from '@/types';
  */
 export default function useBudgetStatus(budget?: Budget) {
   const status = useMemo((): {
-    status: BudgetStatus;
+    status: BudgetStatusType;
     percentage: number;
     isOverBudget: boolean;
   } => {
@@ -27,7 +27,7 @@ export default function useBudgetStatus(budget?: Budget) {
 
     const percentage = (spent / limit) * 100;
 
-    let budgetStatus: BudgetStatus = 'OK';
+    let budgetStatus: BudgetStatusType = 'OK';
     if (percentage >= 100) {
       budgetStatus = 'EXCEEDED';
     } else if (percentage >= 80) {

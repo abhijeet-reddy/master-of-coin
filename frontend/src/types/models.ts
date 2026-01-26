@@ -207,6 +207,12 @@ export interface CategoryBreakdownItem {
   percentage: number;
 }
 
+export interface SpendingTrendPoint {
+  date: string;
+  amount: number;
+  month?: string;
+}
+
 export interface DashboardSummary {
   net_worth: string;
   recent_transactions: Transaction[];

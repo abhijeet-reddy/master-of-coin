@@ -25,9 +25,14 @@
 
 use crate::{AppState, handlers, middleware::auth::require_auth};
 use axum::{
-    Router, middleware,
+    Router,
+    http::StatusCode,
+    middleware,
+    response::{Html, IntoResponse, Response},
     routing::{get, post, put},
 };
+use std::path::PathBuf;
+use tower_http::services::{ServeDir, ServeFile};
 
 /// Creates the main application router with all API routes.
 ///
@@ -115,8 +120,21 @@ pub fn create_router(state: AppState) -> Router {
             require_auth,
         ));
 
-    // Combine all routes under /api/v1 prefix
-    Router::new()
+    // API routes under /api/v1 prefix
+    let api_routes = Router::new()
         .nest("/api/v1", auth_routes.merge(protected_routes))
-        .with_state(state)
+        .with_state(state.clone());
+
+    // Static file serving for frontend with SPA fallback
+    // ServeDir will serve files if they exist, otherwise fall back to index.html for SPA routing
+    let static_dir = PathBuf::from("/app/static");
+    let index_file = PathBuf::from("/app/static/index.html");
+
+    let serve_dir = ServeDir::new(&static_dir)
+        .append_index_html_on_directories(true)
+        .not_found_service(ServeFile::new(&index_file));
+
+    // Combine API routes with static file serving
+    // API routes take precedence, then ServeDir handles everything else (including SPA fallback)
+    Router::new().merge(api_routes).fallback_service(serve_dir)
 }

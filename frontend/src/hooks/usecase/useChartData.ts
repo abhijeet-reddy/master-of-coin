@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { SpendingTrendPoint, CategoryBreakdown } from '@/types';
+import type { SpendingTrendPoint, CategoryBreakdownItem } from '@/types';
 
 /**
  * Transform data for chart visualization
@@ -10,17 +10,17 @@ import type { SpendingTrendPoint, CategoryBreakdown } from '@/types';
  */
 export default function useChartData(data: {
   spendingTrend?: SpendingTrendPoint[];
-  categoryBreakdown?: CategoryBreakdown[];
+  categoryBreakdown?: CategoryBreakdownItem[];
 }) {
   const chartData = useMemo(() => {
     const trendData = (data.spendingTrend || []).map((point) => ({
       month: point.month,
-      amount: parseFloat(point.amount) || 0,
+      amount: point.amount,
     }));
 
     const categoryData = (data.categoryBreakdown || []).map((cat) => ({
-      name: cat.category_name,
-      value: parseFloat(cat.amount) || 0,
+      name: cat.category_name || 'Uncategorized',
+      value: parseFloat(cat.total) || 0,
       percentage: cat.percentage,
       color: `hsl(${Math.random() * 360}, 70%, 50%)`,
     }));

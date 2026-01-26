@@ -27,6 +27,9 @@ Thumbs.db
 *.db
 *.sqlite
 
+# Docker volumes (bind mounts)
+/data/
+
 # Logs
 *.log
 npm-debug.log*

@@ -19,7 +19,7 @@ export const SpendingChart = ({ data }: SpendingChartProps) => {
   // Transform data for Recharts
   const chartData = data.map((point) => ({
     month: point.month,
-    amount: parseFloat(point.amount),
+    amount: point.amount,
   }));
 
   // Format currency for tooltip

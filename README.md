@@ -1,6 +1,6 @@
 # Master of Coin
 
-A personal finance tracker application designed for 1-2 users to manage their finances comprehensively, including multi-account management, transaction tracking with split payments, debt tracking, and budget management.
+A personal finance tracker application to manage finances comprehensively, including multi-account management, transaction tracking with split payments, debt tracking, and budget management.
 
 ## Features
 

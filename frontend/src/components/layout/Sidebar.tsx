@@ -9,6 +9,8 @@ import {
   MdAssessment,
   MdSettings,
 } from 'react-icons/md';
+import { useAuth } from '@/contexts/AuthContext';
+import { getInitials } from '@/utils/formatters/text';
 
 interface SidebarProps {
   onClose?: () => void;
@@ -49,6 +51,8 @@ const NavItem = ({ icon: IconComponent, label, to, onClick }: NavItemProps) => {
 };
 
 export const Sidebar = ({ onClose }: SidebarProps) => {
+  const { user } = useAuth();
+
   return (
     <Box
       h="full"
@@ -80,32 +84,34 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
       </VStack>
 
       {/* User Profile Section */}
-      <Box px={4} py={4} borderTopWidth="1px" borderColor="gray.200">
-        <HStack gap={3}>
-          <Box
-            w="32px"
-            h="32px"
-            borderRadius="full"
-            bg="brand.500"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            color="white"
-            fontSize="sm"
-            fontWeight="medium"
-          >
-            U
-          </Box>
-          <Box flex={1}>
-            <Text fontSize="sm" fontWeight="medium">
-              User Name
-            </Text>
-            <Text fontSize="xs" color="gray.500">
-              user@example.com
-            </Text>
-          </Box>
-        </HStack>
-      </Box>
+      {user && (
+        <Box px={4} py={4} borderTopWidth="1px" borderColor="gray.200">
+          <HStack gap={3}>
+            <Box
+              w="32px"
+              h="32px"
+              borderRadius="full"
+              bg="brand.500"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              color="white"
+              fontSize="sm"
+              fontWeight="medium"
+            >
+              {getInitials(user.name)}
+            </Box>
+            <Box flex={1}>
+              <Text fontSize="sm" fontWeight="medium">
+                {user.name}
+              </Text>
+              <Text fontSize="xs" color="gray.500">
+                {user.email}
+              </Text>
+            </Box>
+          </HStack>
+        </Box>
+      )}
     </Box>
   );
 };

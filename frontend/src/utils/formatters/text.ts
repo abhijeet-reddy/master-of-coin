@@ -30,3 +30,19 @@ export const formatEnumString = (enumString: string): string => {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
+
+/**
+ * Get initials from a full name
+ * @param name - Full name (e.g., 'John Doe')
+ * @returns Initials (e.g., 'JD')
+ */
+export const getInitials = (name: string): string => {
+  if (!name) return 'M';
+
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};

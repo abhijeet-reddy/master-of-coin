@@ -1,0 +1,119 @@
+# Agent Guidelines
+
+## 🎯 Purpose
+
+This file serves as an index and navigation guide for AI agents working on the Master of Coin project. It helps AI agents efficiently locate and apply project-specific rules, patterns, and best practices by directing them to the appropriate rule files based on their current task.
+
+## ⚠️ Important: Read Only What You Need
+
+**DO NOT read all rule files just because they exist.** Each file is comprehensive and reading unnecessary files wastes time and context. Only read the specific rule file that's relevant to your current task.
+
+## 📚 Available Rule Files
+
+### [`.agents/rules/react-rules.md`](.agents/rules/react-rules.md)
+
+**When to read:** Working on React/TypeScript frontend code
+
+**Read this when you're:**
+
+- Creating or modifying React components
+- Working with hooks (useState, useEffect, custom hooks)
+- Implementing React Query for data fetching
+- Managing component state or props
+- Refactoring frontend code
+- Reviewing frontend code quality
+
+**Don't read if:** You're working on backend Rust code, database queries, or Git operations only.
+
+---
+
+### [`.agents/rules/rust-rules.md`](.agents/rules/rust-rules.md)
+
+**When to read:** Working on Rust backend code
+
+**Read this when you're:**
+
+- Creating or modifying Rust services, handlers, or models
+- Working with Diesel ORM and database queries
+- Implementing error handling in Rust
+- Writing async/await code
+- Setting up API endpoints
+- Working with authentication/authorization
+- Writing tests for backend code
+
+**Don't read if:** You're working on frontend React code or just making Git commits.
+
+---
+
+### [`.agents/rules/git-rules.md`](.agents/rules/git-rules.md)
+
+**When to read:** Making commits or managing Git workflow
+
+**Read this when you're:**
+
+- Writing commit messages
+- Creating branches
+- Preparing to commit code
+- Creating pull requests
+- Closing GitHub issues via commits
+- Setting up Git workflow
+
+**Don't read if:** You're actively coding and not ready to commit yet.
+
+---
+
+## 🔄 Workflow Decision Tree
+
+```
+Are you writing code?
+├─ Yes → What language?
+│  ├─ React/TypeScript → Read .agents/rules/react-rules.md
+│  └─ Rust → Read .agents/rules/rust-rules.md
+│
+└─ No → Are you committing/managing Git?
+   ├─ Yes → Read .agents/rules/git-rules.md
+   └─ No → Don't read any rules yet
+```
+
+## 💡 Best Practices for Using These Rules
+
+### 1. **Just-In-Time Reading**
+
+Only read a rule file when you're about to work on that specific technology. Don't pre-read all files.
+
+### 2. **Reference, Don't Memorize**
+
+These files are references. Consult them when needed, but don't try to memorize everything.
+
+### 3. **Context-Specific**
+
+If you're working on multiple technologies in one session:
+
+- Read React rules when working on components
+- Switch to Rust rules when working on backend
+- Check Git rules before committing
+
+### 4. **Quick Lookups**
+
+Each rule file has a table of contents and is organized by topic. Use it to quickly find what you need.
+
+### 5. **Checklist Usage**
+
+Each rule file ends with a checklist. Use these before:
+
+- Committing React code → React checklist
+- Committing Rust code → Rust checklist
+- Making Git commits → Git checklist
+
+## 📝 Updating These Rules
+
+These rules should evolve with the project. If you discover a pattern or practice that should be documented:
+
+1. Discuss with the team
+2. Update the relevant rule file
+3. Keep examples practical and project-specific
+4. Maintain the "when to read" guidance in this index
+
+---
+
+**Remember: Quality over quantity. Read what you need, when you need it.**

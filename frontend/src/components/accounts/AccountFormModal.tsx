@@ -18,6 +18,7 @@ import { ErrorAlert } from '@/components/common';
 import useCreateAccount from '@/hooks/api/useCreateAccount';
 import useUpdateAccount from '@/hooks/api/useUpdateAccount';
 import type { Account } from '@/types';
+import { DEFAULT_CURRENCY } from '@/constants';
 
 // Validation schema
 const accountSchema = z.object({
@@ -55,7 +56,7 @@ export const AccountFormModal = ({
     defaultValues: {
       name: '',
       type: 'CHECKING',
-      currency: 'USD',
+      currency: DEFAULT_CURRENCY,
       notes: '',
     },
   });
@@ -74,7 +75,7 @@ export const AccountFormModal = ({
         reset({
           name: '',
           type: 'CHECKING',
-          currency: 'USD',
+          currency: DEFAULT_CURRENCY,
           notes: '',
         });
       }
@@ -174,7 +175,7 @@ export const AccountFormModal = ({
               <Field label="Currency" required errorText={errors.currency?.message}>
                 <Input
                   {...register('currency')}
-                  placeholder="USD"
+                  placeholder={DEFAULT_CURRENCY}
                   maxLength={3}
                   style={{ textTransform: 'uppercase' }}
                 />

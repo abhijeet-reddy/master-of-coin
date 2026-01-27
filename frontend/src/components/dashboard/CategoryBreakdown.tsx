@@ -1,6 +1,7 @@
 import { Box, Card, Text } from '@chakra-ui/react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import type { CategoryBreakdownItem } from '@/types/models';
+import { formatCurrency } from '../../utils/formatters/currency';
 
 interface CategoryBreakdownProps {
   data: CategoryBreakdownItem[];
@@ -28,16 +29,6 @@ export const CategoryBreakdown = ({ data }: CategoryBreakdownProps) => {
     percentage: item.percentage,
     color: COLORS[index % COLORS.length],
   }));
-
-  // Format currency for tooltip
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {

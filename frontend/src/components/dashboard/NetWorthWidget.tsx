@@ -1,5 +1,7 @@
 import { Box, Card, HStack, VStack, Text, Icon } from '@chakra-ui/react';
-import { FiTrendingUp, FiTrendingDown, FiDollarSign } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
+import { FaEuroSign } from 'react-icons/fa';
+import { formatCurrency } from '../../utils/formatters/currency';
 
 interface NetWorthWidgetProps {
   netWorth: string;
@@ -9,17 +11,6 @@ interface NetWorthWidgetProps {
 export const NetWorthWidget = ({ netWorth, changePercentage }: NetWorthWidgetProps) => {
   const isPositive = changePercentage !== undefined && changePercentage >= 0;
   const hasChange = changePercentage !== undefined;
-
-  // Format net worth for display
-  const formatCurrency = (value: string) => {
-    const num = parseFloat(value);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  };
 
   return (
     <Card.Root
@@ -43,7 +34,7 @@ export const NetWorthWidget = ({ netWorth, changePercentage }: NetWorthWidgetPro
                 justifyContent="center"
               >
                 <Icon fontSize="2xl" color="white">
-                  <FiDollarSign />
+                  <FaEuroSign />
                 </Icon>
               </Box>
               <Text fontSize="lg" fontWeight="medium" opacity={0.9}>
@@ -71,7 +62,7 @@ export const NetWorthWidget = ({ netWorth, changePercentage }: NetWorthWidgetPro
           {/* Net worth amount */}
           <Box>
             <Text fontSize={{ base: '3xl', md: '4xl' }} fontWeight="bold" lineHeight="1">
-              {formatCurrency(netWorth)}
+              {formatCurrency(parseFloat(netWorth))}
             </Text>
             {hasChange && (
               <Text fontSize="sm" opacity={0.8} mt={1}>

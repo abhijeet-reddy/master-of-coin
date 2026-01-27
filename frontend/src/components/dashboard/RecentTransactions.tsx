@@ -4,22 +4,13 @@ import { Link } from 'react-router-dom';
 import type { EnrichedTransaction } from '@/types/models';
 import { EmptyState } from '@/components/common';
 import { format } from 'date-fns';
+import { formatCurrency } from '../../utils/formatters/currency';
 
 interface RecentTransactionsProps {
   transactions: EnrichedTransaction[];
 }
 
 export const RecentTransactions = ({ transactions }: RecentTransactionsProps) => {
-  const formatCurrency = (value: string) => {
-    const num = parseFloat(value);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  };
-
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'MMM dd, yyyy');
@@ -150,7 +141,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
                       color={isNegative ? 'red.600' : 'green.600'}
                     >
                       {isNegative ? '-' : '+'}
-                      {formatCurrency(Math.abs(amount).toString())}
+                      {formatCurrency(Math.abs(amount))}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
                       {formatDate(transaction.date)}

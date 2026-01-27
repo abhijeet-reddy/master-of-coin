@@ -1,12 +1,6 @@
 import { Badge, Box, HStack, Icon, Text, VStack } from '@chakra-ui/react';
-import {
-  FiShoppingCart,
-  FiHome,
-  FiCoffee,
-  FiTrendingUp,
-  FiDollarSign,
-  FiUsers,
-} from 'react-icons/fi';
+import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers } from 'react-icons/fi';
+import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 
@@ -22,10 +16,10 @@ const getCategoryIcon = (iconName?: string) => {
     home: FiHome,
     food: FiCoffee,
     income: FiTrendingUp,
-    other: FiDollarSign,
+    other: FaEuroSign,
   };
 
-  return iconMap[iconName?.toLowerCase() || 'other'] || FiDollarSign;
+  return iconMap[iconName?.toLowerCase() || 'other'] || FaEuroSign;
 };
 
 export const TransactionRow = ({ transaction, onClick }: TransactionRowProps) => {

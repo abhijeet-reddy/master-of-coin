@@ -1,7 +1,9 @@
 import { Box, Card, HStack, VStack, Text, Icon, Badge } from '@chakra-ui/react';
-import { FiCreditCard, FiDollarSign, FiTrendingUp, FiHome, FiShoppingBag } from 'react-icons/fi';
+import { FiCreditCard, FiTrendingUp, FiHome, FiShoppingBag } from 'react-icons/fi';
+import { FaEuroSign } from 'react-icons/fa';
 import type { Account, AccountType } from '@/types/models';
 import { EmptyState } from '@/components/common';
+import { formatCurrency } from '../../utils/formatters/currency';
 
 interface AccountSummaryProps {
   accounts: Account[];
@@ -11,7 +13,7 @@ const getAccountIcon = (type: AccountType) => {
   switch (type) {
     case 'CHECKING':
     case 'SAVINGS':
-      return FiDollarSign;
+      return FaEuroSign;
     case 'CREDIT_CARD':
       return FiCreditCard;
     case 'INVESTMENT':
@@ -66,15 +68,6 @@ export const AccountSummary = ({ accounts }: AccountSummaryProps) => {
       </Box>
     );
   }
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
 
   return (
     <Box>

@@ -2,6 +2,7 @@ import { Box, Card, HStack, VStack, Text, Icon, Badge, Progress } from '@chakra-
 import { FiAlertCircle, FiCheckCircle, FiClock } from 'react-icons/fi';
 import type { EnrichedBudgetStatus, BudgetStatusType } from '@/types/models';
 import { EmptyState } from '@/components/common';
+import { formatCurrency } from '../../utils/formatters/currency';
 
 interface BudgetProgressProps {
   budgets: EnrichedBudgetStatus[];
@@ -53,16 +54,6 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
       </Box>
     );
   }
-
-  const formatCurrency = (value: string) => {
-    const num = parseFloat(value);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(num);
-  };
 
   return (
     <Box>
@@ -163,7 +154,7 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
                         Spent
                       </Text>
                       <Text fontWeight="semibold" color={isOverBudget ? 'red.600' : 'gray.700'}>
-                        {formatCurrency(budget.current_spending)}
+                        {formatCurrency(parseFloat(budget.current_spending))}
                       </Text>
                     </VStack>
                     <VStack alignItems="flex-end" gap={0}>
@@ -171,7 +162,7 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
                         Limit
                       </Text>
                       <Text fontWeight="semibold" color="gray.700">
-                        {formatCurrency(budget.limit_amount)}
+                        {formatCurrency(parseFloat(budget.limit_amount))}
                       </Text>
                     </VStack>
                   </HStack>

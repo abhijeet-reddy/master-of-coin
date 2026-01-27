@@ -1,10 +1,12 @@
+import { DEFAULT_CURRENCY } from '@/constants';
+
 /**
  * Format a number as currency
  * @param amount - The amount to format
- * @param currency - The currency code (default: USD)
+ * @param currency - The currency code
  * @returns Formatted currency string
  */
-export const formatCurrency = (amount: number, currency = 'USD'): string => {
+export const formatCurrency = (amount: number, currency = DEFAULT_CURRENCY): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,

@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { SpendingTrendPoint } from '@/types/models';
+import { formatCurrency } from '../../utils/formatters/currency';
 
 interface SpendingChartProps {
   data: SpendingTrendPoint[];
@@ -21,16 +22,6 @@ export const SpendingChart = ({ data }: SpendingChartProps) => {
     month: point.month,
     amount: point.amount,
   }));
-
-  // Format currency for tooltip
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {

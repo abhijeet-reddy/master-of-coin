@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MdPerson, MdSettings, MdSecurity, MdInfo, MdSave } from 'react-icons/md';
 import { Field } from '@/components/ui/field';
 import { useColorMode } from '@/components/ui/color-mode';
+import { DEFAULT_CURRENCY, DEFAULT_DATE_FORMAT } from '@/constants';
 
 export const Settings = () => {
   useDocumentTitle('Settings');
@@ -36,8 +37,8 @@ export const Settings = () => {
 
   // Preferences state
   const [preferences, setPreferences] = useState({
-    currency: 'USD',
-    dateFormat: 'MM/DD/YYYY',
+    currency: DEFAULT_CURRENCY,
+    dateFormat: DEFAULT_DATE_FORMAT,
     numberFormat: 'en-US',
     theme: colorMode,
   });
@@ -206,8 +207,8 @@ export const Settings = () => {
                         width: '100%',
                       }}
                     >
-                      <option value="USD">USD - US Dollar</option>
                       <option value="EUR">EUR - Euro</option>
+                      <option value="USD">USD - US Dollar</option>
                       <option value="GBP">GBP - British Pound</option>
                       <option value="JPY">JPY - Japanese Yen</option>
                       <option value="CAD">CAD - Canadian Dollar</option>

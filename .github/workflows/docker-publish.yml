@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: read # Read repository contents
       packages: write # Push to GitHub Container Registry
-      id-token: write # Generate attestation signatures
+      attestations: write # Write build attestations
 
     steps:
       # Step 1: Clone the repository code

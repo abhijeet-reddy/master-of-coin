@@ -92,7 +92,6 @@ USER appuser
 
 # Expose application port
 # Note: The application uses SERVER_PORT env var (default: 13153)
-# Docker Compose maps this to 3000 externally
 EXPOSE 13153
 
 # Health check to ensure the application is running

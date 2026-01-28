@@ -1,0 +1,80 @@
+name: Build and Publish Docker Image
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and push (e.g., v1.0.0)"
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    # Use latest Ubuntu runner provided by GitHub
+    runs-on: ubuntu-latest
+    # Permissions required for this job
+    permissions:
+      contents: read # Read repository contents
+      packages: write # Push to GitHub Container Registry
+      id-token: write # Generate attestation signatures
+
+    steps:
+      # Step 1: Clone the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker Buildx for advanced build features
+      # Buildx enables multi-platform builds and better caching
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Authenticate with GitHub Container Registry
+      # Uses GITHUB_TOKEN (automatically provided by GitHub Actions)
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }} # ghcr.io
+          username: ${{ github.actor }} # GitHub username who triggered workflow
+          password: ${{ secrets.GITHUB_TOKEN }} # Auto-generated token with registry access
+
+      # Step 4: Generate Docker image tags and labels
+      # Creates multiple tags for the same image (e.g., v1.2.3, v1.2, v1, latest)
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}        # Full version: v1.2.3
+            type=semver,pattern={{major}}.{{minor}} # Major.minor: v1.2
+            type=semver,pattern={{major}}          # Major only: v1
+            type=raw,value=latest                  # Always tag as latest
+
+      # Step 5: Build Docker image and push to registry
+      # Builds for both AMD64 (x86_64) and ARM64 architectures
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Build context is repository root
+          file: ./Dockerfile # Path to Dockerfile
+          push: true # Push image to registry after build
+          tags: ${{ steps.meta.outputs.tags }} # Apply all generated tags
+          labels: ${{ steps.meta.outputs.labels }} # Apply metadata labels
+          cache-from: type=gha # Use GitHub Actions cache for layers
+          cache-to: type=gha,mode=max # Save all layers to cache
+          platforms: linux/amd64,linux/arm64 # Build for both x86_64 and ARM64
+
+      # Step 6: Generate cryptographic attestation for supply chain security
+      # Creates verifiable proof of how the image was built
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.meta.outputs.digest }} # SHA256 digest of built image
+          push-to-registry: true # Attach attestation to registry

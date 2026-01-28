@@ -1,0 +1,81 @@
+version: '3.8'
+
+# Docker Compose configuration for using pre-built images from GitHub Container Registry
+#
+# This file demonstrates how to deploy Master of Coin using published images
+# instead of building locally. Images are automatically built and published
+# when you create a GitHub release.
+#
+# Quick Start:
+#   1. Copy this file: cp docker-compose.image.example.yml docker-compose.prod.yml
+#   2. Run: docker-compose -f docker-compose.prod.yml up -d
+#
+# Image Variants:
+#   - latest: Most recent release (recommended for development/testing)
+#   - v1.0.0: Specific version (recommended for production)
+#   - v1.0: Latest patch in v1.0.x (auto-updates patches)
+#   - v1: Latest minor in v1.x.x (auto-updates minor versions)
+#
+# Authentication:
+#   - Public images: No authentication needed
+#   - Private images: docker login ghcr.io -u USERNAME
+#
+# Documentation: See docs/operations/docker-image-publishing.md
+
+services:
+  server:
+    # Use 'latest' for most recent build, or specify version tag (e.g., v1.0.0) for production
+    image: ghcr.io/abhijeet-reddy/master-of-coin:latest
+    container_name: master-of-coin-server
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-master_of_coin}
+      - JWT_SECRET=${JWT_SECRET:-change_this_to_a_secure_secret_min_32_chars}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=13153
+      - RUST_LOG=${RUST_LOG:-info}
+    ports:
+      - "13153:13153"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: master-of-coin-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-master_of_coin}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: master-of-coin-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${DATA_DIR:-./data}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

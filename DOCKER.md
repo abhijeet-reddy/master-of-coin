@@ -20,7 +20,34 @@ The frontend is **NOT** a separate container. It's built during the Docker image
 - Docker Compose 2.0+
 - At least 2GB of free disk space
 
-## Quick Start
+## Deployment Options
+
+Master of Coin supports two deployment methods:
+
+### Option 1: Using Pre-built Images (Recommended)
+
+Use published images from GitHub Container Registry - no build required:
+
+```bash
+# Copy the example file
+cp docker-compose.image.example.yml docker-compose.prod.yml
+
+# Start services
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+**Benefits:**
+
+- ✅ Faster deployment (no build time)
+- ✅ Consistent images across environments
+- ✅ Multi-architecture support (AMD64/ARM64)
+- ✅ Automatic updates with version tags
+
+See [Docker Image Publishing Guide](docs/operations/docker-image-publishing.md) for details.
+
+### Option 2: Building Locally
+
+Build from source for development or customization:
 
 1. **Clone the repository and navigate to the project root**
 
@@ -57,12 +84,12 @@ The frontend is **NOT** a separate container. It's built during the Docker image
 6. **View logs**
 
    ```bash
-   docker-compose logs -f backend
+   docker-compose logs -f server
    ```
 
 7. **Access the application**
-   - Frontend: http://localhost:3000
-   - API: http://localhost:3000/api
+   - Frontend: http://localhost:13153
+   - API: http://localhost:13153/api
    - Database: localhost:5432
    - Redis: localhost:6379
 
@@ -98,6 +125,55 @@ docker-compose build
 # Or build manually
 docker build -t master-of-coin:latest .
 ```
+
+## Publishing Docker Images
+
+Master of Coin automatically publishes Docker images to GitHub Container Registry (ghcr.io) when you create a release.
+
+### Automatic Publishing (Recommended)
+
+1. **Create a version tag:**
+
+   ```bash
+   git tag -a v1.0.0 -m "Release version 1.0.0"
+   git push origin v1.0.0
+   ```
+
+2. **Create a GitHub release:**
+   - Go to: https://github.com/abhijeet-reddy/master-of-coin/releases
+   - Click "Create a new release"
+   - Select your tag (v1.0.0)
+   - Add release notes
+   - Click "Publish release"
+
+3. **Automatic build:**
+   - GitHub Actions builds and publishes the image
+   - Multiple tags are created: `v1.0.0`, `v1.0`, `v1`, `latest`
+   - Supports both AMD64 and ARM64 architectures
+
+### Available Image Tags
+
+| Tag                        | Example                                        | Description         |
+| -------------------------- | ---------------------------------------------- | ------------------- |
+| `latest`                   | `ghcr.io/abhijeet-reddy/master-of-coin:latest` | Most recent release |
+| `v{major}.{minor}.{patch}` | `ghcr.io/abhijeet-reddy/master-of-coin:v1.0.0` | Specific version    |
+| `v{major}.{minor}`         | `ghcr.io/abhijeet-reddy/master-of-coin:v1.0`   | Latest patch        |
+| `v{major}`                 | `ghcr.io/abhijeet-reddy/master-of-coin:v1`     | Latest minor        |
+
+### Using Published Images
+
+```bash
+# Pull specific version
+docker pull ghcr.io/abhijeet-reddy/master-of-coin:v1.0.0
+
+# Pull latest
+docker pull ghcr.io/abhijeet-reddy/master-of-coin:latest
+
+# Deploy with docker-compose
+docker-compose -f docker-compose.image.example.yml up -d
+```
+
+For detailed information, see [Docker Image Publishing Guide](docs/operations/docker-image-publishing.md).
 
 ## Environment Variables
 

@@ -199,11 +199,27 @@ pub async fn list_transactions(
     // List transactions
     let transactions = repositories::transaction::list_transactions(pool, user_id, filters).await?;
 
-    // Convert to responses (without splits for list view)
-    let responses = transactions
-        .into_iter()
-        .map(TransactionResponse::from)
-        .collect();
+    // Convert to responses with splits
+    let mut responses = Vec::new();
+    for transaction in transactions {
+        let transaction_id = transaction.id;
+        let mut response = TransactionResponse::from(transaction);
+
+        // Fetch splits for this transaction
+        let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id)
+            .await?
+            .into_iter()
+            .map(|split| split.into())
+            .collect::<Vec<_>>();
+
+        response.splits = if splits.is_empty() {
+            None
+        } else {
+            Some(splits)
+        };
+
+        responses.push(response);
+    }
 
     Ok(responses)
 }

@@ -509,6 +509,121 @@ async fn test_create_transaction_with_splits() {
     assert_eq!(splits.len(), 2);
 }
 
+/// Test that list transactions includes splits for transactions with splits.
+///
+/// Verifies that:
+/// - Status code is 200 OK
+/// - Transactions with splits include split data in list response
+/// - Split data is correctly populated
+#[tokio::test]
+async fn test_list_transactions_includes_splits() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("listsplitsuser_{}", timestamp),
+        &format!("listsplits_{}@example.com", timestamp),
+        "SecurePass123!",
+        "List Splits Test User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+
+    // Create people for splits
+    let person1 = create_test_person(&server, &auth.token, "Person 1").await;
+    let person2 = create_test_person(&server, &auth.token, "Person 2").await;
+
+    // Create a transaction with splits
+    let request_with_splits = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Transaction with Splits",
+        "amount": -100.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [
+            {
+                "person_id": person1.id,
+                "amount": 50.00
+            },
+            {
+                "person_id": person2.id,
+                "amount": 50.00
+            }
+        ]
+    });
+    let response_with_splits = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &request_with_splits,
+    )
+    .await;
+    assert_status(&response_with_splits, 201);
+
+    // Create a transaction without splits
+    let request_without_splits = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Transaction without Splits",
+        "amount": -50.00,
+        "date": Utc::now().to_rfc3339()
+    });
+    let response_without_splits = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &request_without_splits,
+    )
+    .await;
+    assert_status(&response_without_splits, 201);
+
+    // List all transactions
+    let list_response = get_authenticated(&server, "/api/v1/transactions", &auth.token).await;
+    assert_status(&list_response, 200);
+
+    let transactions: Vec<TransactionResponse> = extract_json(list_response);
+    assert_eq!(transactions.len(), 2, "Should have 2 transactions");
+
+    // Find the transaction with splits
+    let txn_with_splits = transactions
+        .iter()
+        .find(|t| t.title == "Transaction with Splits")
+        .expect("Transaction with splits should be in list");
+
+    // Verify splits are included in list response
+    assert!(
+        txn_with_splits.splits.is_some(),
+        "Transaction with splits should have splits in list response"
+    );
+    let splits = txn_with_splits.splits.as_ref().unwrap();
+    assert_eq!(splits.len(), 2, "Should have 2 splits");
+
+    // Verify split amounts
+    let total_split_amount: f64 = splits
+        .iter()
+        .map(|s| s.amount.parse::<f64>().unwrap())
+        .sum();
+    assert_eq!(
+        total_split_amount, 100.00,
+        "Total split amount should be 100.00"
+    );
+
+    // Find the transaction without splits
+    let txn_without_splits = transactions
+        .iter()
+        .find(|t| t.title == "Transaction without Splits")
+        .expect("Transaction without splits should be in list");
+
+    // Verify no splits for transaction without splits
+    assert!(
+        txn_without_splits.splits.is_none(),
+        "Transaction without splits should have None for splits"
+    );
+}
+
 /// Test that creating transaction with missing required fields fails.
 ///
 /// Verifies that:

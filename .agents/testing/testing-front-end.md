@@ -30,7 +30,7 @@ This is not optional. Any changes to the user interface, components, styling, or
 3. **Start the application:**
 
    ```bash
-   docker-compose up
+   docker-compose up -d
    ```
 
 4. **Access the application:**

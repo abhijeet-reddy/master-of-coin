@@ -62,6 +62,23 @@ This file serves as an index and navigation guide for AI agents working on the M
 
 ---
 
+### [`.agents/rules/release-rules.md`](.agents/rules/release-rules.md)
+
+**When to read:** Creating version releases or managing releases
+
+**Read this when you're:**
+
+- Creating a new release version
+- Tagging a release in Git
+- Writing release notes
+- Determining version numbers (MAJOR.MINOR.PATCH)
+- Publishing releases to GitHub
+- Managing pre-release versions (alpha, beta, RC)
+
+**Don't read if:** You're just making regular commits or working on features without releasing.
+
+---
+
 ## 📋 Testing Guidelines
 
 ### [`.agents/testing/testing-front-end.md`](.agents/testing/testing-front-end.md)
@@ -94,7 +111,8 @@ Are you writing code?
 │
 └─ No → Are you committing/managing Git?
    ├─ Yes → Read .agents/rules/git-rules.md
-   │        └─ Committing UI changes? → MUST read .agents/testing/testing-front-end.md
+   │        ├─ Committing UI changes? → MUST read .agents/testing/testing-front-end.md
+   │        └─ Creating a release? → Read .agents/rules/release-rules.md
    └─ No → Don't read any rules yet
 ```
 
@@ -116,6 +134,7 @@ If you're working on multiple technologies in one session:
 - Switch to Rust rules when working on backend
 - Check testing guidelines before committing UI changes
 - Check Git rules before committing
+- Check release rules before creating version releases
 
 ### 4. **Quick Lookups**
 
@@ -129,6 +148,7 @@ Each rule file ends with a checklist. Use these before:
 - Committing UI changes → Frontend testing checklist (MANDATORY)
 - Committing Rust code → Rust checklist
 - Making Git commits → Git checklist
+- Creating releases → Release checklist
 
 ## 📝 Updating These Rules
 

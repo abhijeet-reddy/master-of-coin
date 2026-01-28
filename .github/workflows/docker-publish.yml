@@ -23,6 +23,7 @@ jobs:
       contents: read # Read repository contents
       packages: write # Push to GitHub Container Registry
       attestations: write # Write build attestations
+      id-token: write # Allow OIDC token for signing
 
     steps:
       # Step 1: Clone the repository code

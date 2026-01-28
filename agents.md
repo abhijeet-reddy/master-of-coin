@@ -100,6 +100,25 @@ This file serves as an index and navigation guide for AI agents working on the M
 
 ---
 
+### [`.agents/testing/testing-backend.md`](.agents/testing/testing-backend.md)
+
+**When to read:** Before committing any backend code changes
+
+**Read this when you're:**
+
+- Making changes to Rust backend code (services, handlers, models)
+- Modifying API endpoints or business logic
+- Changing database models or queries
+- Adding new backend features
+- Fixing backend bugs
+- About to commit backend code
+
+**Critical requirement:** ALL backend changes MUST have tests written and passing before committing.
+
+**Don't read if:** You're only working on frontend React code or documentation without backend impact.
+
+---
+
 ## 🔄 Workflow Decision Tree
 
 ```
@@ -108,10 +127,12 @@ Are you writing code?
 │  ├─ React/TypeScript → Read .agents/rules/react-rules.md
 │  │                     └─ Making UI changes? → MUST read .agents/testing/testing-front-end.md
 │  └─ Rust → Read .agents/rules/rust-rules.md
+│           └─ Making backend changes? → MUST read .agents/testing/testing-backend.md
 │
 └─ No → Are you committing/managing Git?
    ├─ Yes → Read .agents/rules/git-rules.md
    │        ├─ Committing UI changes? → MUST read .agents/testing/testing-front-end.md
+   │        ├─ Committing backend changes? → MUST read .agents/testing/testing-backend.md
    │        └─ Creating a release? → Read .agents/rules/release-rules.md
    └─ No → Don't read any rules yet
 ```
@@ -132,7 +153,8 @@ If you're working on multiple technologies in one session:
 
 - Read React rules when working on components
 - Switch to Rust rules when working on backend
-- Check testing guidelines before committing UI changes
+- Check frontend testing guidelines before committing UI changes
+- Check backend testing guidelines before committing backend changes
 - Check Git rules before committing
 - Check release rules before creating version releases
 
@@ -147,6 +169,7 @@ Each rule file ends with a checklist. Use these before:
 - Committing React code → React checklist
 - Committing UI changes → Frontend testing checklist (MANDATORY)
 - Committing Rust code → Rust checklist
+- Committing backend changes → Backend testing checklist (MANDATORY)
 - Making Git commits → Git checklist
 - Creating releases → Release checklist
 

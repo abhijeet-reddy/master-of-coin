@@ -59,6 +59,7 @@ jobs:
       # Step 5: Build Docker image and push to registry
       # Builds for both AMD64 (x86_64) and ARM64 architectures
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: . # Build context is repository root
@@ -76,5 +77,5 @@ jobs:
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.meta.outputs.digest }} # SHA256 digest of built image
+          subject-digest: ${{ steps.build.outputs.digest }} # SHA256 digest of built image
           push-to-registry: true # Attach attestation to registry

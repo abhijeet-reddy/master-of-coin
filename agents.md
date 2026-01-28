@@ -62,16 +62,39 @@ This file serves as an index and navigation guide for AI agents working on the M
 
 ---
 
+## 📋 Testing Guidelines
+
+### [`.agents/testing/testing-front-end.md`](.agents/testing/testing-front-end.md)
+
+**When to read:** Before committing any frontend/UI changes
+
+**Read this when you're:**
+
+- Making changes to React components that affect the UI
+- Modifying styles, layouts, or visual elements
+- Adding new frontend features or pages
+- Fixing UI bugs or visual issues
+- Making any changes that users will see or interact with
+- About to commit frontend code
+
+**Critical requirement:** ALL UI changes MUST be tested in a browser using Docker before committing.
+
+**Don't read if:** You're only working on backend Rust code, database queries, or documentation without UI impact.
+
+---
+
 ## 🔄 Workflow Decision Tree
 
 ```
 Are you writing code?
 ├─ Yes → What language?
 │  ├─ React/TypeScript → Read .agents/rules/react-rules.md
+│  │                     └─ Making UI changes? → MUST read .agents/testing/testing-front-end.md
 │  └─ Rust → Read .agents/rules/rust-rules.md
 │
 └─ No → Are you committing/managing Git?
    ├─ Yes → Read .agents/rules/git-rules.md
+   │        └─ Committing UI changes? → MUST read .agents/testing/testing-front-end.md
    └─ No → Don't read any rules yet
 ```
 
@@ -91,6 +114,7 @@ If you're working on multiple technologies in one session:
 
 - Read React rules when working on components
 - Switch to Rust rules when working on backend
+- Check testing guidelines before committing UI changes
 - Check Git rules before committing
 
 ### 4. **Quick Lookups**
@@ -102,6 +126,7 @@ Each rule file has a table of contents and is organized by topic. Use it to quic
 Each rule file ends with a checklist. Use these before:
 
 - Committing React code → React checklist
+- Committing UI changes → Frontend testing checklist (MANDATORY)
 - Committing Rust code → Rust checklist
 - Making Git commits → Git checklist
 

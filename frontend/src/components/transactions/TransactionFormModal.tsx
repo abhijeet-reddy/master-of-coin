@@ -38,6 +38,7 @@ const transactionSchema = z.object({
       },
       { message: 'Amount must be a positive number' }
     ),
+  transaction_type: z.enum(['income', 'expense']),
   account_id: z.string().min(1, 'Account is required'),
   category_id: z.string().optional(),
   date: z
@@ -91,6 +92,7 @@ export const TransactionFormModal = ({
     defaultValues: {
       title: '',
       amount: '',
+      transaction_type: 'expense',
       account_id: '',
       category_id: '',
       date: new Date().toISOString().split('T')[0],
@@ -104,9 +106,11 @@ export const TransactionFormModal = ({
   useEffect(() => {
     if (isOpen) {
       if (transaction) {
+        const transactionAmount = parseFloat(transaction.amount);
         reset({
           title: transaction.title,
-          amount: Math.abs(parseFloat(transaction.amount)).toString(),
+          amount: Math.abs(transactionAmount).toString(),
+          transaction_type: transactionAmount >= 0 ? 'income' : 'expense',
           account_id: transaction.account_id,
           category_id: transaction.category_id || '',
           date: transaction.date.split('T')[0],
@@ -118,6 +122,7 @@ export const TransactionFormModal = ({
         reset({
           title: '',
           amount: '',
+          transaction_type: 'expense',
           account_id: '',
           category_id: '',
           date: new Date().toISOString().split('T')[0],
@@ -136,10 +141,14 @@ export const TransactionFormModal = ({
       const dateValue = data.date || new Date().toISOString().split('T')[0];
       const formattedDate = new Date(dateValue + 'T00:00:00Z').toISOString();
 
-      // Convert amount to negative number for expenses (default behavior)
+      // Set amount sign based on transaction type
+      // Income = positive, Expense = negative
+      const amountValue = parseFloat(data.amount);
+      const signedAmount = data.transaction_type === 'income' ? amountValue : -amountValue;
+
       const finalData = {
         title: data.title,
-        amount: -parseFloat(data.amount), // Convert string to negative number
+        amount: signedAmount,
         date: formattedDate, // ISO 8601 datetime format
         account_id: data.account_id,
         category_id:
@@ -204,6 +213,22 @@ export const TransactionFormModal = ({
               {/* Title */}
               <Field label="Title" required errorText={errors.title?.message}>
                 <Input {...register('title')} placeholder="e.g., Grocery shopping" />
+              </Field>
+
+              {/* Transaction Type */}
+              <Field label="Type" required errorText={errors.transaction_type?.message}>
+                <select
+                  {...register('transaction_type')}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
               </Field>
 
               {/* Amount */}

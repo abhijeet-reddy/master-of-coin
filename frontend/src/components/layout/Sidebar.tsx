@@ -5,6 +5,7 @@ import {
   MdSwapHoriz,
   MdAccountBalance,
   MdPieChart,
+  MdCategory,
   MdPeople,
   MdAssessment,
   MdSettings,
@@ -78,6 +79,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
         <NavItem icon={MdSwapHoriz} label="Transactions" to="/transactions" onClick={onClose} />
         <NavItem icon={MdAccountBalance} label="Accounts" to="/accounts" onClick={onClose} />
         <NavItem icon={MdPieChart} label="Budgets" to="/budgets" onClick={onClose} />
+        <NavItem icon={MdCategory} label="Categories" to="/categories" onClick={onClose} />
         <NavItem icon={MdPeople} label="People" to="/people" onClick={onClose} />
         <NavItem icon={MdAssessment} label="Reports" to="/reports" onClick={onClose} />
         <NavItem icon={MdSettings} label="Settings" to="/settings" onClick={onClose} />

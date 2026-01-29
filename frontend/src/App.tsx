@@ -9,6 +9,7 @@ import Dashboard from '@/pages/Dashboard';
 import { TransactionsPage } from '@/pages/Transactions';
 import { Accounts } from '@/pages/Accounts';
 import { Budgets } from '@/pages/Budgets';
+import { Categories } from '@/pages/Categories';
 import { People } from '@/pages/People';
 import Reports from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
@@ -39,6 +40,7 @@ function App() {
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="accounts" element={<Accounts />} />
               <Route path="budgets" element={<Budgets />} />
+              <Route path="categories" element={<Categories />} />
               <Route path="people" element={<People />} />
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />

@@ -1,13 +1,5 @@
-import {
-  Box,
-  HStack,
-  Text,
-  IconButton,
-  MenuRoot,
-  MenuTrigger,
-  MenuContent,
-  MenuItem,
-} from '@chakra-ui/react';
+import { Box, HStack, Text, IconButton } from '@chakra-ui/react';
+import { Menu } from '@chakra-ui/react';
 import { MdMenu, MdPerson, MdSettings, MdLogout, MdLightMode, MdDarkMode } from 'react-icons/md';
 import { useColorMode } from '@/components/ui/color-mode';
 
@@ -54,33 +46,35 @@ export const Header = ({ onMenuClick, title = 'Dashboard' }: HeaderProps) => {
         </IconButton>
 
         {/* User Menu */}
-        <MenuRoot>
-          <MenuTrigger asChild>
+        <Menu.Root positioning={{ placement: 'bottom-end' }}>
+          <Menu.Trigger asChild>
             <IconButton aria-label="User menu" variant="ghost">
               <MdPerson />
             </IconButton>
-          </MenuTrigger>
-          <MenuContent>
-            <MenuItem value="profile">
-              <HStack gap={2}>
-                <Box as={MdPerson} />
-                <Text>Profile</Text>
-              </HStack>
-            </MenuItem>
-            <MenuItem value="settings">
-              <HStack gap={2}>
-                <Box as={MdSettings} />
-                <Text>Settings</Text>
-              </HStack>
-            </MenuItem>
-            <MenuItem value="logout" color="red.500">
-              <HStack gap={2}>
-                <Box as={MdLogout} />
-                <Text>Logout</Text>
-              </HStack>
-            </MenuItem>
-          </MenuContent>
-        </MenuRoot>
+          </Menu.Trigger>
+          <Menu.Positioner>
+            <Menu.Content minW="200px">
+              <Menu.Item value="profile">
+                <HStack gap={2}>
+                  <Box as={MdPerson} />
+                  <Text>Profile</Text>
+                </HStack>
+              </Menu.Item>
+              <Menu.Item value="settings">
+                <HStack gap={2}>
+                  <Box as={MdSettings} />
+                  <Text>Settings</Text>
+                </HStack>
+              </Menu.Item>
+              <Menu.Item value="logout" color="red.500">
+                <HStack gap={2}>
+                  <Box as={MdLogout} />
+                  <Text>Logout</Text>
+                </HStack>
+              </Menu.Item>
+            </Menu.Content>
+          </Menu.Positioner>
+        </Menu.Root>
       </HStack>
     </Box>
   );

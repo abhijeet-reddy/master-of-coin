@@ -21,7 +21,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MdPerson, MdSettings, MdSecurity, MdInfo, MdSave } from 'react-icons/md';
 import { Field } from '@/components/ui/field';
 import { useColorMode } from '@/components/ui/color-mode';
-import { DEFAULT_CURRENCY, DEFAULT_DATE_FORMAT } from '@/constants';
+import { DEFAULT_CURRENCY, DEFAULT_DATE_FORMAT, CURRENCIES } from '@/constants';
+import type { CurrencyCode } from '@/types';
 
 export const Settings = () => {
   useDocumentTitle('Settings');
@@ -36,7 +37,12 @@ export const Settings = () => {
   });
 
   // Preferences state
-  const [preferences, setPreferences] = useState({
+  const [preferences, setPreferences] = useState<{
+    currency: CurrencyCode;
+    dateFormat: string;
+    numberFormat: string;
+    theme: string;
+  }>({
     currency: DEFAULT_CURRENCY,
     dateFormat: DEFAULT_DATE_FORMAT,
     numberFormat: 'en-US',
@@ -199,7 +205,9 @@ export const Settings = () => {
                   <Field label="Default Currency">
                     <select
                       value={preferences.currency}
-                      onChange={(e) => setPreferences({ ...preferences, currency: e.target.value })}
+                      onChange={(e) =>
+                        setPreferences({ ...preferences, currency: e.target.value as CurrencyCode })
+                      }
                       style={{
                         padding: '8px 12px',
                         borderRadius: '6px',
@@ -207,12 +215,11 @@ export const Settings = () => {
                         width: '100%',
                       }}
                     >
-                      <option value="EUR">EUR - Euro</option>
-                      <option value="USD">USD - US Dollar</option>
-                      <option value="GBP">GBP - British Pound</option>
-                      <option value="JPY">JPY - Japanese Yen</option>
-                      <option value="CAD">CAD - Canadian Dollar</option>
-                      <option value="AUD">AUD - Australian Dollar</option>
+                      {CURRENCIES.map((currency) => (
+                        <option key={currency.code} value={currency.code}>
+                          {currency.code} - {currency.name} ({currency.symbol})
+                        </option>
+                      ))}
                     </select>
                   </Field>
 

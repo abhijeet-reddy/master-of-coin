@@ -18,13 +18,14 @@ import { ErrorAlert } from '@/components/common';
 import useCreateAccount from '@/hooks/api/useCreateAccount';
 import useUpdateAccount from '@/hooks/api/useUpdateAccount';
 import type { Account } from '@/types';
-import { DEFAULT_CURRENCY } from '@/constants';
+import { DEFAULT_CURRENCY, CURRENCIES } from '@/constants';
+import { CurrencyCode } from '@/types';
 
 // Validation schema
 const accountSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   type: z.enum(['CHECKING', 'SAVINGS', 'CREDIT_CARD', 'INVESTMENT', 'CASH', 'LOAN', 'OTHER']),
-  currency: z.string().length(3, 'Currency must be a 3-letter code'),
+  currency: z.nativeEnum(CurrencyCode),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 });
 
@@ -173,12 +174,21 @@ export const AccountFormModal = ({
 
               {/* Currency */}
               <Field label="Currency" required errorText={errors.currency?.message}>
-                <Input
+                <select
                   {...register('currency')}
-                  placeholder={DEFAULT_CURRENCY}
-                  maxLength={3}
-                  style={{ textTransform: 'uppercase' }}
-                />
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency.code} value={currency.code}>
+                      {currency.code} - {currency.name} ({currency.symbol})
+                    </option>
+                  ))}
+                </select>
               </Field>
 
               {/* Notes */}

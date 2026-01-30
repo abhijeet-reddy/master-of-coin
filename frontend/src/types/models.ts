@@ -1,5 +1,7 @@
 // Domain model types
 
+import type { CurrencyCode } from './currency';
+
 // Account types
 export type AccountType =
   | 'CHECKING'
@@ -14,7 +16,7 @@ export interface Account {
   id: string;
   name: string;
   account_type: AccountType;
-  currency: string;
+  currency: CurrencyCode;
   balance: number;
   is_active: boolean;
   notes?: string;

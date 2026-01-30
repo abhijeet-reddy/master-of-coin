@@ -41,6 +41,7 @@ export default function useEnrichedTransactions(
           id: account.id,
           name: account.name,
           type: account.account_type,
+          currency: account.currency,
         },
         category: category
           ? {

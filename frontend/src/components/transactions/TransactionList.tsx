@@ -87,7 +87,7 @@ export const TransactionList = ({
               </Heading>
               <Text fontSize="sm" fontWeight="semibold" color={isExpense ? 'red.600' : 'green.600'}>
                 {isExpense ? '-' : '+'}
-                {formatCurrency(dailyTotal)}
+                {formatCurrency(Math.abs(dailyTotal))}
               </Text>
             </Box>
 

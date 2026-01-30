@@ -109,7 +109,7 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
         <VStack align="end" gap={1} minW="100px">
           <Text fontWeight="bold" fontSize="lg" color={isExpense ? 'red.600' : 'green.600'}>
             {isExpense ? '-' : '+'}
-            {formatCurrency(displayAmount)}
+            {formatCurrency(displayAmount, transaction.account.currency)}
           </Text>
 
           {/* Date on desktop */}

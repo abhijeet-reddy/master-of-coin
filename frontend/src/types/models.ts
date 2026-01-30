@@ -98,6 +98,7 @@ export interface EnrichedTransaction {
     id: string;
     name: string;
     type: AccountType;
+    currency: CurrencyCode;
   };
   category?: {
     id: string;

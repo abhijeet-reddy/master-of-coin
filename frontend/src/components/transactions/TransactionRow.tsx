@@ -1,5 +1,5 @@
-import { Badge, Box, HStack, Icon, Text, VStack } from '@chakra-ui/react';
-import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers } from 'react-icons/fi';
+import { Badge, Box, HStack, Icon, IconButton, Text, VStack } from '@chakra-ui/react';
+import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers, FiTrash2 } from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 interface TransactionRowProps {
   transaction: EnrichedTransaction;
   onClick: () => void;
+  onDelete?: (transaction: EnrichedTransaction) => void;
 }
 
 // Map category icons to react-icons
@@ -22,12 +23,17 @@ const getCategoryIcon = (iconName?: string) => {
   return iconMap[iconName?.toLowerCase() || 'other'] || FaEuroSign;
 };
 
-export const TransactionRow = ({ transaction, onClick }: TransactionRowProps) => {
+export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRowProps) => {
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
   const displayAmount = Math.abs(amount);
 
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.(transaction);
+  };
 
   return (
     <Box
@@ -50,7 +56,7 @@ export const TransactionRow = ({ transaction, onClick }: TransactionRowProps) =>
         }
       }}
     >
-      <HStack justify="space-between" align="start">
+      <HStack justify="space-between" align="start" gap={3}>
         {/* Left side - Icon and details */}
         <HStack gap={3} flex={1}>
           {/* Category Icon */}
@@ -111,6 +117,20 @@ export const TransactionRow = ({ transaction, onClick }: TransactionRowProps) =>
             {formatDate(transaction.date)}
           </Text>
         </VStack>
+
+        {/* Delete button */}
+        {onDelete && (
+          <IconButton
+            aria-label="Delete transaction"
+            size="sm"
+            variant="ghost"
+            colorScheme="red"
+            onClick={handleDelete}
+            _hover={{ bg: 'red.50' }}
+          >
+            <Icon as={FiTrash2} />
+          </IconButton>
+        )}
       </HStack>
     </Box>
   );

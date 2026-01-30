@@ -8,6 +8,7 @@ interface TransactionListProps {
   transactions: EnrichedTransaction[];
   isLoading?: boolean;
   onTransactionClick: (transaction: EnrichedTransaction) => void;
+  onTransactionDelete?: (transaction: EnrichedTransaction) => void;
 }
 
 interface GroupedTransactions {
@@ -18,6 +19,7 @@ export const TransactionList = ({
   transactions,
   isLoading,
   onTransactionClick,
+  onTransactionDelete,
 }: TransactionListProps) => {
   // Group transactions by date
   const groupedTransactions = transactions.reduce<GroupedTransactions>((acc, transaction) => {
@@ -96,6 +98,7 @@ export const TransactionList = ({
                   key={transaction.id}
                   transaction={transaction}
                   onClick={() => onTransactionClick(transaction)}
+                  onDelete={onTransactionDelete}
                 />
               ))}
             </Stack>

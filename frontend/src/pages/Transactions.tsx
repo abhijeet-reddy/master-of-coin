@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Box, Button, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { FiPlus, FiFilter } from 'react-icons/fi';
-import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
+import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
 import {
   MonthNavigator,
   MonthSummary,
@@ -18,6 +18,7 @@ import {
   usePeople,
   useCreateTransaction,
   useUpdateTransaction,
+  useDeleteTransaction,
   useDocumentTitle,
 } from '@/hooks';
 import type { EnrichedTransaction, CreateTransactionRequest } from '@/types';
@@ -28,6 +29,13 @@ export const TransactionsPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<EnrichedTransaction | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    transaction: EnrichedTransaction | null;
+  }>({
+    isOpen: false,
+    transaction: null,
+  });
   const [filters, setFilters] = useState<TransactionFilterValues>({
     accountIds: [],
     categoryIds: [],
@@ -62,6 +70,7 @@ export const TransactionsPage = () => {
   // Mutations
   const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
+  const deleteMutation = useDeleteTransaction();
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
@@ -149,6 +158,20 @@ export const TransactionsPage = () => {
     }
   };
 
+  const handleDeleteTransaction = (transaction: EnrichedTransaction) => {
+    setDeleteDialog({ isOpen: true, transaction });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteDialog.transaction) {
+      deleteMutation.mutate(deleteDialog.transaction.id, {
+        onSuccess: () => {
+          setDeleteDialog({ isOpen: false, transaction: null });
+        },
+      });
+    }
+  };
+
   const handleClearFilters = () => {
     setFilters({
       accountIds: [],
@@ -217,6 +240,7 @@ export const TransactionsPage = () => {
         transactions={filteredTransactions}
         isLoading={isLoading}
         onTransactionClick={handleEditTransaction}
+        onTransactionDelete={handleDeleteTransaction}
       />
 
       {/* Transaction Form Modal */}
@@ -262,6 +286,18 @@ export const TransactionsPage = () => {
       >
         <FiPlus size={24} />
       </IconButton>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, transaction: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Transaction"
+        message={`Are you sure you want to delete "${deleteDialog.transaction?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        colorScheme="red"
+        isLoading={deleteMutation.isPending}
+      />
     </Box>
   );
 };

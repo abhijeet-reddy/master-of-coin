@@ -2,6 +2,7 @@ import { Box, HStack, Text, IconButton } from '@chakra-ui/react';
 import { Menu } from '@chakra-ui/react';
 import { MdMenu, MdPerson, MdSettings, MdLogout, MdLightMode, MdDarkMode } from 'react-icons/md';
 import { useColorMode } from '@/components/ui/color-mode';
+import { useHeaderMenu } from '@/hooks/ui';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export const Header = ({ onMenuClick, title = 'Dashboard' }: HeaderProps) => {
   const { colorMode, toggleColorMode } = useColorMode();
+  const { handleMenuSelect } = useHeaderMenu();
 
   return (
     <Box
@@ -54,19 +56,13 @@ export const Header = ({ onMenuClick, title = 'Dashboard' }: HeaderProps) => {
           </Menu.Trigger>
           <Menu.Positioner>
             <Menu.Content minW="200px">
-              <Menu.Item value="profile">
-                <HStack gap={2}>
-                  <Box as={MdPerson} />
-                  <Text>Profile</Text>
-                </HStack>
-              </Menu.Item>
-              <Menu.Item value="settings">
+              <Menu.Item value="settings" onClick={() => handleMenuSelect('settings')}>
                 <HStack gap={2}>
                   <Box as={MdSettings} />
                   <Text>Settings</Text>
                 </HStack>
               </Menu.Item>
-              <Menu.Item value="logout" color="red.500">
+              <Menu.Item value="logout" color="red.500" onClick={() => handleMenuSelect('logout')}>
                 <HStack gap={2}>
                   <Box as={MdLogout} />
                   <Text>Logout</Text>

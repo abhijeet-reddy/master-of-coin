@@ -17,8 +17,8 @@ use uuid::Uuid;
 
 /// Helper function to get a test database URL
 pub fn get_test_database_url() -> String {
-    // Load .env file from parent directory
-    dotenvy::from_filename("../.env").ok();
+    // Load .env file from current directory
+    dotenvy::from_filename(".env").ok();
     std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests")
 }
 

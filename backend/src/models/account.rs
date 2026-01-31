@@ -53,7 +53,6 @@ pub struct CreateAccountRequest {
     pub name: String,
     pub account_type: AccountType,
     pub currency: Option<CurrencyCode>,
-    #[validate(range(min = 0.0))]
     pub initial_balance: Option<f64>,
     #[validate(length(max = 500))]
     pub notes: Option<String>,

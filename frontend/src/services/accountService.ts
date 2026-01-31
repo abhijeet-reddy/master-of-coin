@@ -24,6 +24,7 @@ export async function createAccount(data: {
   name: string;
   account_type: string;
   currency: string;
+  initial_balance?: number;
   notes?: string;
 }): Promise<Account> {
   const response = await apiClient.post<ApiResponse<Account>>('/accounts', data);

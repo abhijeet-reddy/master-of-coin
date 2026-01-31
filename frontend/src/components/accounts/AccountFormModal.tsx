@@ -26,6 +26,7 @@ const accountSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   type: z.enum(['CHECKING', 'SAVINGS', 'CREDIT_CARD', 'INVESTMENT', 'CASH', 'LOAN', 'OTHER']),
   currency: z.nativeEnum(CurrencyCode),
+  initial_balance: z.number().optional(),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 });
 
@@ -58,6 +59,7 @@ export const AccountFormModal = ({
       name: '',
       type: 'CHECKING',
       currency: DEFAULT_CURRENCY,
+      initial_balance: 0,
       notes: '',
     },
   });
@@ -70,6 +72,7 @@ export const AccountFormModal = ({
           name: account.name,
           type: account.account_type,
           currency: account.currency,
+          initial_balance: 0,
           notes: account.notes || '',
         });
       } else {
@@ -77,6 +80,7 @@ export const AccountFormModal = ({
           name: '',
           type: 'CHECKING',
           currency: DEFAULT_CURRENCY,
+          initial_balance: 0,
           notes: '',
         });
       }
@@ -88,6 +92,7 @@ export const AccountFormModal = ({
       name: data.name,
       account_type: data.type,
       currency: data.currency,
+      initial_balance: data.initial_balance,
       notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
     };
 
@@ -190,6 +195,22 @@ export const AccountFormModal = ({
                   ))}
                 </select>
               </Field>
+
+              {/* Initial Balance - Only show when creating new account */}
+              {!account && (
+                <Field
+                  label="Initial Balance"
+                  errorText={errors.initial_balance?.message}
+                  helperText="Enter the starting balance for this account (can be negative for loans/credit cards)"
+                >
+                  <Input
+                    {...register('initial_balance', { valueAsNumber: true })}
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </Field>
+              )}
 
               {/* Notes */}
               <Field label="Notes" errorText={errors.notes?.message}>

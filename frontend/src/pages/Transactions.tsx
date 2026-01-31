@@ -21,11 +21,13 @@ import {
   useDeleteTransaction,
   useDocumentTitle,
 } from '@/hooks';
+import { useCurrencyConverter } from '@/hooks/usecase/useCurrencyConverter';
 import type { EnrichedTransaction, CreateTransactionRequest } from '@/types';
 
 export const TransactionsPage = () => {
   useDocumentTitle('Transactions');
 
+  const { convertToDefault, isLoading: isExchangeRatesLoading } = useCurrencyConverter();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<EnrichedTransaction | null>(null);
@@ -117,20 +119,33 @@ export const TransactionsPage = () => {
     });
   }, [enrichedTransactions, filters]);
 
-  // Calculate month summary
+  // Calculate month summary with currency conversion
   const monthSummary = useMemo(() => {
+    // If exchange rates are still loading, return zeros
+    if (isExchangeRatesLoading) {
+      return { income: 0, expenses: 0 };
+    }
+
     const income = filteredTransactions
       .filter((t) => parseFloat(t.amount) > 0)
-      .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      .reduce((sum, t) => {
+        const amount = parseFloat(t.amount);
+        const converted = convertToDefault(amount, t.account.currency);
+        return sum + converted;
+      }, 0);
 
     const expenses = Math.abs(
       filteredTransactions
         .filter((t) => parseFloat(t.amount) < 0)
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0)
+        .reduce((sum, t) => {
+          const amount = parseFloat(t.amount);
+          const converted = convertToDefault(amount, t.account.currency);
+          return sum + converted;
+        }, 0)
     );
 
     return { income, expenses };
-  }, [filteredTransactions]);
+  }, [filteredTransactions, convertToDefault, isExchangeRatesLoading]);
 
   const handleAddTransaction = () => {
     setSelectedTransaction(null);

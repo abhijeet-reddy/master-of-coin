@@ -26,7 +26,6 @@ const getCategoryIcon = (iconName?: string) => {
 export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRowProps) => {
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
-  const displayAmount = Math.abs(amount);
 
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
 
@@ -109,7 +108,7 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
         <VStack align="end" gap={1} minW="100px">
           <Text fontWeight="bold" fontSize="lg" color={isExpense ? 'red.600' : 'green.600'}>
             {isExpense ? '-' : '+'}
-            {formatCurrency(displayAmount, transaction.account.currency)}
+            {formatCurrency(Math.abs(amount), transaction.account.currency)}
           </Text>
 
           {/* Date on desktop */}

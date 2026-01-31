@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - EXCHANGE_RATE_API_KEY=${EXCHANGE_RATE_API_KEY}
     container_name: master-of-coin-server
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-master_of_coin}

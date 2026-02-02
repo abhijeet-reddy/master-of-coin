@@ -15,7 +15,7 @@ export const LoadingSpinner = ({
     <VStack gap={4}>
       <Spinner size={size} color="brand.500" borderWidth="3px" />
       {message && (
-        <Text fontSize="sm" color="gray.600">
+        <Text fontSize="sm" color="fg.muted">
           {message}
         </Text>
       )}
@@ -33,7 +33,7 @@ export const LoadingSpinner = ({
         display="flex"
         alignItems="center"
         justifyContent="center"
-        bg="white"
+        bg="bg"
         zIndex={9999}
       >
         {content}

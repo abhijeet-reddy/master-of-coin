@@ -53,7 +53,7 @@ export const TransactionFilters = ({
     (filters.transactionType && filters.transactionType !== 'all');
 
   return (
-    <Box p={4} bg="white" borderRadius="lg" borderWidth="1px" borderColor="gray.200" mb={4}>
+    <Box p={4} bg="bg" borderRadius="lg" borderWidth="1px" borderColor="border" mb={4}>
       <VStack align="stretch" gap={4}>
         {/* Header */}
         <HStack justify="space-between">
@@ -120,7 +120,7 @@ export const TransactionFilters = ({
                 placeholder="Start date"
               />
             </Box>
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color="fg.muted">
               to
             </Text>
             <Box flex={1}>
@@ -151,7 +151,7 @@ export const TransactionFilters = ({
                 placeholder="Min amount"
               />
             </Box>
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color="fg.muted">
               to
             </Text>
             <Box flex={1}>

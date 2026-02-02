@@ -25,11 +25,11 @@ export const EmptyState = ({
           </Box>
         )}
         <VStack gap={2}>
-          <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+          <Text fontSize="lg" fontWeight="semibold" color="fg">
             {title}
           </Text>
           {description && (
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color="fg.muted">
               {description}
             </Text>
           )}

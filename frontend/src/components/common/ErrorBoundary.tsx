@@ -65,7 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <Heading size="xl">Oops! Something went wrong</Heading>
 
-            <Text color="gray.600" fontSize="lg">
+            <Text color="fg.muted" fontSize="lg">
               We encountered an unexpected error. Please try reloading the page.
             </Text>
 

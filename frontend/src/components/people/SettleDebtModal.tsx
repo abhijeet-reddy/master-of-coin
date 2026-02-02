@@ -115,14 +115,14 @@ export const SettleDebtModal = ({
         <DialogBody>
           <VStack align="stretch" gap={4}>
             {/* Debt Amount Display */}
-            <VStack align="start" gap={2} p={4} bg="gray.50" borderRadius="md">
-              <Text fontSize="sm" color="gray.600">
+            <VStack align="start" gap={2} p={4} bg="bg.muted" borderRadius="md">
+              <Text fontSize="sm" color="fg.muted">
                 {person.name} {debtText}:
               </Text>
               <Text fontSize="2xl" fontWeight="bold" color={isOwedToMe ? 'green.600' : 'red.600'}>
                 {formatCurrency(Math.abs(debtAmount))}
               </Text>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 {settlementText}
               </Text>
             </VStack>

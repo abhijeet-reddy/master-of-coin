@@ -44,7 +44,7 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
   if (budgets.length === 0) {
     return (
       <Box>
-        <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+        <Text fontSize="lg" fontWeight="semibold" mb={4} color="fg">
           Budget Progress
         </Text>
         <EmptyState
@@ -57,7 +57,7 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
 
   return (
     <Box>
-      <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+      <Text fontSize="lg" fontWeight="semibold" mb={4} color="fg">
         Budget Progress
       </Text>
       <HStack
@@ -105,7 +105,7 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
                     <Text
                       fontSize="md"
                       fontWeight="semibold"
-                      color="gray.700"
+                      color="fg"
                       css={{
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -150,7 +150,7 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
                   {/* Spent vs Limit */}
                   <HStack justifyContent="space-between" width="100%" fontSize="sm">
                     <VStack alignItems="flex-start" gap={0}>
-                      <Text color="gray.500" fontSize="xs">
+                      <Text color="fg.muted" fontSize="xs">
                         Spent
                       </Text>
                       <Text fontWeight="semibold" color={isOverBudget ? 'red.600' : 'gray.700'}>
@@ -158,10 +158,10 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
                       </Text>
                     </VStack>
                     <VStack alignItems="flex-end" gap={0}>
-                      <Text color="gray.500" fontSize="xs">
+                      <Text color="fg.muted" fontSize="xs">
                         Limit
                       </Text>
-                      <Text fontWeight="semibold" color="gray.700">
+                      <Text fontWeight="semibold" color="fg">
                         {formatCurrency(parseFloat(budget.limit_amount))}
                       </Text>
                     </VStack>

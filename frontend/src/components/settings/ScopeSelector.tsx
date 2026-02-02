@@ -31,7 +31,7 @@ export const ScopeSelector = ({ value, onChange }: ScopeSelectorProps) => {
 
   return (
     <VStack align="stretch" gap={4}>
-      <Text fontSize="sm" fontWeight="medium" color="gray.700">
+      <Text fontSize="sm" fontWeight="medium" color="fg">
         Select permissions for this API key
       </Text>
 

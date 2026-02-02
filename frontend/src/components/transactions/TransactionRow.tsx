@@ -37,10 +37,10 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
   return (
     <Box
       p={4}
-      bg="white"
+      bg="bg"
       borderRadius="md"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border"
       cursor="pointer"
       _hover={{ bg: 'gray.50', borderColor: 'gray.300' }}
       onClick={onClick}
@@ -97,7 +97,7 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
               )}
 
               {/* Time on mobile */}
-              <Text fontSize="xs" color="gray.500" display={{ base: 'block', md: 'none' }}>
+              <Text fontSize="xs" color="fg.muted" display={{ base: 'block', md: 'none' }}>
                 {formatTime(transaction.date)}
               </Text>
             </HStack>
@@ -112,7 +112,7 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
           </Text>
 
           {/* Time on desktop */}
-          <Text fontSize="sm" color="gray.500" display={{ base: 'none', md: 'block' }}>
+          <Text fontSize="sm" color="fg.muted" display={{ base: 'none', md: 'block' }}>
             {formatTime(transaction.date)}
           </Text>
         </VStack>

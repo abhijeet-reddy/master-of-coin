@@ -35,21 +35,14 @@ export const CategoryBreakdown = ({ data }: CategoryBreakdownProps) => {
     if (active && payload && payload.length > 0) {
       const dataPoint = payload[0];
       return (
-        <Box
-          bg="white"
-          p={3}
-          borderRadius="md"
-          shadow="lg"
-          border="1px solid"
-          borderColor="gray.200"
-        >
-          <Text fontSize="sm" fontWeight="semibold" color="gray.700" mb={1}>
+        <Box bg="bg" p={3} borderRadius="md" shadow="lg" border="1px solid" borderColor="border">
+          <Text fontSize="sm" fontWeight="semibold" color="fg" mb={1}>
             {dataPoint.name}
           </Text>
           <Text fontSize="sm" color="brand.600" fontWeight="bold">
             {formatCurrency(dataPoint.value)}
           </Text>
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.muted">
             {dataPoint.payload.percentage.toFixed(1)}% of total
           </Text>
         </Box>
@@ -67,13 +60,13 @@ export const CategoryBreakdown = ({ data }: CategoryBreakdownProps) => {
     return (
       <Card.Root>
         <Card.Header>
-          <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+          <Text fontSize="lg" fontWeight="semibold" color="fg">
             Category Breakdown
           </Text>
         </Card.Header>
         <Card.Body>
           <Box py={8} textAlign="center">
-            <Text color="gray.500">No category data available</Text>
+            <Text color="fg.muted">No category data available</Text>
           </Box>
         </Card.Body>
       </Card.Root>
@@ -83,10 +76,10 @@ export const CategoryBreakdown = ({ data }: CategoryBreakdownProps) => {
   return (
     <Card.Root>
       <Card.Header>
-        <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+        <Text fontSize="lg" fontWeight="semibold" color="fg">
           Category Breakdown
         </Text>
-        <Text fontSize="sm" color="gray.500">
+        <Text fontSize="sm" color="fg.muted">
           Current month spending by category
         </Text>
       </Card.Header>

@@ -23,7 +23,7 @@ export const PageHeader = ({ title, subtitle, breadcrumbs, actions }: PageHeader
             <BreadcrumbLink
               key={index}
               href={crumb.href}
-              color={index === breadcrumbs.length - 1 ? 'gray.600' : 'brand.500'}
+              color={index === breadcrumbs.length - 1 ? 'fg.muted' : 'brand.500'}
               fontWeight={index === breadcrumbs.length - 1 ? 'medium' : 'normal'}
             >
               {crumb.label}
@@ -41,11 +41,11 @@ export const PageHeader = ({ title, subtitle, breadcrumbs, actions }: PageHeader
         gap={4}
       >
         <VStack alignItems="flex-start" gap={1}>
-          <Text as="h1" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" color="gray.800">
+          <Text as="h1" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" color="fg">
             {title}
           </Text>
           {subtitle && (
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {subtitle}
             </Text>
           )}

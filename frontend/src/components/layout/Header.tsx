@@ -19,8 +19,8 @@ export const Header = ({ onMenuClick, title = 'Dashboard' }: HeaderProps) => {
       h="16"
       px={4}
       borderBottomWidth="1px"
-      borderColor="gray.200"
-      bg="white"
+      borderColor="border"
+      bg="bg"
       display="flex"
       alignItems="center"
       justifyContent="space-between"

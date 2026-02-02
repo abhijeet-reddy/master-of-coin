@@ -66,10 +66,10 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
           {/* Header with name and status */}
           <HStack justify="space-between">
             <VStack align="flex-start" gap={1} flex="1">
-              <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+              <Text fontSize="lg" fontWeight="semibold" color="fg">
                 {budget.budget_name}
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="xs" color="fg.muted">
                 {budget.period}
               </Text>
             </VStack>
@@ -103,7 +103,7 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
               </Progress.Track>
             </Progress.Root>
             <HStack justify="space-between" mt={2}>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 {budget.percentage.toFixed(1)}% used
               </Text>
               {isOverBudget && (
@@ -117,7 +117,7 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
           {/* Spent vs Limit */}
           <HStack justify="space-between" fontSize="sm">
             <VStack align="flex-start" gap={0}>
-              <Text color="gray.500" fontSize="xs">
+              <Text color="fg.muted" fontSize="xs">
                 Spent
               </Text>
               <Text fontWeight="semibold" color={isOverBudget ? 'red.600' : 'gray.700'}>
@@ -125,10 +125,10 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
               </Text>
             </VStack>
             <VStack align="flex-end" gap={0}>
-              <Text color="gray.500" fontSize="xs">
+              <Text color="fg.muted" fontSize="xs">
                 Limit
               </Text>
-              <Text fontWeight="semibold" color="gray.700">
+              <Text fontWeight="semibold" color="fg">
                 {formatCurrency(parseFloat(budget.limit_amount))}
               </Text>
             </VStack>
@@ -136,8 +136,8 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
 
           {/* Days remaining */}
           {daysRemaining !== null && (
-            <Box pt={2} borderTop="1px solid" borderColor="gray.200">
-              <Text fontSize="xs" color="gray.600">
+            <Box pt={2} borderTop="1px solid" borderColor="border">
+              <Text fontSize="xs" color="fg.muted">
                 {daysRemaining > 0
                   ? `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining`
                   : daysRemaining === 0
@@ -148,7 +148,7 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
           )}
 
           {/* Action buttons */}
-          <HStack gap={2} pt={2} borderTop="1px solid" borderColor="gray.200">
+          <HStack gap={2} pt={2} borderTop="1px solid" borderColor="border">
             <Button
               size="sm"
               variant="outline"

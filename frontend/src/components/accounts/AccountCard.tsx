@@ -104,7 +104,7 @@ export const AccountCard = ({ account, onEdit, onDelete }: AccountCardProps) => 
 
           {/* Balance */}
           <VStack align="start" gap={0}>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               Balance
             </Text>
             <Text fontSize="2xl" fontWeight="bold" color={balance >= 0 ? 'green.600' : 'red.600'}>
@@ -114,7 +114,7 @@ export const AccountCard = ({ account, onEdit, onDelete }: AccountCardProps) => 
 
           {/* Notes preview */}
           {account.notes && (
-            <Text fontSize="sm" color="gray.600" lineClamp={2}>
+            <Text fontSize="sm" color="fg.muted" lineClamp={2}>
               {account.notes}
             </Text>
           )}

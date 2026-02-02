@@ -161,7 +161,7 @@ export const Settings = () => {
           <Card.Root>
             <Card.Header>
               <Heading size="md">Profile Information</Heading>
-              <Text color="gray.600" fontSize="sm">
+              <Text color="fg.muted" fontSize="sm">
                 Update your personal information
               </Text>
             </Card.Header>
@@ -173,7 +173,7 @@ export const Settings = () => {
                     onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
                     disabled
                   />
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text fontSize="xs" color="fg.muted" mt={1}>
                     Username cannot be changed
                   </Text>
                 </Field>
@@ -217,7 +217,7 @@ export const Settings = () => {
             <Card.Root>
               <Card.Header>
                 <Heading size="md">Display Preferences</Heading>
-                <Text color="gray.600" fontSize="sm">
+                <Text color="fg.muted" fontSize="sm">
                   Customize how information is displayed
                 </Text>
               </Card.Header>
@@ -328,7 +328,7 @@ export const Settings = () => {
             <Card.Root>
               <Card.Header>
                 <Heading size="md">Change Password</Heading>
-                <Text color="gray.600" fontSize="sm">
+                <Text color="fg.muted" fontSize="sm">
                   Update your password to keep your account secure
                 </Text>
               </Card.Header>
@@ -389,7 +389,7 @@ export const Settings = () => {
             <Card.Root>
               <Card.Header>
                 <Heading size="md">Two-Factor Authentication</Heading>
-                <Text color="gray.600" fontSize="sm">
+                <Text color="fg.muted" fontSize="sm">
                   Add an extra layer of security to your account
                 </Text>
               </Card.Header>
@@ -409,7 +409,7 @@ export const Settings = () => {
             <Card.Root>
               <Card.Header>
                 <Heading size="md">Active Sessions</Heading>
-                <Text color="gray.600" fontSize="sm">
+                <Text color="fg.muted" fontSize="sm">
                   Manage your active sessions
                 </Text>
               </Card.Header>
@@ -419,7 +419,7 @@ export const Settings = () => {
                     <HStack justifyContent="space-between">
                       <VStack alignItems="flex-start" gap={1}>
                         <Text fontWeight="medium">Current Session</Text>
-                        <Text fontSize="sm" color="gray.600">
+                        <Text fontSize="sm" color="fg.muted">
                           Last active: Just now
                         </Text>
                       </VStack>
@@ -439,7 +439,7 @@ export const Settings = () => {
               <HStack justifyContent="space-between">
                 <Box>
                   <Heading size="md">API Keys</Heading>
-                  <Text color="gray.600" fontSize="sm">
+                  <Text color="fg.muted" fontSize="sm">
                     Manage API keys for programmatic access
                   </Text>
                 </Box>
@@ -491,7 +491,7 @@ export const Settings = () => {
                   <Text fontWeight="medium" mb={2}>
                     Version
                   </Text>
-                  <Text color="gray.600">1.0.0</Text>
+                  <Text color="fg.muted">1.0.0</Text>
                 </Box>
 
                 <Separator />
@@ -500,7 +500,7 @@ export const Settings = () => {
                   <Text fontWeight="medium" mb={2}>
                     Description
                   </Text>
-                  <Text color="gray.600">
+                  <Text color="fg.muted">
                     Master of Coin is a comprehensive personal finance management application that
                     helps you track expenses, manage budgets, and gain insights into your financial
                     health.
@@ -550,7 +550,7 @@ export const Settings = () => {
                 <Separator />
 
                 <Box>
-                  <Text fontSize="sm" color="gray.500">
+                  <Text fontSize="sm" color="fg.muted">
                     © 2026 Master of Coin. All rights reserved.
                   </Text>
                 </Box>

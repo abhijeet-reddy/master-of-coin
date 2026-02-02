@@ -29,7 +29,7 @@ export const OverallProgressCard = ({ budgets }: OverallProgressCardProps) => {
             <Text fontSize="lg" fontWeight="semibold">
               Overall Budget Progress
             </Text>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {budgets.length} {budgets.length === 1 ? 'Budget' : 'Budgets'}
             </Text>
           </HStack>
@@ -40,7 +40,7 @@ export const OverallProgressCard = ({ budgets }: OverallProgressCardProps) => {
               <Text fontSize="2xl" fontWeight="bold">
                 {formatCurrency(totalSpent)}
               </Text>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 of {formatCurrency(totalBudgeted)}
               </Text>
             </HStack>
@@ -55,7 +55,7 @@ export const OverallProgressCard = ({ budgets }: OverallProgressCardProps) => {
               </Progress.Track>
             </Progress.Root>
             <HStack justify="space-between" mt={2}>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 {overallPercentage.toFixed(1)}% used
               </Text>
               {budgetsOverLimit > 0 && (
@@ -67,9 +67,9 @@ export const OverallProgressCard = ({ budgets }: OverallProgressCardProps) => {
           </Box>
 
           {/* Summary Stats */}
-          <HStack gap={6} pt={2} borderTop="1px solid" borderColor="gray.200">
+          <HStack gap={6} pt={2} borderTop="1px solid" borderColor="border">
             <Box>
-              <Text fontSize="xs" color="gray.600" mb={1}>
+              <Text fontSize="xs" color="fg.muted" mb={1}>
                 Remaining
               </Text>
               <Text
@@ -81,7 +81,7 @@ export const OverallProgressCard = ({ budgets }: OverallProgressCardProps) => {
               </Text>
             </Box>
             <Box>
-              <Text fontSize="xs" color="gray.600" mb={1}>
+              <Text fontSize="xs" color="fg.muted" mb={1}>
                 Average Usage
               </Text>
               <Text fontSize="md" fontWeight="semibold">

@@ -87,13 +87,13 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
           {/* Contact Information */}
           <VStack align="start" gap={2}>
             {person.email && (
-              <HStack gap={2} fontSize="sm" color="gray.600">
+              <HStack gap={2} fontSize="sm" color="fg.muted">
                 <FaEnvelope />
                 <Text>{person.email}</Text>
               </HStack>
             )}
             {person.phone && (
-              <HStack gap={2} fontSize="sm" color="gray.600">
+              <HStack gap={2} fontSize="sm" color="fg.muted">
                 <FaPhone />
                 <Text>{person.phone}</Text>
               </HStack>
@@ -102,7 +102,7 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
 
           {/* Debt Amount Display */}
           <VStack align="start" gap={0}>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               Balance
             </Text>
             <Text fontSize="2xl" fontWeight="bold" color={getDebtColor()}>
@@ -144,7 +144,7 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
               <Collapsible.Root open={isExpanded}>
                 <Collapsible.Content>
                   <VStack align="start" gap={2} mt={3} pl={4}>
-                    <Text fontSize="sm" color="gray.500">
+                    <Text fontSize="sm" color="fg.muted">
                       View detailed transaction history in the Transactions page
                     </Text>
                   </VStack>
@@ -155,7 +155,7 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
 
           {/* Notes preview */}
           {person.notes && (
-            <Text fontSize="sm" color="gray.600" lineClamp={2}>
+            <Text fontSize="sm" color="fg.muted" lineClamp={2}>
               {person.notes}
             </Text>
           )}

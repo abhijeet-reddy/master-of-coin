@@ -73,7 +73,7 @@ export const SplitPaymentForm = ({
 
   return (
     <VStack align="stretch" gap={4}>
-      <Text fontSize="sm" color="gray.600">
+      <Text fontSize="sm" color="fg.muted">
         Split this transaction with others. Enter the amount each person owes.
       </Text>
 

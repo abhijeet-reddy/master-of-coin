@@ -58,7 +58,7 @@ export const AccountSummary = ({ accounts }: AccountSummaryProps) => {
   if (accounts.length === 0) {
     return (
       <Box>
-        <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+        <Text fontSize="lg" fontWeight="semibold" mb={4} color="fg">
           Accounts
         </Text>
         <EmptyState
@@ -71,7 +71,7 @@ export const AccountSummary = ({ accounts }: AccountSummaryProps) => {
 
   return (
     <Box>
-      <Text fontSize="lg" fontWeight="semibold" mb={4} color="gray.700">
+      <Text fontSize="lg" fontWeight="semibold" mb={4} color="fg">
         Accounts
       </Text>
       <HStack
@@ -142,7 +142,7 @@ export const AccountSummary = ({ accounts }: AccountSummaryProps) => {
                     <Text
                       fontSize="md"
                       fontWeight="semibold"
-                      color="gray.700"
+                      color="fg"
                       title={account.name}
                       css={{
                         overflow: 'hidden',
@@ -156,7 +156,7 @@ export const AccountSummary = ({ accounts }: AccountSummaryProps) => {
 
                   {/* Balance */}
                   <Box width="100%">
-                    <Text fontSize="xs" color="gray.500" mb={1}>
+                    <Text fontSize="xs" color="fg.muted" mb={1}>
                       Balance
                     </Text>
                     <Text

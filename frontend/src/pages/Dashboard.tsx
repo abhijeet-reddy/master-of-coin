@@ -40,7 +40,7 @@ export default function Dashboard() {
     return (
       <Box>
         <PageHeader title="Dashboard" />
-        <Text color="gray.500">No dashboard data available</Text>
+        <Text color="fg.muted">No dashboard data available</Text>
       </Box>
     );
   }

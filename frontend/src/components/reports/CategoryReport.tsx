@@ -31,7 +31,7 @@ export const CategoryReport = ({ categoryBreakdown }: CategoryReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Total Categories</Stat.Label>
+                <Stat.Label color="fg.muted">Total Categories</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold">
                   {categoryBreakdown.length}
                 </Stat.ValueText>
@@ -44,7 +44,7 @@ export const CategoryReport = ({ categoryBreakdown }: CategoryReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Total Spending</Stat.Label>
+                <Stat.Label color="fg.muted">Total Spending</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold" color="red.500">
                   {formatCurrency(totalSpending)}
                 </Stat.ValueText>
@@ -85,8 +85,8 @@ export const CategoryReport = ({ categoryBreakdown }: CategoryReportProps) => {
                 justifyContent="space-between"
                 p={3}
                 borderRadius="md"
-                bg="gray.50"
-                _hover={{ bg: 'gray.100' }}
+                bg="bg.muted"
+                _hover={{ bg: 'bg.subtle' }}
               >
                 <HStack flex={1}>
                   <Box w={3} h={3} borderRadius="full" bg={colors[index % colors.length]} />
@@ -95,7 +95,7 @@ export const CategoryReport = ({ categoryBreakdown }: CategoryReportProps) => {
                   </Text>
                 </HStack>
                 <HStack gap={4}>
-                  <Text fontSize="sm" color="gray.600">
+                  <Text fontSize="sm" color="fg.muted">
                     {cat.percentage.toFixed(1)}%
                   </Text>
                   <Text fontSize="sm" fontWeight="bold" minW="100px" textAlign="right">

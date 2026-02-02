@@ -45,7 +45,7 @@ export const Layout = () => {
         <Box
           flex={1}
           overflowY="auto"
-          bg="gray.50"
+          bg="bg.subtle"
           px={{ base: 4, md: 6, lg: 8 }}
           py={{ base: 4, md: 6 }}
         >

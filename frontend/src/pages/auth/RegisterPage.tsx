@@ -71,7 +71,7 @@ export function RegisterPage() {
           <Heading size="xl" textAlign="center">
             Master of Coin
           </Heading>
-          <Text textAlign="center" color="gray.600" mt={2}>
+          <Text textAlign="center" color="fg.muted" mt={2}>
             Create your account
           </Text>
         </Card.Header>

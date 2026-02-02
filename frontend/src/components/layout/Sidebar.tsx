@@ -37,7 +37,7 @@ const NavItem = ({ icon: IconComponent, label, to, onClick }: NavItemProps) => {
           color={isActive ? 'brand.600' : 'inherit'}
           fontWeight={isActive ? 'medium' : 'normal'}
           _hover={{
-            bg: isActive ? 'brand.50' : 'gray.100',
+            bg: isActive ? 'brand.50' : 'bg.muted',
           }}
           cursor="pointer"
         >
@@ -59,9 +59,9 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
       h="full"
       display="flex"
       flexDirection="column"
-      bg="white"
+      bg="bg"
       borderRightWidth="1px"
-      borderColor="gray.200"
+      borderColor="border"
     >
       {/* Logo/Brand */}
       <Box px={6} py={6}>
@@ -87,7 +87,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
 
       {/* User Profile Section */}
       {user && (
-        <Box px={4} py={4} borderTopWidth="1px" borderColor="gray.200">
+        <Box px={4} py={4} borderTopWidth="1px" borderColor="border">
           <HStack gap={3}>
             <Box
               w="32px"
@@ -107,7 +107,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
               <Text fontSize="sm" fontWeight="medium">
                 {user.name}
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="xs" color="fg.muted">
                 {user.email}
               </Text>
             </Box>

@@ -16,7 +16,7 @@ export const PlaceholderPage = ({
     <Box>
       <PageHeader title={title} subtitle={subtitle} />
       <Box bg="white" p={6} borderRadius="lg" boxShadow="sm">
-        <Text color="gray.600">
+        <Text color="fg.muted">
           {title} page will be implemented in {phase}
         </Text>
       </Box>

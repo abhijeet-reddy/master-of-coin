@@ -56,7 +56,7 @@ export const NetWorthReport = ({ accounts }: NetWorthReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Total Assets</Stat.Label>
+                <Stat.Label color="fg.muted">Total Assets</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold" color="green.500">
                   {formatCurrency(metrics.assets)}
                 </Stat.ValueText>
@@ -69,7 +69,7 @@ export const NetWorthReport = ({ accounts }: NetWorthReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Total Liabilities</Stat.Label>
+                <Stat.Label color="fg.muted">Total Liabilities</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold" color="red.500">
                   {formatCurrency(metrics.liabilities)}
                 </Stat.ValueText>
@@ -141,14 +141,14 @@ export const NetWorthReport = ({ accounts }: NetWorthReportProps) => {
                 justifyContent="space-between"
                 p={3}
                 borderRadius="md"
-                bg="gray.50"
-                _hover={{ bg: 'gray.100' }}
+                bg="bg.muted"
+                _hover={{ bg: 'bg.subtle' }}
               >
                 <VStack alignItems="flex-start" gap={1}>
                   <Text fontSize="sm" fontWeight="medium">
                     {account.name}
                   </Text>
-                  <Text fontSize="xs" color="gray.600">
+                  <Text fontSize="xs" color="fg.muted">
                     {formatAccountType(account.account_type)}
                   </Text>
                 </VStack>
@@ -171,7 +171,7 @@ export const NetWorthReport = ({ accounts }: NetWorthReportProps) => {
           <Card.Title>Net Worth Trend</Card.Title>
         </Card.Header>
         <Card.Body>
-          <Text color="gray.600" fontSize="sm" textAlign="center" py={8}>
+          <Text color="fg.muted" fontSize="sm" textAlign="center" py={8}>
             Historical net worth data will be displayed here once transaction history is available.
           </Text>
         </Card.Body>

@@ -26,7 +26,7 @@ export const DebtSummary = ({ people }: DebtSummaryProps) => {
           <HStack gap={6} flexWrap="wrap">
             {/* Total Owed to Me */}
             <VStack align="start" flex="1" minW="150px">
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 Owed to Me
               </Text>
               <Text fontSize="2xl" fontWeight="bold" color="green.600">
@@ -36,7 +36,7 @@ export const DebtSummary = ({ people }: DebtSummaryProps) => {
 
             {/* Total I Owe */}
             <VStack align="start" flex="1" minW="150px">
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 I Owe
               </Text>
               <Text fontSize="2xl" fontWeight="bold" color="red.600">
@@ -46,7 +46,7 @@ export const DebtSummary = ({ people }: DebtSummaryProps) => {
 
             {/* Net Amount */}
             <VStack align="start" flex="1" minW="150px">
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 Net Amount
               </Text>
               <HStack>
@@ -64,13 +64,13 @@ export const DebtSummary = ({ people }: DebtSummaryProps) => {
 
             {/* People with Outstanding Debts */}
             <VStack align="start" flex="1" minW="150px">
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 Outstanding Debts
               </Text>
               <Text fontSize="2xl" fontWeight="bold">
                 {peopleWithDebts}
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="xs" color="fg.muted">
                 {peopleWithDebts === 1 ? 'person' : 'people'}
               </Text>
             </VStack>

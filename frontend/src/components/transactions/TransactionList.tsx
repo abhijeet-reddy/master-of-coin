@@ -92,7 +92,7 @@ export const TransactionList = ({
               justifyContent="space-between"
               alignItems="center"
             >
-              <Heading size="sm" color="gray.700">
+              <Heading size="sm" color="fg">
                 {date}
               </Heading>
               <Text fontSize="sm" fontWeight="semibold" color={isExpense ? 'red.600' : 'green.600'}>

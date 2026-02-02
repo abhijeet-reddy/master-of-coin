@@ -14,7 +14,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
     return (
       <Card.Root>
         <Card.Header>
-          <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+          <Text fontSize="lg" fontWeight="semibold" color="fg">
             Recent Transactions
           </Text>
         </Card.Header>
@@ -32,7 +32,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
     <Card.Root>
       <Card.Header>
         <HStack justifyContent="space-between">
-          <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+          <Text fontSize="lg" fontWeight="semibold" color="fg">
             Recent Transactions
           </Text>
           <Link to="/transactions">
@@ -94,7 +94,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
                       <Text
                         fontSize="sm"
                         fontWeight="semibold"
-                        color="gray.700"
+                        color="fg"
                         css={{
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -104,7 +104,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
                       >
                         {transaction.title}
                       </Text>
-                      <HStack gap={2} fontSize="xs" color="gray.500">
+                      <HStack gap={2} fontSize="xs" color="fg.muted">
                         <Text>{transaction.account.name}</Text>
                         {transaction.category?.name && (
                           <>
@@ -134,7 +134,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
                       {isNegative ? '-' : '+'}
                       {formatCurrency(Math.abs(amount), transaction.account.currency)}
                     </Text>
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="fg.muted">
                       {formatDateTime(transaction.date)}
                     </Text>
                   </VStack>

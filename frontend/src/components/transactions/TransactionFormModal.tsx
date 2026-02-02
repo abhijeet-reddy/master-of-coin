@@ -328,7 +328,7 @@ export const TransactionFormModal = ({
 
               {/* Split Payment Form */}
               {isSplitEnabled && (
-                <Box p={4} bg="gray.50" borderRadius="md">
+                <Box p={4} bg="bg.muted" borderRadius="md">
                   <SplitPaymentForm
                     totalAmount={parseFloat(amount) || 0}
                     splits={splits}

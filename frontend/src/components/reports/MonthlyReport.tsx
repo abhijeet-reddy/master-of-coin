@@ -82,7 +82,7 @@ export const MonthlyReport = ({ transactions, categoryBreakdown }: MonthlyReport
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Total Income</Stat.Label>
+                <Stat.Label color="fg.muted">Total Income</Stat.Label>
                 <Stat.ValueText color="green.500" fontSize="2xl" fontWeight="bold">
                   {formatCurrency(metrics.income)}
                 </Stat.ValueText>
@@ -95,7 +95,7 @@ export const MonthlyReport = ({ transactions, categoryBreakdown }: MonthlyReport
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Total Expenses</Stat.Label>
+                <Stat.Label color="fg.muted">Total Expenses</Stat.Label>
                 <Stat.ValueText color="red.500" fontSize="2xl" fontWeight="bold">
                   {formatCurrency(metrics.expenses)}
                 </Stat.ValueText>
@@ -108,7 +108,7 @@ export const MonthlyReport = ({ transactions, categoryBreakdown }: MonthlyReport
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Net</Stat.Label>
+                <Stat.Label color="fg.muted">Net</Stat.Label>
                 <Stat.ValueText
                   color={metrics.net >= 0 ? 'green.500' : 'red.500'}
                   fontSize="2xl"

@@ -55,7 +55,7 @@ export const ApiKeyCard = ({ apiKey, onEdit, onRevoke }: ApiKeyCardProps) => {
 
           {/* Key Prefix */}
           <VStack align="start" gap={0}>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               Key Prefix
             </Text>
             <Text fontSize="md" fontFamily="mono" fontWeight="medium">
@@ -65,7 +65,7 @@ export const ApiKeyCard = ({ apiKey, onEdit, onRevoke }: ApiKeyCardProps) => {
 
           {/* Scopes Summary */}
           <VStack align="start" gap={0}>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               Permissions
             </Text>
             <Text fontSize="sm">{getScopesSummary(apiKey)}</Text>
@@ -74,13 +74,13 @@ export const ApiKeyCard = ({ apiKey, onEdit, onRevoke }: ApiKeyCardProps) => {
           {/* Expiration */}
           <HStack justify="space-between">
             <VStack align="start" gap={0}>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 Expires
               </Text>
               <Text fontSize="sm">{formatDateWithYear(apiKey.expires_at)}</Text>
             </VStack>
             <VStack align="start" gap={0}>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 Last Used
               </Text>
               <Text fontSize="sm">{formatDateWithYear(apiKey.last_used_at)}</Text>

@@ -60,7 +60,7 @@ export const BudgetReport = ({ budgets }: BudgetReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Total Budgets</Stat.Label>
+                <Stat.Label color="fg.muted">Total Budgets</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold">
                   {budgets.length}
                 </Stat.ValueText>
@@ -73,7 +73,7 @@ export const BudgetReport = ({ budgets }: BudgetReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">On Track</Stat.Label>
+                <Stat.Label color="fg.muted">On Track</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold" color="green.500">
                   {summary.onTrack}
                 </Stat.ValueText>
@@ -86,7 +86,7 @@ export const BudgetReport = ({ budgets }: BudgetReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Warning</Stat.Label>
+                <Stat.Label color="fg.muted">Warning</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold" color="orange.500">
                   {summary.warning}
                 </Stat.ValueText>
@@ -99,7 +99,7 @@ export const BudgetReport = ({ budgets }: BudgetReportProps) => {
           <Card.Root>
             <Card.Body>
               <Stat.Root>
-                <Stat.Label color="gray.600">Exceeded</Stat.Label>
+                <Stat.Label color="fg.muted">Exceeded</Stat.Label>
                 <Stat.ValueText fontSize="2xl" fontWeight="bold" color="red.500">
                   {summary.exceeded}
                 </Stat.ValueText>
@@ -117,7 +117,7 @@ export const BudgetReport = ({ budgets }: BudgetReportProps) => {
         <Card.Body>
           <VStack gap={4} alignItems="stretch">
             <HStack justifyContent="space-between">
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 Total Spent
               </Text>
               <Text fontSize="sm" fontWeight="bold">
@@ -174,7 +174,7 @@ export const BudgetReport = ({ budgets }: BudgetReportProps) => {
         <Card.Body>
           <VStack gap={4} alignItems="stretch">
             {budgets.map((budget, index) => (
-              <Box key={index} p={4} borderRadius="md" borderWidth="1px" borderColor="gray.200">
+              <Box key={index} p={4} borderRadius="md" borderWidth="1px" borderColor="border">
                 <VStack gap={3} alignItems="stretch">
                   <HStack justifyContent="space-between">
                     <Text fontWeight="bold">{budget.budget_name}</Text>
@@ -206,7 +206,7 @@ export const BudgetReport = ({ budgets }: BudgetReportProps) => {
                   </HStack>
 
                   <HStack justifyContent="space-between">
-                    <Text fontSize="sm" color="gray.600">
+                    <Text fontSize="sm" color="fg.muted">
                       {formatCurrency(parseFloat(budget.current_spending))} /{' '}
                       {formatCurrency(parseFloat(budget.limit_amount))}
                     </Text>

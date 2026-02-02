@@ -139,7 +139,7 @@ export const CreateApiKeyModal = ({ isOpen, onClose }: CreateApiKeyModalProps) =
 
               {step === 2 && (
                 <>
-                  <Text fontSize="sm" color="gray.600">
+                  <Text fontSize="sm" color="fg.muted">
                     Select the permissions for this API key. You can modify these later.
                   </Text>
                   <ScopeSelector value={scopes} onChange={setScopes} />

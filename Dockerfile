@@ -30,11 +30,14 @@ RUN echo "VITE_API_URL=/api/v1" > .env && \
 RUN npm run build
 
 # ============================================================================
-# Stage 2: Rust Builder - Compile Rust backend with optimizations
+# Stage 2: Rust Chef - Prepare dependency recipe
 # ============================================================================
-FROM rust:slim-bookworm AS rust-builder
+FROM rust:slim-bookworm AS chef
 
 WORKDIR /app
+
+# Install cargo-chef for efficient dependency caching
+RUN cargo install cargo-chef
 
 # Install build dependencies for Rust and PostgreSQL
 RUN apt-get update && apt-get install -y \
@@ -43,30 +46,42 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Cargo manifest files first for better layer caching
-COPY backend/Cargo.toml backend/Cargo.lock ./
+# ============================================================================
+# Stage 3: Rust Planner - Analyze dependencies
+# ============================================================================
+FROM chef AS planner
 
-# Create dummy source to cache dependencies
-# This allows Docker to cache the dependency layer separately from source code
-RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
+# Copy all backend files to analyze dependencies
+COPY backend/ .
+
+# Generate dependency recipe (like a lock file for cargo-chef)
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ============================================================================
+# Stage 4: Rust Builder - Build dependencies and application
+# ============================================================================
+FROM chef AS rust-builder
+
+# Copy the dependency recipe from planner
+COPY --from=planner /app/recipe.json recipe.json
+
+# Build dependencies only (cached layer)
+# This layer is only rebuilt when dependencies change
+RUN cargo chef cook --release --recipe-path recipe.json
 
 # Copy actual source code
 COPY backend/src ./src
 COPY backend/migrations ./migrations
+COPY backend/Cargo.toml backend/Cargo.lock ./
 
 # Build the actual application
-# Touch main.rs to force rebuild of the binary with actual code
-RUN touch src/main.rs && \
-    cargo build --release --locked
+RUN cargo build --release --locked
 
 # Strip debug symbols to reduce binary size
 RUN strip /app/target/release/master-of-coin-backend
 
 # ============================================================================
-# Stage 3: Runtime - Minimal production image
+# Stage 5: Runtime - Minimal production image
 # ============================================================================
 FROM debian:bookworm-slim
 

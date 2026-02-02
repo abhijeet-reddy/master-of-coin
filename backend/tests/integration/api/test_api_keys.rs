@@ -268,16 +268,19 @@ async fn test_api_key_insufficient_permissions() {
     let api_key_response: CreateApiKeyResponse = extract_json(create_response);
     let api_key = api_key_response.key;
 
-    // Try to access accounts endpoint (should work - read is allowed by default in current impl)
-    // Note: Full scope enforcement would require scope middleware on routes
+    // Try to access accounts endpoint without permission (should fail with 403)
     let response = server
         .get("/api/v1/accounts")
         .add_header("Authorization", format!("Bearer {}", api_key))
         .await;
 
-    // Currently returns 200 because scope enforcement is not yet at middleware level
-    // This test documents current behavior
-    assert_status(&response, 200);
+    // Should return 403 Forbidden due to scope enforcement middleware
+    assert_status(&response, 403);
+
+    // Verify error message
+    let error_text = response.text();
+    assert!(error_text.contains("Insufficient permissions"));
+    assert!(error_text.contains("Accounts"));
 }
 
 /// Test invalid API key format fails with 401.

@@ -23,10 +23,20 @@
 //!
 //! Protected routes automatically require a valid JWT token or API key in the
 //! `Authorization: Bearer <token>` header.
-use crate::{AppState, handlers, middleware::auth::require_auth};
+//!
+//! ## Scope Enforcement
+//!
+//! API keys are subject to scope-based authorization. Each route checks if the
+//! API key has the required permission (read or write) for the resource type.
+//! JWT tokens have full access to all resources.
+use crate::{
+    AppState, handlers,
+    middleware::{auth::require_auth, scope::require_scope},
+    models::{OperationType, ResourceType},
+};
 use axum::{
     Router, middleware,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 use std::path::PathBuf;
 use tower_http::services::{ServeDir, ServeFile};
@@ -51,67 +61,251 @@ pub fn create_router(state: AppState) -> Router {
 
     // Protected routes (authentication required)
     let protected_routes = Router::new()
-        // Auth routes
+        // Auth routes (no scope check needed - always accessible)
         .route("/auth/me", get(handlers::auth::get_current_user))
-        // Dashboard
+        // Dashboard (no scope check - read-only summary)
         .route("/dashboard", get(handlers::dashboard::get_summary))
-        // Transactions
+        // Transactions - with scope enforcement
         .route(
             "/transactions",
-            get(handlers::transactions::list).post(handlers::transactions::create),
+            get(handlers::transactions::list).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Read,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/transactions",
+            post(handlers::transactions::create).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
         )
         .route(
             "/transactions/:id",
-            get(handlers::transactions::get)
-                .put(handlers::transactions::update)
-                .delete(handlers::transactions::delete),
+            get(handlers::transactions::get).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Read,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
         )
-        // Accounts
+        .route(
+            "/transactions/:id",
+            put(handlers::transactions::update).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/transactions/:id",
+            delete(handlers::transactions::delete).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        // Accounts - with scope enforcement
         .route(
             "/accounts",
-            get(handlers::accounts::list).post(handlers::accounts::create),
+            get(handlers::accounts::list).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Accounts, OperationType::Read, auth, req, next)
+            })),
+        )
+        .route(
+            "/accounts",
+            post(handlers::accounts::create).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Accounts,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
         )
         .route(
             "/accounts/:id",
-            get(handlers::accounts::get)
-                .put(handlers::accounts::update)
-                .delete(handlers::accounts::delete),
+            get(handlers::accounts::get).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Accounts, OperationType::Read, auth, req, next)
+            })),
         )
-        // Budgets
+        .route(
+            "/accounts/:id",
+            put(handlers::accounts::update).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Accounts,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/accounts/:id",
+            delete(handlers::accounts::delete).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Accounts,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        // Budgets - with scope enforcement
         .route(
             "/budgets",
-            get(handlers::budgets::list).post(handlers::budgets::create),
+            get(handlers::budgets::list).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Read, auth, req, next)
+            })),
+        )
+        .route(
+            "/budgets",
+            post(handlers::budgets::create).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Write, auth, req, next)
+            })),
         )
         .route(
             "/budgets/:id",
-            get(handlers::budgets::get)
-                .put(handlers::budgets::update)
-                .delete(handlers::budgets::delete),
+            get(handlers::budgets::get).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Read, auth, req, next)
+            })),
         )
-        .route("/budgets/:id/ranges", post(handlers::budgets::add_range))
-        // People
+        .route(
+            "/budgets/:id",
+            put(handlers::budgets::update).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Write, auth, req, next)
+            })),
+        )
+        .route(
+            "/budgets/:id",
+            delete(handlers::budgets::delete).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Write, auth, req, next)
+            })),
+        )
+        .route(
+            "/budgets/:id/ranges",
+            post(handlers::budgets::add_range).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Write, auth, req, next)
+            })),
+        )
+        // People - with scope enforcement
         .route(
             "/people",
-            get(handlers::people::list).post(handlers::people::create),
+            get(handlers::people::list).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::People, OperationType::Read, auth, req, next)
+            })),
+        )
+        .route(
+            "/people",
+            post(handlers::people::create).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::People, OperationType::Write, auth, req, next)
+            })),
         )
         .route(
             "/people/:id",
-            get(handlers::people::get)
-                .put(handlers::people::update)
-                .delete(handlers::people::delete),
+            get(handlers::people::get).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::People, OperationType::Read, auth, req, next)
+            })),
         )
-        .route("/people/:id/debts", get(handlers::people::get_debts))
-        .route("/people/:id/settle", post(handlers::people::settle_debt))
-        // Categories
+        .route(
+            "/people/:id",
+            put(handlers::people::update).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::People, OperationType::Write, auth, req, next)
+            })),
+        )
+        .route(
+            "/people/:id",
+            delete(handlers::people::delete).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::People, OperationType::Write, auth, req, next)
+            })),
+        )
+        .route(
+            "/people/:id/debts",
+            get(handlers::people::get_debts).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::People, OperationType::Read, auth, req, next)
+            })),
+        )
+        .route(
+            "/people/:id/settle",
+            post(handlers::people::settle_debt).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::People, OperationType::Write, auth, req, next)
+            })),
+        )
+        // Categories - with scope enforcement
         .route(
             "/categories",
-            get(handlers::categories::list).post(handlers::categories::create),
+            get(handlers::categories::list).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Categories,
+                    OperationType::Read,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/categories",
+            post(handlers::categories::create).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Categories,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
         )
         .route(
             "/categories/:id",
-            put(handlers::categories::update).delete(handlers::categories::delete),
+            put(handlers::categories::update).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Categories,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
         )
-        // API Keys
+        .route(
+            "/categories/:id",
+            delete(handlers::categories::delete).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Categories,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        // API Keys - no scope enforcement (always accessible to authenticated users)
+        // API keys cannot manage other API keys via API key authentication
         .route(
             "/api-keys",
             get(handlers::api_keys::list).post(handlers::api_keys::create),

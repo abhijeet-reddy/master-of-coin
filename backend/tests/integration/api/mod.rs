@@ -20,4 +20,5 @@ mod test_budgets;
 mod test_categories;
 mod test_dashboard;
 mod test_people;
+mod test_scope_enforcement;
 mod test_transactions;

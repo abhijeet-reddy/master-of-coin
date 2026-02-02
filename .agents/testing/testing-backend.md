@@ -8,10 +8,19 @@
 
 ### 1. Unit Tests
 
-- Test individual functions/methods in isolation
-- Located in the same file as the code: `#[cfg(test)] mod tests { ... }`
-- Fast, no external dependencies
-- Example: Testing a helper function, validation logic
+**⚠️ IMPORTANT: Do NOT write unit tests in source files**
+
+- All tests should be written in separate test files under `backend/tests/integration/`
+- Do NOT use `#[cfg(test)] mod tests { ... }` in source files
+- Keep source code clean and focused on implementation only
+
+**Why?**
+
+- Keeps source files focused and readable
+- Easier to maintain and organize tests
+- Follows project conventions
+- Better separation of concerns
+- Consistent test organization across the project
 
 ### 2. Integration Tests - API (`integration_api`)
 
@@ -29,9 +38,10 @@
 
 **When to write which test:**
 
-- Changed a utility function? → Unit test
+- Changed a utility function? → Integration test (in `tests/integration/`)
 - Changed an API endpoint? → API integration test
 - Changed a database model? → Database integration test
+- Added new authentication method? → Both API and database tests
 
 ## Prerequisites (One-Time Setup)
 
@@ -116,10 +126,11 @@ cargo test
 
 ## Pre-Commit Checklist
 
-- [ ] Write test for your change
+- [ ] Write test for your change (in `tests/integration/`, NOT in source files)
 - [ ] Run specific test file: `cargo test --test integration_api test_<module>`
 - [ ] Run all tests: `cargo test`
 - [ ] All tests pass ✅
+- [ ] No unit tests added to source files (use integration tests instead)
 
 ## Common Issues
 

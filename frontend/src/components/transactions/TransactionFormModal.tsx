@@ -52,6 +52,7 @@ const transactionSchema = z.object({
       },
       { message: 'Date cannot be in the future' }
     ),
+  time: z.string().min(1, 'Time is required'),
   notes: z.string().optional(),
 });
 
@@ -96,6 +97,7 @@ export const TransactionFormModal = ({
       account_id: '',
       category_id: '',
       date: new Date().toISOString().split('T')[0],
+      time: new Date().toTimeString().slice(0, 5), // HH:MM format
       notes: '',
     },
   });
@@ -107,6 +109,7 @@ export const TransactionFormModal = ({
     if (isOpen) {
       if (transaction) {
         const transactionAmount = parseFloat(transaction.amount);
+        const transactionDate = new Date(transaction.date);
         reset({
           title: transaction.title,
           amount: Math.abs(transactionAmount).toString(),
@@ -114,6 +117,7 @@ export const TransactionFormModal = ({
           account_id: transaction.account_id,
           category_id: transaction.category_id || '',
           date: transaction.date.split('T')[0],
+          time: transactionDate.toTimeString().slice(0, 5), // Extract HH:MM
           notes: transaction.notes || '',
         });
         setIsSplitEnabled(!!transaction.splits && transaction.splits.length > 0);
@@ -126,6 +130,7 @@ export const TransactionFormModal = ({
           account_id: '',
           category_id: '',
           date: new Date().toISOString().split('T')[0],
+          time: new Date().toTimeString().slice(0, 5), // HH:MM format
           notes: '',
         });
         setIsSplitEnabled(false);
@@ -139,7 +144,10 @@ export const TransactionFormModal = ({
     setSubmitError(null);
     try {
       const dateValue = data.date || new Date().toISOString().split('T')[0];
-      const formattedDate = new Date(dateValue + 'T00:00:00Z').toISOString();
+      const timeValue = data.time && data.time.trim() !== '' ? data.time : '00:00';
+
+      // Combine date and time into ISO 8601 datetime format
+      const formattedDate = new Date(`${dateValue}T${timeValue}:00Z`).toISOString();
 
       // Set amount sign based on transaction type
       // Income = positive, Expense = negative
@@ -149,7 +157,7 @@ export const TransactionFormModal = ({
       const finalData = {
         title: data.title,
         amount: signedAmount,
-        date: formattedDate, // ISO 8601 datetime format
+        date: formattedDate, // ISO 8601 datetime format with time
         account_id: data.account_id,
         category_id:
           data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
@@ -282,10 +290,19 @@ export const TransactionFormModal = ({
                 </select>
               </Field>
 
-              {/* Date */}
-              <Field label="Date" required errorText={errors.date?.message}>
-                <Input {...register('date')} type="date" />
-              </Field>
+              {/* Date and Time */}
+              <HStack align="start" gap={4}>
+                <Box flex={1}>
+                  <Field label="Date" required errorText={errors.date?.message}>
+                    <Input {...register('date')} type="date" />
+                  </Field>
+                </Box>
+                <Box flex={1}>
+                  <Field label="Time" required errorText={errors.time?.message}>
+                    <Input {...register('time')} type="time" />
+                  </Field>
+                </Box>
+              </HStack>
 
               {/* Notes */}
               <Field label="Notes">

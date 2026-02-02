@@ -3,22 +3,13 @@ import { FiArrowRight, FiShoppingBag } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import type { EnrichedTransaction } from '@/types/models';
 import { EmptyState } from '@/components/common';
-import { format } from 'date-fns';
-import { formatCurrency } from '../../utils/formatters/currency';
+import { formatCurrency, formatDateTime } from '@/utils/formatters';
 
 interface RecentTransactionsProps {
   transactions: EnrichedTransaction[];
 }
 
 export const RecentTransactions = ({ transactions }: RecentTransactionsProps) => {
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch {
-      return dateString;
-    }
-  };
-
   if (transactions.length === 0) {
     return (
       <Card.Root>
@@ -144,7 +135,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
                       {formatCurrency(Math.abs(amount))}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
-                      {formatDate(transaction.date)}
+                      {formatDateTime(transaction.date)}
                     </Text>
                   </VStack>
                 </HStack>

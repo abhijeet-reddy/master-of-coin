@@ -2,7 +2,7 @@ import { Badge, Box, HStack, Icon, IconButton, Text, VStack } from '@chakra-ui/r
 import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers, FiTrash2 } from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction } from '@/types';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatCurrency, formatTime } from '@/utils/formatters';
 
 interface TransactionRowProps {
   transaction: EnrichedTransaction;
@@ -96,9 +96,9 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
                 </Badge>
               )}
 
-              {/* Date on mobile */}
+              {/* Time on mobile */}
               <Text fontSize="xs" color="gray.500" display={{ base: 'block', md: 'none' }}>
-                {formatDate(transaction.date)}
+                {formatTime(transaction.date)}
               </Text>
             </HStack>
           </VStack>
@@ -111,9 +111,9 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
             {formatCurrency(Math.abs(amount), transaction.account.currency)}
           </Text>
 
-          {/* Date on desktop */}
+          {/* Time on desktop */}
           <Text fontSize="sm" color="gray.500" display={{ base: 'none', md: 'block' }}>
-            {formatDate(transaction.date)}
+            {formatTime(transaction.date)}
           </Text>
         </VStack>
 

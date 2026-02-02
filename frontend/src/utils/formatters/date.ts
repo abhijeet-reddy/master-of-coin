@@ -64,7 +64,23 @@ export const formatDateTime = (dateString?: string): string => {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+/**
+ * Format time only (HH:MM)
+ * @param dateString - ISO date string or undefined
+ * @returns Formatted time string in 24-hour format or 'Never'
+ */
+export const formatTime = (dateString?: string): string => {
+  if (!dateString) return 'Never';
+  const date = new Date(dateString);
+  return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   });
 };

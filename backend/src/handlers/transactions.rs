@@ -1,9 +1,9 @@
 use crate::{
     AppState,
+    auth::context::AuthContext,
     errors::ApiError,
     models::{
         CreateTransactionRequest, TransactionFilter, TransactionResponse, UpdateTransactionRequest,
-        User,
     },
     services::transaction_service,
 };
@@ -18,12 +18,13 @@ use uuid::Uuid;
 /// GET /transactions
 pub async fn list(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Query(filters): Query<TransactionFilter>,
 ) -> Result<Json<Vec<TransactionResponse>>, ApiError> {
-    tracing::info!("Listing transactions for user {}", user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Listing transactions for user {}", user_id);
 
-    let transactions = transaction_service::list_transactions(&state.db, user.id, filters).await?;
+    let transactions = transaction_service::list_transactions(&state.db, user_id, filters).await?;
 
     Ok(Json(transactions))
 }
@@ -32,12 +33,13 @@ pub async fn list(
 /// POST /transactions
 pub async fn create(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Json(request): Json<CreateTransactionRequest>,
 ) -> Result<(StatusCode, Json<TransactionResponse>), ApiError> {
-    tracing::info!("Creating transaction for user {}", user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Creating transaction for user {}", user_id);
 
-    let transaction = transaction_service::create_transaction(&state.db, user.id, request).await?;
+    let transaction = transaction_service::create_transaction(&state.db, user_id, request).await?;
 
     Ok((StatusCode::CREATED, Json(transaction)))
 }
@@ -46,12 +48,13 @@ pub async fn create(
 /// GET /transactions/:id
 pub async fn get(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<TransactionResponse>, ApiError> {
-    tracing::debug!("Fetching transaction {} for user {}", id, user.id);
+    let user_id = auth_context.user_id();
+    tracing::debug!("Fetching transaction {} for user {}", id, user_id);
 
-    let transaction = transaction_service::get_transaction(&state.db, id, user.id).await?;
+    let transaction = transaction_service::get_transaction(&state.db, id, user_id).await?;
 
     Ok(Json(transaction))
 }
@@ -60,14 +63,15 @@ pub async fn get(
 /// PUT /transactions/:id
 pub async fn update(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Path(id): Path<Uuid>,
     Json(request): Json<UpdateTransactionRequest>,
 ) -> Result<Json<TransactionResponse>, ApiError> {
-    tracing::info!("Updating transaction {} for user {}", id, user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Updating transaction {} for user {}", id, user_id);
 
     let transaction =
-        transaction_service::update_transaction(&state.db, id, user.id, request).await?;
+        transaction_service::update_transaction(&state.db, id, user_id, request).await?;
 
     Ok(Json(transaction))
 }
@@ -76,12 +80,13 @@ pub async fn update(
 /// DELETE /transactions/:id
 pub async fn delete(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    tracing::info!("Deleting transaction {} for user {}", id, user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Deleting transaction {} for user {}", id, user_id);
 
-    transaction_service::delete_transaction(&state.db, id, user.id).await?;
+    transaction_service::delete_transaction(&state.db, id, user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

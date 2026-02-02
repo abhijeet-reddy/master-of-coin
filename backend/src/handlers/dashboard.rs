@@ -1,7 +1,7 @@
 use crate::{
     AppState,
+    auth::context::AuthContext,
     errors::ApiError,
-    models::User,
     services::analytics_service::{self, DashboardSummary},
 };
 use axum::{
@@ -13,11 +13,12 @@ use axum::{
 /// GET /dashboard
 pub async fn get_summary(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
 ) -> Result<Json<DashboardSummary>, ApiError> {
-    tracing::info!("Fetching dashboard summary for user {}", user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Fetching dashboard summary for user {}", user_id);
 
-    let summary = analytics_service::get_dashboard_summary(&state.db, user.id).await?;
+    let summary = analytics_service::get_dashboard_summary(&state.db, user_id).await?;
 
     Ok(Json(summary))
 }

@@ -1,5 +1,6 @@
 // HTTP request handlers
 pub mod accounts;
+pub mod api_keys;
 pub mod auth;
 pub mod budgets;
 pub mod categories;

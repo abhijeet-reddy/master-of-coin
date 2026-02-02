@@ -1,7 +1,8 @@
 use crate::{
     AppState,
+    auth::context::AuthContext,
     errors::ApiError,
-    models::{AuthResponse, CreateUserRequest, LoginRequest, User, UserResponse},
+    models::{AuthResponse, CreateUserRequest, LoginRequest, UserResponse},
     services::auth_service,
 };
 use axum::{
@@ -39,15 +40,16 @@ pub async fn login(
 /// Get current authenticated user
 /// GET /auth/me
 pub async fn get_current_user(
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
 ) -> Result<Json<UserResponse>, ApiError> {
+    let user = auth_context.user();
     tracing::debug!("Fetching current user: {}", user.id);
 
     Ok(Json(UserResponse {
         id: user.id,
-        username: user.username,
-        email: user.email,
-        name: user.name,
+        username: user.username.clone(),
+        email: user.email.clone(),
+        name: user.name.clone(),
         created_at: user.created_at,
     }))
 }

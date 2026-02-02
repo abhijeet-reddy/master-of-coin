@@ -7,10 +7,12 @@
 // - Relationships between models
 // - Transaction handling
 // - Async/sync bridge pattern
+// - API key CRUD operations
 
 #[path = "../common/mod.rs"]
 mod common;
 
+mod test_api_key_crud;
 mod test_async_bridge;
 mod test_connection;
 mod test_custom_types;

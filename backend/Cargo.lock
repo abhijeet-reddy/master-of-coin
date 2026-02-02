@@ -996,6 +996,7 @@ dependencies = [
  "hyper",
  "jsonwebtoken",
  "r2d2",
+ "rand",
  "rand_core",
  "serde",
  "serde_json",

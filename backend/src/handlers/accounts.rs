@@ -1,7 +1,8 @@
 use crate::{
     AppState,
+    auth::context::AuthContext,
     errors::ApiError,
-    models::{AccountResponse, CreateAccountRequest, UpdateAccountRequest, User},
+    models::{AccountResponse, CreateAccountRequest, UpdateAccountRequest},
     services::account_service,
 };
 use axum::{
@@ -15,11 +16,12 @@ use uuid::Uuid;
 /// GET /accounts
 pub async fn list(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
 ) -> Result<Json<Vec<AccountResponse>>, ApiError> {
-    tracing::info!("Listing accounts for user {}", user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Listing accounts for user {}", user_id);
 
-    let accounts = account_service::list_accounts(&state.db, user.id).await?;
+    let accounts = account_service::list_accounts(&state.db, user_id).await?;
 
     Ok(Json(accounts))
 }
@@ -28,12 +30,13 @@ pub async fn list(
 /// POST /accounts
 pub async fn create(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Json(request): Json<CreateAccountRequest>,
 ) -> Result<(StatusCode, Json<AccountResponse>), ApiError> {
-    tracing::info!("Creating account for user {}", user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Creating account for user {}", user_id);
 
-    let account = account_service::create_account(&state.db, user.id, request).await?;
+    let account = account_service::create_account(&state.db, user_id, request).await?;
 
     Ok((StatusCode::CREATED, Json(account)))
 }
@@ -42,12 +45,13 @@ pub async fn create(
 /// GET /accounts/:id
 pub async fn get(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<AccountResponse>, ApiError> {
-    tracing::debug!("Fetching account {} for user {}", id, user.id);
+    let user_id = auth_context.user_id();
+    tracing::debug!("Fetching account {} for user {}", id, user_id);
 
-    let account = account_service::get_account(&state.db, id, user.id).await?;
+    let account = account_service::get_account(&state.db, id, user_id).await?;
 
     Ok(Json(account))
 }
@@ -56,13 +60,14 @@ pub async fn get(
 /// PUT /accounts/:id
 pub async fn update(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Path(id): Path<Uuid>,
     Json(request): Json<UpdateAccountRequest>,
 ) -> Result<Json<AccountResponse>, ApiError> {
-    tracing::info!("Updating account {} for user {}", id, user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Updating account {} for user {}", id, user_id);
 
-    let account = account_service::update_account(&state.db, id, user.id, request).await?;
+    let account = account_service::update_account(&state.db, id, user_id, request).await?;
 
     Ok(Json(account))
 }
@@ -71,12 +76,13 @@ pub async fn update(
 /// DELETE /accounts/:id
 pub async fn delete(
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
+    Extension(auth_context): Extension<AuthContext>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    tracing::info!("Deleting account {} for user {}", id, user.id);
+    let user_id = auth_context.user_id();
+    tracing::info!("Deleting account {} for user {}", id, user_id);
 
-    account_service::delete_account(&state.db, id, user.id).await?;
+    account_service::delete_account(&state.db, id, user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

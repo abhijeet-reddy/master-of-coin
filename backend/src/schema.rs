@@ -6,6 +6,10 @@ pub mod sql_types {
     pub struct AccountType;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "api_key_status"))]
+    pub struct ApiKeyStatus;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "budget_period"))]
     pub struct BudgetPeriod;
 
@@ -28,6 +32,28 @@ diesel::table! {
         type_ -> AccountType,
         currency -> CurrencyCode,
         notes -> Nullable<Text>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ApiKeyStatus;
+
+    api_keys (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        #[max_length = 255]
+        name -> Varchar,
+        #[max_length = 255]
+        key_hash -> Varchar,
+        #[max_length = 20]
+        key_prefix -> Varchar,
+        scopes -> Jsonb,
+        status -> ApiKeyStatus,
+        expires_at -> Nullable<Timestamptz>,
+        last_used_at -> Nullable<Timestamptz>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -137,6 +163,7 @@ diesel::table! {
 }
 
 diesel::joinable!(accounts -> users (user_id));
+diesel::joinable!(api_keys -> users (user_id));
 diesel::joinable!(budget_ranges -> budgets (budget_id));
 diesel::joinable!(budgets -> users (user_id));
 diesel::joinable!(categories -> users (user_id));
@@ -149,6 +176,7 @@ diesel::joinable!(transactions -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
+    api_keys,
     budget_ranges,
     budgets,
     categories,

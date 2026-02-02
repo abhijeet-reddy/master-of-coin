@@ -19,16 +19,13 @@
 //! - `/api/v1/budgets/*` - Budget management
 //! - `/api/v1/people/*` - People and debt management
 //! - `/api/v1/categories/*` - Category management
+//! - `/api/v1/api-keys/*` - API key management
 //!
-//! Protected routes automatically require a valid JWT token in the
+//! Protected routes automatically require a valid JWT token or API key in the
 //! `Authorization: Bearer <token>` header.
-
 use crate::{AppState, handlers, middleware::auth::require_auth};
 use axum::{
-    Router,
-    http::StatusCode,
-    middleware,
-    response::{Html, IntoResponse, Response},
+    Router, middleware,
     routing::{get, post, put},
 };
 use std::path::PathBuf;
@@ -113,6 +110,17 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/categories/:id",
             put(handlers::categories::update).delete(handlers::categories::delete),
+        )
+        // API Keys
+        .route(
+            "/api-keys",
+            get(handlers::api_keys::list).post(handlers::api_keys::create),
+        )
+        .route(
+            "/api-keys/:id",
+            get(handlers::api_keys::get)
+                .patch(handlers::api_keys::update)
+                .delete(handlers::api_keys::revoke),
         )
         // Apply authentication middleware to all protected routes
         .layer(middleware::from_fn_with_state(

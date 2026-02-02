@@ -132,7 +132,7 @@ export const RecentTransactions = ({ transactions }: RecentTransactionsProps) =>
                       color={isNegative ? 'red.600' : 'green.600'}
                     >
                       {isNegative ? '-' : '+'}
-                      {formatCurrency(Math.abs(amount))}
+                      {formatCurrency(Math.abs(amount), transaction.account.currency)}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
                       {formatDateTime(transaction.date)}

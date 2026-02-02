@@ -199,7 +199,13 @@ pub async fn get_active_range(
         budget_ranges::table
             .filter(budget_ranges::budget_id.eq(budget_id))
             .filter(budget_ranges::start_date.le(date))
-            .filter(budget_ranges::end_date.ge(date))
+            // If end_date is NULL, the budget is active indefinitely
+            // If end_date is set, it must be >= date
+            .filter(
+                budget_ranges::end_date
+                    .is_null()
+                    .or(budget_ranges::end_date.ge(date)),
+            )
             .first(&mut conn)
             .optional()
             .map_err(|e| {

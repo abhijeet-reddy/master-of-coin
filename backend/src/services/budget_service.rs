@@ -176,11 +176,13 @@ pub async fn add_range(
         ));
     }
 
-    // Validate date range
-    if request.end_date < request.start_date {
-        return Err(ApiError::Validation(
-            "End date must be after start date".to_string(),
-        ));
+    // Validate date range if end_date is provided
+    if let Some(end_date) = request.end_date {
+        if end_date < request.start_date {
+            return Err(ApiError::Validation(
+                "End date must be after start date".to_string(),
+            ));
+        }
     }
 
     // Convert limit amount to BigDecimal
@@ -237,7 +239,9 @@ pub async fn calculate_budget_status(
         account_id: None,
         category_id: None,
         start_date: Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()), // Start of day (00:00:00)
-        end_date: Some(range.end_date.and_hms_opt(23, 59, 59).unwrap().and_utc()), // End of day (23:59:59)
+        end_date: range
+            .end_date
+            .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc()), // End of day (23:59:59) if set
         min_amount: None,
         max_amount: None,
         search: None,

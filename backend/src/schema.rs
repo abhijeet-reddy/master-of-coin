@@ -69,7 +69,7 @@ diesel::table! {
         limit_amount -> Numeric,
         period -> BudgetPeriod,
         start_date -> Date,
-        end_date -> Date,
+        end_date -> Nullable<Date>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }

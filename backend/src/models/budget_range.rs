@@ -15,7 +15,7 @@ pub struct BudgetRange {
     pub limit_amount: BigDecimal,
     pub period: BudgetPeriod,
     pub start_date: NaiveDate,
-    pub end_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -27,7 +27,7 @@ pub struct NewBudgetRange {
     pub limit_amount: BigDecimal,
     pub period: BudgetPeriod,
     pub start_date: NaiveDate,
-    pub end_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -36,7 +36,7 @@ pub struct CreateBudgetRange {
     pub limit_amount: BigDecimal,
     pub period: BudgetPeriod,
     pub start_date: NaiveDate,
-    pub end_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,7 +54,7 @@ pub struct CreateBudgetRangeRequest {
     pub limit_amount: f64,
     pub period: BudgetPeriod,
     pub start_date: NaiveDate,
-    pub end_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Deserialize, validator::Validate)]
@@ -74,7 +74,7 @@ pub struct BudgetRangeResponse {
     pub limit_amount: String, // BigDecimal as string for JSON
     pub period: BudgetPeriod,
     pub start_date: NaiveDate,
-    pub end_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
 }
 
 impl From<BudgetRange> for BudgetRangeResponse {

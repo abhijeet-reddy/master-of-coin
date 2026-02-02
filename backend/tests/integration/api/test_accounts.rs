@@ -1223,3 +1223,113 @@ async fn test_full_account_crud_flow() {
     let final_accounts: Vec<AccountResponse> = extract_json(list_response);
     assert_eq!(final_accounts.len(), 0, "All accounts should be deleted");
 }
+
+/// Test updating account currency.
+///
+/// Verifies that:
+/// - Currency can be updated successfully
+/// - Updated currency is reflected in the response
+/// - Other fields remain unchanged when only currency is updated
+#[tokio::test]
+async fn test_update_account_currency() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("currencyuser_{}", timestamp),
+        &format!("currency_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Currency Test User",
+    )
+    .await;
+
+    // Create an account with USD currency
+    let create_request = json!({
+        "name": "Test Account",
+        "account_type": "CHECKING",
+        "currency": "USD",
+        "notes": "Original notes"
+    });
+    let create_response =
+        post_authenticated(&server, "/api/v1/accounts", &auth.token, &create_request).await;
+    assert_status(&create_response, 201);
+    let account: AccountResponse = extract_json(create_response);
+    assert_eq!(account.currency, CurrencyCode::Usd);
+
+    // Update the currency to EUR
+    let update_request = json!({
+        "currency": "EUR"
+    });
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/accounts/{}", account.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+    assert_status(&update_response, 200);
+
+    let updated_account: AccountResponse = extract_json(update_response);
+    assert_eq!(updated_account.id, account.id);
+    assert_eq!(updated_account.currency, CurrencyCode::Eur);
+    // Other fields should remain unchanged
+    assert_eq!(updated_account.name, "Test Account");
+    assert_eq!(updated_account.account_type, AccountType::Checking);
+    assert_eq!(updated_account.notes, Some("Original notes".to_string()));
+}
+
+/// Test updating account type.
+///
+/// Verifies that:
+/// - Account type can be updated successfully
+/// - Updated account type is reflected in the response
+/// - Other fields remain unchanged when only account type is updated
+#[tokio::test]
+async fn test_update_account_type() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("typeuser_{}", timestamp),
+        &format!("type_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Type Test User",
+    )
+    .await;
+
+    // Create an account with CHECKING type
+    let create_request = json!({
+        "name": "Test Account",
+        "account_type": "CHECKING",
+        "currency": "USD",
+        "notes": "Original notes"
+    });
+    let create_response =
+        post_authenticated(&server, "/api/v1/accounts", &auth.token, &create_request).await;
+    assert_status(&create_response, 201);
+    let account: AccountResponse = extract_json(create_response);
+    assert_eq!(account.account_type, AccountType::Checking);
+
+    // Update the account type to SAVINGS
+    let update_request = json!({
+        "account_type": "SAVINGS"
+    });
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/accounts/{}", account.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+    assert_status(&update_response, 200);
+
+    let updated_account: AccountResponse = extract_json(update_response);
+    assert_eq!(updated_account.id, account.id);
+    assert_eq!(updated_account.account_type, AccountType::Savings);
+    // Other fields should remain unchanged
+    assert_eq!(updated_account.name, "Test Account");
+    assert_eq!(updated_account.currency, CurrencyCode::Usd);
+    assert_eq!(updated_account.notes, Some("Original notes".to_string()));
+}

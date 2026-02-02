@@ -173,6 +173,8 @@ pub async fn update_account(
     // Create update struct
     let updates = crate::models::UpdateAccount {
         name: request.name,
+        account_type: request.account_type,
+        currency: request.currency,
         notes: request.notes,
     };
 

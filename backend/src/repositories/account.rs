@@ -105,6 +105,24 @@ pub async fn update_account(
                     ApiError::from(e)
                 })?;
         }
+        if let Some(account_type) = updates.account_type {
+            diesel::update(accounts::table.find(account_id))
+                .set(accounts::type_.eq(account_type))
+                .execute(&mut conn)
+                .map_err(|e| {
+                    tracing::error!("Failed to update account type {}: {}", account_id, e);
+                    ApiError::from(e)
+                })?;
+        }
+        if let Some(currency) = updates.currency {
+            diesel::update(accounts::table.find(account_id))
+                .set(accounts::currency.eq(currency))
+                .execute(&mut conn)
+                .map_err(|e| {
+                    tracing::error!("Failed to update account currency {}: {}", account_id, e);
+                    ApiError::from(e)
+                })?;
+        }
         if let Some(notes) = updates.notes {
             diesel::update(accounts::table.find(account_id))
                 .set(accounts::notes.eq(notes))

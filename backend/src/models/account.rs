@@ -43,6 +43,8 @@ pub struct CreateAccount {
 #[derive(Debug, Deserialize)]
 pub struct UpdateAccount {
     pub name: Option<String>,
+    pub account_type: Option<AccountType>,
+    pub currency: Option<CurrencyCode>,
     pub notes: Option<String>,
 }
 
@@ -62,6 +64,8 @@ pub struct CreateAccountRequest {
 pub struct UpdateAccountRequest {
     #[validate(length(min = 1, max = 100))]
     pub name: Option<String>,
+    pub account_type: Option<AccountType>,
+    pub currency: Option<CurrencyCode>,
     pub is_active: Option<bool>,
     #[validate(length(max = 500))]
     pub notes: Option<String>,

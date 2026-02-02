@@ -1,15 +1,30 @@
 import { Box, HStack, Text, IconButton } from '@chakra-ui/react';
 import { Menu } from '@chakra-ui/react';
-import { MdMenu, MdPerson, MdSettings, MdLogout, MdLightMode, MdDarkMode } from 'react-icons/md';
+import {
+  MdMenu,
+  MdPerson,
+  MdSettings,
+  MdLogout,
+  MdLightMode,
+  MdDarkMode,
+  MdMenuOpen,
+} from 'react-icons/md';
 import { useColorMode } from '@/components/ui/color-mode';
 import { useHeaderMenu } from '@/hooks/ui';
 
 interface HeaderProps {
   onMenuClick: () => void;
+  onSidebarToggle: () => void;
+  isSidebarCollapsed: boolean;
   title?: string;
 }
 
-export const Header = ({ onMenuClick, title = 'Dashboard' }: HeaderProps) => {
+export const Header = ({
+  onMenuClick,
+  onSidebarToggle,
+  isSidebarCollapsed,
+  title = 'Dashboard',
+}: HeaderProps) => {
   const { colorMode, toggleColorMode } = useColorMode();
   const { handleMenuSelect } = useHeaderMenu();
 
@@ -25,8 +40,9 @@ export const Header = ({ onMenuClick, title = 'Dashboard' }: HeaderProps) => {
       alignItems="center"
       justifyContent="space-between"
     >
-      {/* Left side: Menu button (mobile) + Title */}
+      {/* Left side: Menu button (mobile) + Sidebar toggle (desktop) + Title */}
       <HStack gap={4}>
+        {/* Mobile menu button */}
         <IconButton
           aria-label="Open menu"
           variant="ghost"
@@ -35,6 +51,17 @@ export const Header = ({ onMenuClick, title = 'Dashboard' }: HeaderProps) => {
         >
           <MdMenu />
         </IconButton>
+
+        {/* Desktop sidebar toggle button */}
+        <IconButton
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          variant="ghost"
+          display={{ base: 'none', md: 'flex' }}
+          onClick={onSidebarToggle}
+        >
+          {isSidebarCollapsed ? <MdMenu /> : <MdMenuOpen />}
+        </IconButton>
+
         <Text fontSize="xl" fontWeight="semibold">
           {title}
         </Text>

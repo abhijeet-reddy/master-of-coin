@@ -6,6 +6,7 @@ import { Header } from './Header';
 
 export const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   const handleMenuToggle = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -15,16 +16,29 @@ export const Layout = () => {
     setIsMobileMenuOpen(false);
   };
 
+  const handleSidebarToggle = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
     <Box h="100vh" display="flex" flexDirection="column">
       {/* Header */}
-      <Header onMenuClick={handleMenuToggle} />
+      <Header
+        onMenuClick={handleMenuToggle}
+        onSidebarToggle={handleSidebarToggle}
+        isSidebarCollapsed={isSidebarCollapsed}
+      />
 
       {/* Main Content Area */}
       <Box flex={1} display="flex" overflow="hidden">
         {/* Desktop Sidebar */}
-        <Box w="64" display={{ base: 'none', md: 'block' }} flexShrink={0}>
-          <Sidebar />
+        <Box
+          w={isSidebarCollapsed ? '20' : '64'}
+          display={{ base: 'none', md: 'block' }}
+          flexShrink={0}
+          transition="width 0.3s ease"
+        >
+          <Sidebar isCollapsed={isSidebarCollapsed} />
         </Box>
 
         {/* Mobile Drawer */}

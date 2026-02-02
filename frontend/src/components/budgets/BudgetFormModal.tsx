@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, HStack, Input, Textarea, VStack } from '@chakra-ui/react';
+import { Button, HStack, Input, Textarea, VStack, Checkbox, Text, Menu } from '@chakra-ui/react';
 import {
   DialogRoot,
   DialogContent,
@@ -74,6 +74,15 @@ export const BudgetFormModal = ({ isOpen, onClose, budget, onSuccess }: BudgetFo
 
   const watchPeriod = watch('period');
   const watchStartDate = watch('start_date');
+  const watchAccountIds = watch('account_ids');
+
+  const handleAccountToggle = (accountId: string) => {
+    const currentIds = watchAccountIds || [];
+    const newIds = currentIds.includes(accountId)
+      ? currentIds.filter((id) => id !== accountId)
+      : [...currentIds, accountId];
+    setValue('account_ids', newIds);
+  };
 
   // useEffect #1: Auto-calculate end date based on period and start date
   useEffect(() => {
@@ -223,7 +232,6 @@ export const BudgetFormModal = ({ isOpen, onClose, budget, onSuccess }: BudgetFo
                     width: '100%',
                     padding: '8px',
                     borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
                   }}
                 >
                   <option value="">Select a category</option>
@@ -241,23 +249,60 @@ export const BudgetFormModal = ({ isOpen, onClose, budget, onSuccess }: BudgetFo
                 helperText="Leave empty to track across all accounts"
                 errorText={errors.account_ids?.message}
               >
-                <select
-                  multiple
-                  {...register('account_ids')}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
-                    minHeight: '100px',
-                  }}
-                >
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </select>
+                <Menu.Root closeOnSelect={false}>
+                  <Menu.Trigger asChild>
+                    <Button
+                      variant="outline"
+                      width="100%"
+                      css={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text>
+                        {watchAccountIds && watchAccountIds.length > 0
+                          ? `${watchAccountIds.length} account${watchAccountIds.length > 1 ? 's' : ''} selected`
+                          : 'Select accounts'}
+                      </Text>
+                      <span>▼</span>
+                    </Button>
+                  </Menu.Trigger>
+                  <Menu.Positioner>
+                    <Menu.Content
+                      maxHeight="300px"
+                      overflowY="auto"
+                      minWidth="var(--reference-width)"
+                    >
+                      {accounts.length === 0 ? (
+                        <Menu.Item value="none" disabled>
+                          No accounts available
+                        </Menu.Item>
+                      ) : (
+                        accounts.map((account) => (
+                          <Menu.Item
+                            key={account.id}
+                            value={account.id}
+                            onClick={(e: React.MouseEvent) => {
+                              e.preventDefault();
+                              handleAccountToggle(account.id);
+                            }}
+                          >
+                            <HStack width="100%">
+                              <Checkbox.Root
+                                checked={watchAccountIds?.includes(account.id) || false}
+                                pointerEvents="none"
+                              >
+                                <Checkbox.Control />
+                              </Checkbox.Root>
+                              <Text>{account.name}</Text>
+                            </HStack>
+                          </Menu.Item>
+                        ))
+                      )}
+                    </Menu.Content>
+                  </Menu.Positioner>
+                </Menu.Root>
               </Field>
 
               {/* Limit Amount */}
@@ -275,12 +320,7 @@ export const BudgetFormModal = ({ isOpen, onClose, budget, onSuccess }: BudgetFo
               <Field label="Period" required errorText={errors.period?.message}>
                 <select
                   {...register('period')}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
-                  }}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px' }}
                 >
                   <option value="DAILY">Daily</option>
                   <option value="WEEKLY">Weekly</option>

@@ -16,9 +16,17 @@ import {
   Separator,
 } from '@chakra-ui/react';
 import { PageHeader } from '@/components/common';
+import {
+  ApiKeyList,
+  CreateApiKeyModal,
+  EditApiKeyModal,
+  RevokeApiKeyDialog,
+} from '@/components/settings';
 import { useDocumentTitle } from '@/hooks/effects';
 import { useAuth } from '@/contexts/AuthContext';
-import { MdPerson, MdSettings, MdSecurity, MdInfo, MdSave } from 'react-icons/md';
+import { useApiKeys } from '@/hooks/api/apiKeys';
+import { MdPerson, MdSettings, MdSecurity, MdInfo, MdSave, MdVpnKey } from 'react-icons/md';
+import type { ApiKey } from '@/models/apiKey';
 import { Field } from '@/components/ui/field';
 import { useColorMode } from '@/components/ui/color-mode';
 import { DEFAULT_CURRENCY, DEFAULT_DATE_FORMAT, CURRENCIES } from '@/constants';
@@ -57,6 +65,13 @@ export const Settings = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+
+  // API Keys state
+  const [isCreateApiKeyModalOpen, setIsCreateApiKeyModalOpen] = useState(false);
+  const [editApiKey, setEditApiKey] = useState<ApiKey | null>(null);
+  const [revokeApiKey, setRevokeApiKey] = useState<ApiKey | null>(null);
+
+  const { data: apiKeys = [], isLoading: isLoadingApiKeys } = useApiKeys();
 
   const handleProfileUpdate = async () => {
     setIsSaving(true);
@@ -125,6 +140,12 @@ export const Settings = () => {
             <HStack gap={2}>
               <Box as={MdSecurity} />
               <Text>Security</Text>
+            </HStack>
+          </Tabs.Trigger>
+          <Tabs.Trigger value="api-keys">
+            <HStack gap={2}>
+              <Box as={MdVpnKey} />
+              <Text>API Keys</Text>
             </HStack>
           </Tabs.Trigger>
           <Tabs.Trigger value="about">
@@ -409,6 +430,53 @@ export const Settings = () => {
               </Card.Body>
             </Card.Root>
           </VStack>
+        </Tabs.Content>
+
+        {/* API Keys Tab */}
+        <Tabs.Content value="api-keys">
+          <Card.Root>
+            <Card.Header>
+              <HStack justifyContent="space-between">
+                <Box>
+                  <Heading size="md">API Keys</Heading>
+                  <Text color="gray.600" fontSize="sm">
+                    Manage API keys for programmatic access
+                  </Text>
+                </Box>
+                <Button colorScheme="blue" onClick={() => setIsCreateApiKeyModalOpen(true)}>
+                  New API Key
+                </Button>
+              </HStack>
+            </Card.Header>
+            <Card.Body>
+              <ApiKeyList
+                apiKeys={apiKeys}
+                isLoading={isLoadingApiKeys}
+                onEdit={(apiKey) => setEditApiKey(apiKey)}
+                onRevoke={(apiKey) => setRevokeApiKey(apiKey)}
+              />
+            </Card.Body>
+          </Card.Root>
+
+          {/* Create API Key Modal */}
+          <CreateApiKeyModal
+            isOpen={isCreateApiKeyModalOpen}
+            onClose={() => setIsCreateApiKeyModalOpen(false)}
+          />
+
+          {/* Edit API Key Modal */}
+          <EditApiKeyModal
+            isOpen={!!editApiKey}
+            onClose={() => setEditApiKey(null)}
+            apiKey={editApiKey}
+          />
+
+          {/* Revoke API Key Dialog */}
+          <RevokeApiKeyDialog
+            isOpen={!!revokeApiKey}
+            onClose={() => setRevokeApiKey(null)}
+            apiKey={revokeApiKey}
+          />
         </Tabs.Content>
 
         {/* About Tab */}

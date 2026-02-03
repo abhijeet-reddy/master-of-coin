@@ -14,3 +14,21 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+/* Style native select elements to respect dark mode */
+select {
+  background-color: var(--chakra-colors-bg);
+  color: var(--chakra-colors-fg);
+  border-color: var(--chakra-colors-border) !important;
+}
+
+select option {
+  background-color: var(--chakra-colors-bg);
+  color: var(--chakra-colors-fg);
+}
+
+/* Fix select dropdown in dark mode */
+select:focus {
+  border-color: var(--chakra-colors-brand-500) !important;
+  outline: none;
+}

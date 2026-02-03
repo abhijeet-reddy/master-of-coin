@@ -1,14 +1,10 @@
 /**
  * Exchange Rate Service
- * Fetches currency exchange rates from exchangerate-api.com
- *
- * API Documentation: https://www.exchangerate-api.com/docs/standard-requests
+ * Fetches currency exchange rates from the backend API
  */
 
+import api from './api';
 import { CurrencyCode } from '@/types';
-
-const API_KEY = import.meta.env.VITE_EXCHANGE_RATE_API_KEY as string;
-const BASE_URL = `https://v6.exchangerate-api.com/v6/${API_KEY}/latest`;
 
 export interface ExchangeRateResponse {
   result: string;
@@ -18,7 +14,7 @@ export interface ExchangeRateResponse {
 }
 
 /**
- * Fetch exchange rates for a base currency
+ * Fetch exchange rates for a base currency from the backend API
  * @param baseCurrency - The base currency code (default: EUR)
  * @returns Exchange rate data
  */
@@ -26,19 +22,28 @@ export const fetchExchangeRates = async (
   baseCurrency: CurrencyCode = CurrencyCode.EUR
 ): Promise<ExchangeRateResponse> => {
   try {
-    const response = await fetch(`${BASE_URL}/${baseCurrency}`);
+    const response = await api.get<ExchangeRateResponse>('/exchange-rates', {
+      params: {
+        base: baseCurrency,
+      },
+    });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
+    if (response.data.result === 'error') {
+      throw new Error(`Exchange rate API error: ${response.data['error-type']}`);
     }
 
-    const data = (await response.json()) as ExchangeRateResponse;
-
-    if (data.result === 'error') {
-      throw new Error(`Exchange rate API error: ${data['error-type']}`);
+    // Convert string rates to numbers for compatibility
+    const conversion_rates: Record<string, number> = {};
+    if (response.data.conversion_rates) {
+      Object.entries(response.data.conversion_rates).forEach(([key, value]) => {
+        conversion_rates[key] = typeof value === 'string' ? parseFloat(value) : value;
+      });
     }
 
-    return data;
+    return {
+      ...response.data,
+      conversion_rates,
+    };
   } catch (error) {
     console.error('Error fetching exchange rates:', error);
     throw error;

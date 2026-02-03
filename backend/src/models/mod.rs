@@ -3,6 +3,7 @@ pub mod api_key;
 pub mod budget;
 pub mod budget_range;
 pub mod category;
+pub mod exchange_rate;
 pub mod person;
 pub mod transaction;
 pub mod transaction_split;
@@ -36,6 +37,7 @@ pub use api_key::{CreateApiKeyRequest, UpdateApiKeyRequest};
 pub use budget::{CreateBudgetRequest, UpdateBudgetRequest};
 pub use budget_range::{CreateBudgetRangeRequest, UpdateBudgetRangeRequest};
 pub use category::{CreateCategoryRequest, UpdateCategoryRequest};
+pub use exchange_rate::ExchangeRateQuery;
 pub use person::{CreatePersonRequest, UpdatePersonRequest};
 pub use transaction::{
     CreateTransactionRequest, TransactionFilter, TransactionType, UpdateTransactionRequest,
@@ -48,6 +50,7 @@ pub use api_key::{ApiKeyResponse, CreateApiKeyResponse, ListApiKeysResponse};
 pub use budget::BudgetResponse;
 pub use budget_range::BudgetRangeResponse;
 pub use category::CategoryResponse;
+pub use exchange_rate::ExchangeRateResponse;
 pub use person::PersonResponse;
 pub use transaction::TransactionResponse;
 pub use transaction_split::TransactionSplitResponse;

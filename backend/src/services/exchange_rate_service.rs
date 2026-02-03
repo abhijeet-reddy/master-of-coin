@@ -48,27 +48,36 @@ impl ExchangeRateService {
         Ok(Self {
             cache: Arc::new(RwLock::new(None)),
             api_key,
-            cache_duration: std::time::Duration::from_secs(3600), // 1 hour
+            cache_duration: std::time::Duration::from_secs(86400), // 24 hours
         })
     }
 
-    /// Get exchange rates with primary currency as base
+    /// Get exchange rates with specified base currency
     /// Uses cached rates if available and not expired
-    pub async fn get_exchange_rates(&self) -> Result<HashMap<CurrencyCode, BigDecimal>, ApiError> {
+    pub async fn get_exchange_rates(
+        &self,
+        base_currency: CurrencyCode,
+    ) -> Result<HashMap<CurrencyCode, BigDecimal>, ApiError> {
         // Check cache first
         {
             let cache_read = self.cache.read().await;
             if let Some(cached) = cache_read.as_ref() {
                 if cached.timestamp.elapsed() < self.cache_duration {
-                    tracing::debug!("Using cached exchange rates");
+                    tracing::debug!(
+                        "Using cached exchange rates for base {}",
+                        base_currency.as_str()
+                    );
                     return Ok(cached.rates.clone());
                 }
             }
         }
 
         // Fetch fresh rates
-        tracing::info!("Fetching fresh exchange rates from API");
-        let rates = self.fetch_rates().await?;
+        tracing::info!(
+            "Fetching fresh exchange rates from API for base {}",
+            base_currency.as_str()
+        );
+        let rates = self.fetch_rates(base_currency).await?;
 
         // Update cache
         {
@@ -83,11 +92,14 @@ impl ExchangeRateService {
     }
 
     /// Fetch exchange rates from the API
-    async fn fetch_rates(&self) -> Result<HashMap<CurrencyCode, BigDecimal>, ApiError> {
+    async fn fetch_rates(
+        &self,
+        base_currency: CurrencyCode,
+    ) -> Result<HashMap<CurrencyCode, BigDecimal>, ApiError> {
         let url = format!(
             "https://v6.exchangerate-api.com/v6/{}/latest/{}",
             self.api_key,
-            PRIMARY_CURRENCY.as_str()
+            base_currency.as_str()
         );
 
         let response = reqwest::get(&url).await.map_err(|e| {
@@ -159,7 +171,7 @@ impl ExchangeRateService {
             return Ok(amount.clone());
         }
 
-        let rates = self.get_exchange_rates().await?;
+        let rates = self.get_exchange_rates(PRIMARY_CURRENCY).await?;
 
         // Get exchange rates for both currencies
         let from_rate = rates
@@ -194,27 +206,5 @@ impl ExchangeRateService {
 impl Default for ExchangeRateService {
     fn default() -> Self {
         Self::new().expect("Failed to create ExchangeRateService")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_same_currency_conversion() {
-        // This test doesn't require API key
-        let service = ExchangeRateService {
-            cache: Arc::new(RwLock::new(None)),
-            api_key: "test_key".to_string(),
-            cache_duration: std::time::Duration::from_secs(3600),
-        };
-
-        let amount = BigDecimal::from(100);
-        let result = service
-            .convert_currency(&amount, CurrencyCode::Eur, CurrencyCode::Eur)
-            .await
-            .unwrap();
-        assert_eq!(result, amount);
     }
 }

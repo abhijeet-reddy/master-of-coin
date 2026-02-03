@@ -65,6 +65,11 @@ pub fn create_router(state: AppState) -> Router {
         .route("/auth/me", get(handlers::auth::get_current_user))
         // Dashboard (no scope check - read-only summary)
         .route("/dashboard", get(handlers::dashboard::get_summary))
+        // Exchange rates (no scope check - read-only utility)
+        .route(
+            "/exchange-rates",
+            get(handlers::exchange_rates::get_exchange_rates),
+        )
         // Transactions - with scope enforcement
         .route(
             "/transactions",

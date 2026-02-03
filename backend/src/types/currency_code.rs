@@ -10,6 +10,7 @@ use std::io::Write;
     Copy,
     PartialEq,
     Eq,
+    Hash,
     Serialize,
     Deserialize,
     diesel::AsExpression,
@@ -25,6 +26,21 @@ pub enum CurrencyCode {
     Jpy,
     Aud,
     Cad,
+}
+
+impl CurrencyCode {
+    /// Convert currency code to string representation
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CurrencyCode::Usd => "USD",
+            CurrencyCode::Eur => "EUR",
+            CurrencyCode::Gbp => "GBP",
+            CurrencyCode::Inr => "INR",
+            CurrencyCode::Jpy => "JPY",
+            CurrencyCode::Aud => "AUD",
+            CurrencyCode::Cad => "CAD",
+        }
+    }
 }
 
 impl ToSql<crate::schema::sql_types::CurrencyCode, Pg> for CurrencyCode {

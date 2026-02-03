@@ -12,6 +12,7 @@ use crate::{
         NewBudget, NewBudgetRange, TransactionFilter, UpdateBudgetRequest,
     },
     repositories,
+    services::exchange_rate_service::ExchangeRateService,
 };
 
 /// Budget status information
@@ -264,15 +265,30 @@ pub async fn calculate_budget_status(
     // Get transactions matching the filter
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
 
-    // Sum spending (only negative amounts for expenses)
-    let current_spending: BigDecimal = transactions
+    // Initialize exchange rate service for currency conversion
+    let exchange_service = ExchangeRateService::new()?;
+
+    // Sum spending (only negative amounts for expenses), converting to primary currency
+    let mut current_spending = BigDecimal::from(0);
+
+    for transaction in transactions
         .iter()
         .filter(|t| t.amount < BigDecimal::from(0))
-        .map(|t| t.amount.clone())
-        .sum();
+    {
+        // Get the account to find its currency
+        let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
 
-    // Convert to absolute value for comparison
-    let spending_abs = current_spending.abs();
+        // Convert transaction amount to primary currency
+        let amount_abs = transaction.amount.abs();
+        let converted_amount = exchange_service
+            .convert_to_primary_currency(&amount_abs, account.currency)
+            .await?;
+
+        current_spending += converted_amount;
+    }
+
+    // current_spending is already positive (we used abs() above)
+    let spending_abs = current_spending;
 
     // Calculate percentage
     let percentage_used = if range.limit_amount > BigDecimal::from(0) {

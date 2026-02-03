@@ -8,6 +8,7 @@ use crate::{
     errors::ApiError,
     models::{TransactionFilter, TransactionResponse},
     repositories,
+    services::exchange_rate_service::ExchangeRateService,
 };
 
 /// Net worth calculation result
@@ -50,22 +51,31 @@ pub struct DashboardSummary {
     pub top_spending_categories: Vec<CategoryBreakdown>,
 }
 
-/// Calculate net worth (sum of all account balances)
+/// Calculate net worth (sum of all account balances converted to primary currency)
 pub async fn calculate_net_worth(pool: &DbPool, user_id: Uuid) -> Result<NetWorth, ApiError> {
     // Get all user accounts
     let accounts = repositories::account::list_by_user(pool, user_id).await?;
+
+    // Initialize exchange rate service
+    let exchange_service = ExchangeRateService::new()?;
 
     let mut account_balances = Vec::new();
     let mut total = BigDecimal::from(0);
 
     for account in accounts {
         let balance = repositories::account::calculate_balance(pool, account.id).await?;
-        total += balance.clone();
+
+        // Convert balance to primary currency
+        let converted_balance = exchange_service
+            .convert_to_primary_currency(&balance, account.currency)
+            .await?;
+
+        total += converted_balance.clone();
 
         account_balances.push(AccountBalance {
             account_id: account.id,
             account_name: account.name,
-            balance: balance.to_string(),
+            balance: converted_balance.to_string(),
         });
     }
 
@@ -98,6 +108,9 @@ pub async fn get_spending_trend(
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
 
+    // Initialize exchange rate service
+    let exchange_service = ExchangeRateService::new()?;
+
     // Group by date
     let mut daily_spending: HashMap<String, BigDecimal> = HashMap::new();
 
@@ -107,10 +120,18 @@ pub async fn get_spending_trend(
             let date_key = transaction.date.format("%Y-%m-%d").to_string();
             let spending = transaction.amount.abs();
 
+            // Get account to find currency
+            let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
+
+            // Convert to primary currency
+            let converted_spending = exchange_service
+                .convert_to_primary_currency(&spending, account.currency)
+                .await?;
+
             daily_spending
                 .entry(date_key)
-                .and_modify(|total| *total += spending.clone())
-                .or_insert(spending);
+                .and_modify(|total| *total += converted_spending.clone())
+                .or_insert(converted_spending);
         }
     }
 
@@ -150,6 +171,9 @@ pub async fn get_category_breakdown(
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
 
+    // Initialize exchange rate service
+    let exchange_service = ExchangeRateService::new()?;
+
     // Group by category
     let mut category_totals: HashMap<Option<Uuid>, BigDecimal> = HashMap::new();
     let mut total_spending = BigDecimal::from(0);
@@ -158,12 +182,21 @@ pub async fn get_category_breakdown(
         // Only count expenses (negative amounts)
         if transaction.amount < BigDecimal::from(0) {
             let spending = transaction.amount.abs();
-            total_spending += spending.clone();
+
+            // Get account to find currency
+            let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
+
+            // Convert to primary currency
+            let converted_spending = exchange_service
+                .convert_to_primary_currency(&spending, account.currency)
+                .await?;
+
+            total_spending += converted_spending.clone();
 
             category_totals
                 .entry(transaction.category_id)
-                .and_modify(|total| *total += spending.clone())
-                .or_insert(spending);
+                .and_modify(|total| *total += converted_spending.clone())
+                .or_insert(converted_spending);
         }
     }
 

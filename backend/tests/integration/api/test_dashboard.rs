@@ -42,6 +42,7 @@ async fn create_test_category(server: &TestServer, token: &str, name: &str) -> V
 }
 
 /// Helper to create an account for testing
+/// Uses EUR (primary currency) by default to avoid conversion issues in tests
 async fn create_test_account(
     server: &TestServer,
     token: &str,
@@ -52,7 +53,7 @@ async fn create_test_account(
     let request = json!({
         "name": name,
         "account_type": account_type,
-        "currency": "USD",
+        "currency": "EUR",
         "initial_balance": initial_balance
     });
     let response = post_authenticated(server, "/api/v1/accounts", token, &request).await;

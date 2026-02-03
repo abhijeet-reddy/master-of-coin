@@ -1,5 +1,5 @@
 use axum::http::Method;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 /// Creates a CORS layer for the application
 ///

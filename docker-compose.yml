@@ -5,12 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - EXCHANGE_RATE_API_KEY=${EXCHANGE_RATE_API_KEY}
     container_name: master-of-coin-server
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-master_of_coin}
       - JWT_SECRET=${JWT_SECRET:-change_this_to_a_secure_secret_min_32_chars}
+      - EXCHANGE_RATE_API_KEY=${EXCHANGE_RATE_API_KEY}
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=13153
       - RUST_LOG=${RUST_LOG:-info}

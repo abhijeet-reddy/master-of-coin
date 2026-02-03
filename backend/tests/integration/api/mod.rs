@@ -18,6 +18,7 @@ mod test_api_keys;
 mod test_auth;
 mod test_budgets;
 mod test_categories;
+mod test_currency_conversion;
 mod test_dashboard;
 mod test_people;
 mod test_scope_enforcement;

@@ -1,7 +1,7 @@
 import { Box, Heading, Skeleton, Stack, Text, VStack } from '@chakra-ui/react';
 import { TransactionRow } from './TransactionRow';
 import { EmptyState } from '@/components/common/EmptyState';
-import { useCurrencyConverter } from '@/hooks/usecase/useCurrencyConverter';
+import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
 import type { EnrichedTransaction } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 
@@ -22,7 +22,8 @@ export const TransactionList = ({
   onTransactionClick,
   onTransactionDelete,
 }: TransactionListProps) => {
-  const { convertToDefault, isLoading: isExchangeRatesLoading } = useCurrencyConverter();
+  const { convertAmount, isLoading: isExchangeRatesLoading } =
+    useTransactionCurrencyConverter(transactions);
 
   // Group transactions by date
   const groupedTransactions = transactions.reduce<GroupedTransactions>((acc, transaction) => {
@@ -42,7 +43,7 @@ export const TransactionList = ({
     }
     return transactions.reduce((sum, t) => {
       const amount = parseFloat(t.amount);
-      const converted = convertToDefault(Math.abs(amount), t.account.currency);
+      const converted = convertAmount(Math.abs(amount), t.account.currency);
       return sum + (amount < 0 ? -converted : converted);
     }, 0);
   };

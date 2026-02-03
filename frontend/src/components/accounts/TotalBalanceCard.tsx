@@ -1,7 +1,7 @@
 import { Box, Card, HStack, Text, VStack, Spinner } from '@chakra-ui/react';
 import { FaWallet } from 'react-icons/fa';
 import { formatCurrency } from '@/utils/formatters';
-import { useCurrencyConverter } from '@/hooks/usecase/useCurrencyConverter';
+import { useAccountCurrencyConverter } from '@/hooks/usecase/useAccountCurrencyConverter';
 import type { Account } from '@/types';
 
 interface TotalBalanceCardProps {
@@ -9,7 +9,7 @@ interface TotalBalanceCardProps {
 }
 
 export const TotalBalanceCard = ({ accounts }: TotalBalanceCardProps) => {
-  const { convertToDefault, isLoading } = useCurrencyConverter();
+  const { convertBalance, isLoading } = useAccountCurrencyConverter(accounts);
 
   // Show loading state while exchange rates are being fetched
   if (isLoading) {
@@ -39,7 +39,7 @@ export const TotalBalanceCard = ({ accounts }: TotalBalanceCardProps) => {
 
   // Calculate total balance across all accounts, converting to default currency
   const totalBalance = accounts.reduce((sum, account) => {
-    const convertedBalance = convertToDefault(account.balance, account.currency);
+    const convertedBalance = convertBalance(account.balance, account.currency);
     return sum + convertedBalance;
   }, 0);
 

@@ -21,13 +21,11 @@ import {
   useDeleteTransaction,
   useDocumentTitle,
 } from '@/hooks';
-import { useCurrencyConverter } from '@/hooks/usecase/useCurrencyConverter';
+import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
 import type { EnrichedTransaction, CreateTransactionRequest } from '@/types';
 
 export const TransactionsPage = () => {
   useDocumentTitle('Transactions');
-
-  const { convertToDefault, isLoading: isExchangeRatesLoading } = useCurrencyConverter();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<EnrichedTransaction | null>(null);
@@ -119,6 +117,10 @@ export const TransactionsPage = () => {
     });
   }, [enrichedTransactions, filters]);
 
+  // Use transaction currency converter for accurate conversion
+  const { convertAmount, isLoading: isExchangeRatesLoading } =
+    useTransactionCurrencyConverter(filteredTransactions);
+
   // Calculate month summary with currency conversion
   const monthSummary = useMemo(() => {
     // If exchange rates are still loading, return zeros
@@ -130,7 +132,7 @@ export const TransactionsPage = () => {
       .filter((t) => parseFloat(t.amount) > 0)
       .reduce((sum, t) => {
         const amount = parseFloat(t.amount);
-        const converted = convertToDefault(amount, t.account.currency);
+        const converted = convertAmount(amount, t.account.currency);
         return sum + converted;
       }, 0);
 
@@ -139,13 +141,13 @@ export const TransactionsPage = () => {
         .filter((t) => parseFloat(t.amount) < 0)
         .reduce((sum, t) => {
           const amount = parseFloat(t.amount);
-          const converted = convertToDefault(amount, t.account.currency);
+          const converted = convertAmount(amount, t.account.currency);
           return sum + converted;
         }, 0)
     );
 
     return { income, expenses };
-  }, [filteredTransactions, convertToDefault, isExchangeRatesLoading]);
+  }, [filteredTransactions, convertAmount, isExchangeRatesLoading]);
 
   const handleAddTransaction = () => {
     setSelectedTransaction(null);

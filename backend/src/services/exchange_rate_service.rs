@@ -23,6 +23,7 @@ struct ExchangeRateResponse {
 }
 
 /// Cached exchange rates with timestamp
+/// Key is the base currency, value is the rates for that base
 #[derive(Debug, Clone)]
 struct CachedRates {
     rates: HashMap<CurrencyCode, BigDecimal>,
@@ -31,8 +32,9 @@ struct CachedRates {
 
 /// Exchange rate service with caching
 /// Fetches rates from exchangerate-api.com and caches them for 1 hour
+/// Maintains separate caches for different base currencies
 pub struct ExchangeRateService {
-    cache: Arc<RwLock<Option<CachedRates>>>,
+    cache: Arc<RwLock<HashMap<CurrencyCode, CachedRates>>>,
     api_key: String,
     cache_duration: std::time::Duration,
 }
@@ -46,7 +48,7 @@ impl ExchangeRateService {
         })?;
 
         Ok(Self {
-            cache: Arc::new(RwLock::new(None)),
+            cache: Arc::new(RwLock::new(HashMap::new())),
             api_key,
             cache_duration: std::time::Duration::from_secs(86400), // 24 hours
         })
@@ -54,6 +56,7 @@ impl ExchangeRateService {
 
     /// Get exchange rates with specified base currency
     /// Uses cached rates if available and not expired
+    /// Maintains separate caches for each base currency
     pub async fn get_exchange_rates(
         &self,
         base_currency: CurrencyCode,
@@ -61,7 +64,7 @@ impl ExchangeRateService {
         // Check cache first
         {
             let cache_read = self.cache.read().await;
-            if let Some(cached) = cache_read.as_ref() {
+            if let Some(cached) = cache_read.get(&base_currency) {
                 if cached.timestamp.elapsed() < self.cache_duration {
                     tracing::debug!(
                         "Using cached exchange rates for base {}",
@@ -79,13 +82,16 @@ impl ExchangeRateService {
         );
         let rates = self.fetch_rates(base_currency).await?;
 
-        // Update cache
+        // Update cache for this specific base currency
         {
             let mut cache_write = self.cache.write().await;
-            *cache_write = Some(CachedRates {
-                rates: rates.clone(),
-                timestamp: std::time::Instant::now(),
-            });
+            cache_write.insert(
+                base_currency,
+                CachedRates {
+                    rates: rates.clone(),
+                    timestamp: std::time::Instant::now(),
+                },
+            );
         }
 
         Ok(rates)
@@ -159,7 +165,8 @@ impl ExchangeRateService {
     }
 
     /// Convert an amount from one currency to another
-    /// Uses primary currency as the intermediate currency for conversion
+    /// Fetches exchange rates with the source currency as base for direct conversion
+    /// This eliminates compounding errors from intermediate conversions
     pub async fn convert_currency(
         &self,
         amount: &BigDecimal,
@@ -171,23 +178,30 @@ impl ExchangeRateService {
             return Ok(amount.clone());
         }
 
-        let rates = self.get_exchange_rates(PRIMARY_CURRENCY).await?;
+        // Fetch rates with source currency as base for direct conversion
+        let rates = self.get_exchange_rates(from_currency).await?;
 
-        // Get exchange rates for both currencies
-        let from_rate = rates
-            .get(&from_currency)
-            .cloned()
-            .unwrap_or_else(|| BigDecimal::from(1));
-        let to_rate = rates
-            .get(&to_currency)
-            .cloned()
-            .unwrap_or_else(|| BigDecimal::from(1));
+        // Get the direct conversion rate from source to target
+        let to_rate = rates.get(&to_currency).ok_or_else(|| {
+            tracing::error!(
+                "No exchange rate found for {} to {}",
+                from_currency.as_str(),
+                to_currency.as_str()
+            );
+            ApiError::Internal
+        })?;
 
-        // Convert: amount_in_from -> amount_in_primary -> amount_in_to
-        // amount_in_primary = amount_in_from / from_rate
-        // amount_in_to = amount_in_primary * to_rate
-        let amount_in_primary = amount / &from_rate;
-        let converted_amount = amount_in_primary * &to_rate;
+        // Direct conversion: amount_in_from * rate_to_target
+        let converted_amount = amount * to_rate;
+
+        tracing::debug!(
+            "Converted {} {} to {} {} (rate: {})",
+            amount,
+            from_currency.as_str(),
+            converted_amount,
+            to_currency.as_str(),
+            to_rate
+        );
 
         Ok(converted_amount)
     }

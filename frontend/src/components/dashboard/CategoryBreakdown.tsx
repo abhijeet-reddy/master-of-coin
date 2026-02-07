@@ -22,13 +22,15 @@ const COLORS = [
 ];
 
 export const CategoryBreakdown = ({ data }: CategoryBreakdownProps) => {
-  // Transform data for Recharts
-  const chartData = data.map((item, index) => ({
-    name: item.category_name || 'Uncategorized',
-    value: parseFloat(item.total),
-    percentage: item.percentage,
-    color: COLORS[index % COLORS.length],
-  }));
+  // Transform data for Recharts, filter out 0% categories
+  const chartData = data
+    .filter((item) => parseFloat(item.percentage) > 0)
+    .map((item, index) => ({
+      name: item.category_name || 'Uncategorized',
+      value: parseFloat(item.total),
+      percentage: item.percentage,
+      color: COLORS[index % COLORS.length],
+    }));
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
@@ -53,6 +55,7 @@ export const CategoryBreakdown = ({ data }: CategoryBreakdownProps) => {
 
   // Custom label for pie slices
   const renderLabel = (entry: any) => {
+    if (entry.percentage < 1) return null;
     return `${entry.percentage.toFixed(0)}%`;
   };
 

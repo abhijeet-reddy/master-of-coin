@@ -50,11 +50,13 @@ export const MonthlyReport = ({ transactions, categoryBreakdown }: MonthlyReport
 
   const categoryPieData = useMemo(
     () =>
-      categoryBreakdown.map((cat, index) => ({
-        name: cat.category_name || 'Uncategorized',
-        value: Math.abs(parseFloat(cat.total)),
-        color: colors[index % colors.length],
-      })),
+      categoryBreakdown
+        .filter((cat) => cat.percentage > 0)
+        .map((cat, index) => ({
+          name: cat.category_name || 'Uncategorized',
+          value: Math.abs(parseFloat(cat.total)),
+          color: colors[index % colors.length],
+        })),
     [categoryBreakdown, colors]
   );
 

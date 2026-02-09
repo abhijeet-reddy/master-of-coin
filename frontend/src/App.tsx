@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ColorModeProvider } from '@/components/ui/color-mode';
+import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Layout } from '@/components/layout/Layout';
@@ -21,6 +22,7 @@ function App() {
     <ColorModeProvider>
       <AuthProvider>
         <ErrorBoundary>
+          <Toaster />
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />

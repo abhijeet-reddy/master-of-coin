@@ -181,8 +181,8 @@ pub struct TransactionFilter {
     #[validate(length(max = 100, message = "Search term must not exceed 100 characters"))]
     pub search: Option<String>,
 
-    /// Pagination: limit (1-100)
-    #[validate(range(min = 1, max = 100, message = "Limit must be between 1 and 100"))]
+    /// Pagination: limit (1-1000)
+    #[validate(range(min = 1, max = 1000, message = "Limit must be between 1 and 1000"))]
     pub limit: Option<i64>,
 
     /// Pagination: offset

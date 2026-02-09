@@ -67,6 +67,7 @@ pub async fn check_duplicates(
         .unwrap_or_else(|| Utc::now().date_naive());
 
     // Fetch existing transactions for the account in the extended date range
+    // Use high limit (1000) for duplicate detection to check against all existing transactions
     let existing = transaction_service::list_transactions(
         pool,
         user_id,
@@ -78,7 +79,7 @@ pub async fn check_duplicates(
             min_amount: None,
             max_amount: None,
             search: None,
-            limit: None,
+            limit: Some(1000),
             offset: None,
         },
     )

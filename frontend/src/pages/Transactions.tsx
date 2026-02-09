@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Box, Button, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
-import { FiPlus, FiFilter } from 'react-icons/fi';
+import { FiPlus, FiFilter, FiUpload } from 'react-icons/fi';
 import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
 import {
   MonthNavigator,
@@ -10,6 +10,7 @@ import {
   TransactionFormModal,
   type TransactionFilterValues,
 } from '@/components/transactions';
+import { ImportStatementModal } from '@/components/transactions/import';
 import {
   useTransactions,
   useEnrichedTransactions,
@@ -43,6 +44,11 @@ export const TransactionsPage = () => {
   });
 
   const { open: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
+  const {
+    open: isImportModalOpen,
+    onOpen: onImportModalOpen,
+    onClose: onImportModalClose,
+  } = useDisclosure();
 
   // Fetch data
   const { data: accountsData } = useAccounts();
@@ -225,6 +231,12 @@ export const TransactionsPage = () => {
             >
               <FiFilter />
             </IconButton>
+            <Button variant="outline" onClick={onImportModalOpen}>
+              <HStack gap={2}>
+                <FiUpload />
+                <Box display={{ base: 'none', md: 'block' }}>Import</Box>
+              </HStack>
+            </Button>
             <Button colorScheme="blue" onClick={handleAddTransaction}>
               <HStack gap={2}>
                 <FiPlus />
@@ -314,6 +326,13 @@ export const TransactionsPage = () => {
         confirmText="Delete"
         colorScheme="red"
         isLoading={deleteMutation.isPending}
+      />
+
+      {/* Import Statement Modal */}
+      <ImportStatementModal
+        isOpen={isImportModalOpen}
+        onClose={onImportModalClose}
+        accounts={accountsData || []}
       />
     </Box>
   );

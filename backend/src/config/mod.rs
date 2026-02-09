@@ -23,6 +23,7 @@ pub struct Config {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub jwt: JwtConfig,
+    pub import: ImportConfig,
 }
 
 /// Server configuration
@@ -44,6 +45,27 @@ pub struct DatabaseConfig {
 pub struct JwtConfig {
     pub secret: String,
     pub expiration_hours: i64,
+}
+
+/// Import configuration
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImportConfig {
+    /// Maximum file size for uploads in bytes (default: 5MB)
+    pub max_file_size: usize,
+    /// Maximum number of transactions per import (default: 1000)
+    pub max_transactions: usize,
+    /// Minimum confidence level for duplicate detection (default: "MEDIUM")
+    pub duplicate_confidence_threshold: String,
+}
+
+impl Default for ImportConfig {
+    fn default() -> Self {
+        Self {
+            max_file_size: 5 * 1024 * 1024, // 5MB
+            max_transactions: 1000,
+            duplicate_confidence_threshold: "MEDIUM".to_string(),
+        }
+    }
 }
 
 impl Config {
@@ -75,6 +97,18 @@ impl Config {
                     .unwrap_or_else(|_| "24".to_string())
                     .parse()
                     .unwrap_or(24),
+            },
+            import: ImportConfig {
+                max_file_size: std::env::var("IMPORT_MAX_FILE_SIZE")
+                    .unwrap_or_else(|_| (5 * 1024 * 1024).to_string())
+                    .parse()
+                    .unwrap_or(5 * 1024 * 1024),
+                max_transactions: std::env::var("IMPORT_MAX_TRANSACTIONS")
+                    .unwrap_or_else(|_| "1000".to_string())
+                    .parse()
+                    .unwrap_or(1000),
+                duplicate_confidence_threshold: std::env::var("IMPORT_DUPLICATE_THRESHOLD")
+                    .unwrap_or_else(|_| "MEDIUM".to_string()),
             },
         };
 
@@ -109,6 +143,24 @@ impl Config {
                 "Server port must be greater than 0".to_string(),
             ));
         }
+
+        // Validate import config
+        if self.import.max_file_size == 0 {
+            return Err(ConfigError::InvalidConfig(
+                "Import max file size must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.import.max_transactions == 0 {
+            return Err(ConfigError::InvalidConfig(
+                "Import max transactions must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate duplicate confidence threshold using enum
+        use crate::types::ConfidenceLevel;
+        ConfidenceLevel::from_str(&self.import.duplicate_confidence_threshold)
+            .map_err(|e| ConfigError::InvalidConfig(e))?;
 
         Ok(())
     }

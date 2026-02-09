@@ -2,8 +2,11 @@ pub mod account;
 pub mod api_key;
 pub mod budget;
 pub mod budget_range;
+pub mod bulk_transaction;
 pub mod category;
 pub mod exchange_rate;
+pub mod import;
+pub mod parser_error;
 pub mod person;
 pub mod transaction;
 pub mod transaction_split;
@@ -59,5 +62,11 @@ pub use user::UserResponse;
 // Re-export API key specific types
 pub use api_key::{ApiKeyScopes, OperationType, ResourceType, ScopePermission};
 
+// Re-export import models
+pub use bulk_transaction::{
+    BulkCreateData, BulkCreateError, BulkCreateRequest, BulkCreateResponse,
+};
+pub use import::{DuplicateMatch, ImportSummary, ParseData, ParseResponse, ParsedTransaction};
+
 // Re-export types from types module for convenience
-pub use crate::types::{AccountType, ApiKeyStatus, BudgetPeriod, CurrencyCode};
+pub use crate::types::{AccountType, ApiKeyStatus, BudgetPeriod, ConfidenceLevel, CurrencyCode};

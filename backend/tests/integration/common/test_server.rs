@@ -92,6 +92,7 @@ fn create_test_config() -> Config {
             secret: jwt_secret,
             expiration_hours: 24,
         },
+        import: master_of_coin_backend::config::ImportConfig::default(),
     }
 }
 

@@ -63,7 +63,6 @@ pub enum TransactionType {
     Transfer,
 }
 
-// Split information for transaction creation
 #[derive(Debug, Clone, Deserialize, Validate)]
 pub struct TransactionSplitInput {
     pub person_id: Uuid,
@@ -73,7 +72,7 @@ pub struct TransactionSplitInput {
 }
 
 // Request DTOs
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[validate(schema(function = "validate_transaction_request"))]
 pub struct CreateTransactionRequest {
     pub account_id: Uuid,

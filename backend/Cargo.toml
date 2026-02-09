@@ -12,7 +12,7 @@ name = "integration_api"
 path = "tests/integration/api/mod.rs"
 
 [dependencies]
-axum = "0.7"
+axum = { version = "0.7", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = [
@@ -55,3 +55,4 @@ axum-test = "15.0"
 tower = "0.4"
 hyper = "1.0"
 http-body-util = "0.1"
+reqwest = { version = "0.12", features = ["multipart"] }

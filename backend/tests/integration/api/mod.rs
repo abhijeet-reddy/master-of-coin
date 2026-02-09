@@ -23,6 +23,7 @@ mod test_currency_conversion;
 mod test_dashboard;
 mod test_duplicate_detection;
 mod test_exchange_rates;
+mod test_import_api;
 mod test_import_service;
 mod test_people;
 mod test_scope_enforcement;

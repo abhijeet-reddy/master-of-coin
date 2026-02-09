@@ -117,8 +117,11 @@ fn test_duplicate_detection_medium_confidence() {
     let user = common::create_test_user(&mut conn, "duplicate_test_medium").unwrap();
     let account = common::AccountFactory::new(user.id).build(&mut conn);
 
-    // Create existing transaction
-    let test_date = Utc::now() - Duration::days(5);
+    // Create existing transaction at noon to avoid midnight boundary issues
+    use chrono::NaiveDate;
+    let base_date = (Utc::now() - Duration::days(5)).date_naive();
+    let test_date = base_date.and_hms_opt(12, 0, 0).unwrap().and_utc();
+
     let tx_id =
         create_test_transaction_in_db(&mut conn, user.id, account.id, "TESCO", "-31.60", test_date);
     println!(
@@ -126,7 +129,7 @@ fn test_duplicate_detection_medium_confidence() {
         tx_id, test_date
     );
 
-    // Create parsed transaction with same date and amount, but different time
+    // Create parsed transaction with same date and amount, but different time (3 hours later, still same day)
     let different_time = test_date + Duration::hours(3);
     println!("Parsed transaction date: {:?}", different_time);
     let mut parsed_transactions = vec![ParsedTransaction {

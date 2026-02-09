@@ -90,3 +90,57 @@ pub async fn delete(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+/// Bulk create transactions
+/// POST /transactions/bulk-create
+pub async fn bulk_create(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Json(request): Json<crate::models::BulkCreateRequest>,
+) -> Result<Json<crate::models::BulkCreateResponse>, ApiError> {
+    let user_id = auth_context.user_id();
+    tracing::info!(
+        "Bulk creating {} transactions for user {}",
+        request.transactions.len(),
+        user_id
+    );
+
+    // Verify account belongs to user
+    crate::services::account_service::get_account(&state.db, request.account_id, user_id).await?;
+
+    let mut created_transactions = Vec::new();
+    let mut errors = Vec::new();
+
+    // Create transactions one by one
+    for (index, transaction_request) in request.transactions.iter().enumerate() {
+        match transaction_service::create_transaction(
+            &state.db,
+            user_id,
+            (*transaction_request).clone(),
+        )
+        .await
+        {
+            Ok(transaction) => created_transactions.push(transaction),
+            Err(e) => {
+                errors.push(crate::models::BulkCreateError {
+                    index,
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(Json(crate::models::BulkCreateResponse {
+        success: errors.is_empty(),
+        data: crate::models::BulkCreateData {
+            created: created_transactions.len(),
+            failed: errors.len(),
+            transactions: created_transactions,
+            errors: if errors.is_empty() {
+                None
+            } else {
+                Some(errors)
+            },
+        },
+    }))
+}

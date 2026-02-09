@@ -131,6 +131,34 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        // Bulk create transactions (general purpose)
+        .route(
+            "/transactions/bulk-create",
+            post(handlers::transactions::bulk_create).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        // Import routes - CSV parsing
+        .route(
+            "/transactions/import/parse",
+            post(handlers::import::parse_csv).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
         // Accounts - with scope enforcement
         .route(
             "/accounts",

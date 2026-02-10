@@ -66,12 +66,17 @@ export const TransactionsPage = () => {
     data: transactionsData,
     isLoading,
     error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useTransactions({
     start_date: monthStart.toISOString(),
     end_date: monthEnd.toISOString(),
   });
 
-  const enrichedTransactions = useEnrichedTransactions(transactionsData?.data);
+  // Flatten all pages of transactions into a single array
+  const allTransactions = transactionsData?.pages.flatMap((page) => page.data) ?? [];
+  const enrichedTransactions = useEnrichedTransactions(allTransactions);
 
   // Mutations
   const createMutation = useCreateTransaction();
@@ -270,6 +275,11 @@ export const TransactionsPage = () => {
         isLoading={isLoading}
         onTransactionClick={handleEditTransaction}
         onTransactionDelete={handleDeleteTransaction}
+        onLoadMore={() => {
+          void fetchNextPage();
+        }}
+        hasMore={hasNextPage}
+        isFetchingMore={isFetchingNextPage}
       />
 
       {/* Transaction Form Modal */}

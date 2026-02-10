@@ -9,7 +9,8 @@ interface DebtSummaryProps {
 
 export const DebtSummary = ({ people }: DebtSummaryProps) => {
   const { data: transactionsResponse } = useTransactions();
-  const transactions = transactionsResponse?.data || [];
+  // Flatten all pages of transactions into a single array
+  const transactions = transactionsResponse?.pages.flatMap((page) => page.data) ?? [];
   const { totalOwedToMe, totalIOwe, netBalance } = useDebtCalculator(people, transactions);
   const { netAmount, peopleWithDebts, netStatus } = useDebtSummary(people, netBalance);
 

@@ -15,7 +15,7 @@ interface PeopleListProps {
 
 export const PeopleList = ({ people, isLoading, onEdit, onDelete, onSettle }: PeopleListProps) => {
   const { data: transactionsResponse } = useTransactions();
-  const transactions = transactionsResponse?.data || [];
+  const transactions = transactionsResponse?.pages.flatMap((page) => page.data) ?? [];
   const personDebts = usePersonDebts(people, transactions);
 
   // Enrich people with debt summaries

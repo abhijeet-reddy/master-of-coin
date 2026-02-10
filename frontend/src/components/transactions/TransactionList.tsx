@@ -1,4 +1,5 @@
-import { Box, Heading, Skeleton, Stack, Text, VStack } from '@chakra-ui/react';
+import { useEffect, useRef } from 'react';
+import { Box, Heading, Skeleton, Stack, Text, VStack, Spinner, Center } from '@chakra-ui/react';
 import { TransactionRow } from './TransactionRow';
 import { EmptyState } from '@/components/common/EmptyState';
 import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
@@ -10,6 +11,9 @@ interface TransactionListProps {
   isLoading?: boolean;
   onTransactionClick: (transaction: EnrichedTransaction) => void;
   onTransactionDelete?: (transaction: EnrichedTransaction) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isFetchingMore?: boolean;
 }
 
 interface GroupedTransactions {
@@ -21,9 +25,41 @@ export const TransactionList = ({
   isLoading,
   onTransactionClick,
   onTransactionDelete,
+  onLoadMore,
+  hasMore,
+  isFetchingMore,
 }: TransactionListProps) => {
   const { convertAmount, isLoading: isExchangeRatesLoading } =
     useTransactionCurrencyConverter(transactions);
+
+  // Ref for the sentinel element at the bottom of the list
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Set up intersection observer for infinite scroll
+  useEffect(() => {
+    if (!sentinelRef.current || !onLoadMore || !hasMore || isFetchingMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // When the sentinel element is visible, load more transactions
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      {
+        // Trigger when sentinel is 100px from viewport
+        rootMargin: '100px',
+      }
+    );
+
+    observer.observe(sentinelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [onLoadMore, hasMore, isFetchingMore]);
 
   // Group transactions by date
   const groupedTransactions = transactions.reduce<GroupedTransactions>((acc, transaction) => {
@@ -116,6 +152,16 @@ export const TransactionList = ({
           </Box>
         );
       })}
+
+      {/* Loading more indicator */}
+      {isFetchingMore && (
+        <Center py={4}>
+          <Spinner size="md" color="blue.500" />
+        </Center>
+      )}
+
+      {/* Sentinel element for intersection observer */}
+      {hasMore && !isFetchingMore && <Box ref={sentinelRef} h="20px" />}
     </VStack>
   );
 };

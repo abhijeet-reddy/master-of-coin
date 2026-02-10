@@ -14,17 +14,30 @@ import type {
 export async function getTransactions(
   params?: QueryParams
 ): Promise<PaginatedResponse<Transaction>> {
-  const response = await apiClient.get<Transaction[]>('/transactions', { params });
+  const limit = params?.limit || 50;
+  const offset = params?.offset || 0;
+
+  const response = await apiClient.get<Transaction[]>('/transactions', {
+    params: {
+      ...params,
+      limit,
+      offset,
+    },
+  });
 
   // Backend returns a simple array directly (not wrapped in ApiResponse)
   const transactions = response.data;
+
+  // If we got fewer transactions than the limit, there are no more
+  const has_more = transactions.length === limit;
+
   return {
     data: transactions,
     pagination: {
       total: transactions.length,
-      limit: params?.limit || 100,
-      offset: params?.offset || 0,
-      has_more: false,
+      limit,
+      offset,
+      has_more,
     },
   };
 }

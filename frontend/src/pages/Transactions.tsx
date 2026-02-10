@@ -333,6 +333,7 @@ export const TransactionsPage = () => {
         isOpen={isImportModalOpen}
         onClose={onImportModalClose}
         accounts={accountsData || []}
+        categories={categoriesData || []}
       />
     </Box>
   );

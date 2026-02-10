@@ -11,7 +11,7 @@ import {
   Checkbox,
 } from '@chakra-ui/react';
 import { FiTrash2 } from 'react-icons/fi';
-import type { ParsedTransaction } from '@/types';
+import type { ParsedTransaction, Category } from '@/types';
 import { useTransactionPreview } from '@/hooks/usecase/useTransactionPreview';
 import {
   calculateTransactionSummary,
@@ -22,12 +22,14 @@ import {
 interface TransactionPreviewStepProps {
   transactions: ParsedTransaction[];
   accountId: string;
+  categories: Category[];
   onImport: (
     transactions: Array<{
       account_id: string;
       title: string;
       amount: number;
       date: string;
+      category_id?: string;
       notes?: string;
     }>
   ) => void;
@@ -38,6 +40,7 @@ interface TransactionPreviewStepProps {
 export const TransactionPreviewStep = ({
   transactions,
   accountId,
+  categories,
   onImport,
   onBack,
   isProcessing,
@@ -65,6 +68,7 @@ export const TransactionPreviewStep = ({
           title: data.title,
           amount: parseFloat(data.amount),
           date: data.date,
+          category_id: data.category_id,
           notes: data.notes,
         };
       });
@@ -134,6 +138,7 @@ export const TransactionPreviewStep = ({
               <Table.ColumnHeader>Date</Table.ColumnHeader>
               <Table.ColumnHeader>Title</Table.ColumnHeader>
               <Table.ColumnHeader>Amount</Table.ColumnHeader>
+              <Table.ColumnHeader>Category</Table.ColumnHeader>
               <Table.ColumnHeader>Duplicate</Table.ColumnHeader>
               <Table.ColumnHeader>Actions</Table.ColumnHeader>
             </Table.Row>
@@ -192,6 +197,31 @@ export const TransactionPreviewStep = ({
                       size="sm"
                       disabled={isProcessing}
                     />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <select
+                      value={data.category_id || ''}
+                      onChange={(e) =>
+                        updateTransaction(transaction.temp_id, {
+                          category_id: e.target.value || undefined,
+                        })
+                      }
+                      disabled={isProcessing}
+                      style={{
+                        width: '100%',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                        fontSize: '14px',
+                      }}
+                    >
+                      <option value="">None</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.icon} {category.name}
+                        </option>
+                      ))}
+                    </select>
                   </Table.Cell>
                   <Table.Cell>
                     <HStack gap={1}>

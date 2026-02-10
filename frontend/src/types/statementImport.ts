@@ -5,6 +5,7 @@ export interface ParsedTransaction {
   title: string;
   amount: string;
   date: string;
+  category_id?: string;
   notes?: string;
   original_currency?: string;
   original_amount?: string;

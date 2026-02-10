@@ -8,7 +8,7 @@ import {
   DialogBackdrop,
 } from '@chakra-ui/react';
 import { Box, HStack, Text } from '@chakra-ui/react';
-import type { Account } from '@/types';
+import type { Account, Category } from '@/types';
 import { FileUploadStep } from './FileUploadStep';
 import { TransactionPreviewStep } from './TransactionPreviewStep';
 import { ImportConfirmationStep } from './ImportConfirmationStep';
@@ -18,12 +18,18 @@ interface ImportStatementModalProps {
   isOpen: boolean;
   onClose: () => void;
   accounts: Account[];
+  categories: Category[];
 }
 
 const STEPS = ['upload', 'preview', 'confirmation'] as const;
 const STEP_LABELS = { upload: 'Upload', preview: 'Preview', confirmation: 'Confirm' };
 
-export const ImportStatementModal = ({ isOpen, onClose, accounts }: ImportStatementModalProps) => {
+export const ImportStatementModal = ({
+  isOpen,
+  onClose,
+  accounts,
+  categories,
+}: ImportStatementModalProps) => {
   const {
     currentStep,
     isProcessing,
@@ -109,6 +115,7 @@ export const ImportStatementModal = ({ isOpen, onClose, accounts }: ImportStatem
             <TransactionPreviewStep
               transactions={parsedTransactions}
               accountId={selectedAccountId}
+              categories={categories}
               onImport={handleImport}
               onBack={handleBack}
               isProcessing={isProcessing}

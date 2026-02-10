@@ -1,6 +1,7 @@
 /** Custom hook for managing import statement modal state and logic */
 
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ParsedTransaction } from '@/types';
 import { parseCSV, bulkCreateTransactions } from '@/services/statementImportService';
 import { toaster } from '@/components/ui/toaster';
@@ -33,6 +34,7 @@ interface UseImportStatementReturn {
 }
 
 export const useImportStatement = (): UseImportStatementReturn => {
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState<Step>('upload');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState('');
@@ -97,6 +99,10 @@ export const useImportStatement = (): UseImportStatementReturn => {
             failed: response.data.failed,
           });
           setCurrentStep('confirmation');
+
+          // Invalidate transactions query to refresh the list
+          void queryClient.invalidateQueries({ queryKey: ['transactions'] });
+
           toaster.create({
             title: 'Import Complete',
             description: `Successfully imported ${response.data.created} transactions`,

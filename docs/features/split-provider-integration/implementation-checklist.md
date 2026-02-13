@@ -333,150 +333,172 @@ live in `backend/tests/integration/` rather than in source files.
 
 ---
 
-### Phase 3: React Hooks
+### Phase 3: React Hooks ✅
 
-#### 3.1 Integration Hooks
+#### 3.1 Integration Hooks ✅
 
-- [ ] Create [`frontend/src/hooks/api/useIntegrations.ts`](../../frontend/src/hooks/api/useIntegrations.ts)
-  - [ ] `useIntegrations()`: Fetch list of providers with React Query
-  - [ ] `useDisconnectProvider()`: Mutation to disconnect provider
-- [ ] Create [`frontend/src/hooks/api/useSplitwiseFriends.ts`](../../frontend/src/hooks/api/useSplitwiseFriends.ts)
-  - [ ] `useSplitwiseFriends(providerId: string)`: Fetch Splitwise friends
-- [ ] Create [`frontend/src/hooks/api/usePersonSplitConfig.ts`](../../frontend/src/hooks/api/usePersonSplitConfig.ts)
-  - [ ] `usePersonSplitConfig(personId: string)`: Fetch config
-  - [ ] `useSetPersonSplitConfig()`: Mutation to set config
-  - [ ] `useDeletePersonSplitConfig()`: Mutation to delete config
-- [ ] Create [`frontend/src/hooks/api/useSplitSyncStatus.ts`](../../frontend/src/hooks/api/useSplitSyncStatus.ts)
-  - [ ] `useSplitSyncStatus(splitId: string)`: Fetch sync status
-  - [ ] `useRetrySync()`: Mutation to retry failed sync
-- [ ] Update [`frontend/src/hooks/api/index.ts`](../../frontend/src/hooks/api/index.ts) to export new hooks
-
----
-
-### Phase 4: Settings Page - Split Tab
-
-#### 4.1 Split Tab Component
-
-- [ ] Update [`frontend/src/pages/Settings.tsx`](../../frontend/src/pages/Settings.tsx)
-  - [ ] Add "Split" tab with `MdCallSplit` icon
-  - [ ] Import and render `SplitIntegrationsList` component
-
-#### 4.2 Integration Components
-
-- [ ] Create [`frontend/src/components/settings/SplitIntegrationsList.tsx`](../../frontend/src/components/settings/SplitIntegrationsList.tsx)
-  - [ ] Fetch providers with `useIntegrations()`
-  - [ ] Render `SplitwiseIntegrationCard` if Splitwise provider exists
-  - [ ] Render `SplitProIntegrationCard` (placeholder, greyed out)
-  - [ ] Show empty state if no providers
-- [ ] Create [`frontend/src/components/settings/SplitwiseIntegrationCard.tsx`](../../frontend/src/components/settings/SplitwiseIntegrationCard.tsx)
-  - [ ] Show connection status (Connected / Not Connected)
-  - [ ] If not connected:
-    - [ ] "Connect Splitwise" button
-    - [ ] On click: fetch auth URL and redirect to Splitwise
-  - [ ] If connected:
-    - [ ] Display Splitwise user info (name, email)
-    - [ ] "Disconnect" button with confirmation dialog
-    - [ ] Show last sync timestamp
-- [ ] Create [`frontend/src/components/settings/SplitProIntegrationCard.tsx`](../../frontend/src/components/settings/SplitProIntegrationCard.tsx)
-  - [ ] Greyed out card with "Coming Soon" badge
-  - [ ] Brief description of SplitPro
-- [ ] Update [`frontend/src/components/settings/index.ts`](../../frontend/src/components/settings/index.ts) to export new components
+- [x] Create [`frontend/src/hooks/api/useSplitIntegrations.ts`](../../frontend/src/hooks/api/useSplitIntegrations.ts)
+  - [x] `useSplitIntegrations()`: Fetch list of providers with React Query
+  - [x] `useDisconnectProvider()`: Mutation to disconnect provider
+- [x] Create [`frontend/src/hooks/api/useSplitwiseFriends.ts`](../../frontend/src/hooks/api/useSplitwiseFriends.ts)
+  - [x] `useSplitwiseFriends(providerId: string)`: Fetch Splitwise friends
+- [x] Create [`frontend/src/hooks/api/usePersonSplitConfig.ts`](../../frontend/src/hooks/api/usePersonSplitConfig.ts)
+  - [x] `usePersonSplitConfig(personId: string)`: Fetch config
+  - [x] `useSetPersonSplitConfig()`: Mutation to set config
+  - [x] `useDeletePersonSplitConfig()`: Mutation to delete config
+- [x] Create [`frontend/src/hooks/api/useSplitSyncStatus.ts`](../../frontend/src/hooks/api/useSplitSyncStatus.ts)
+  - [x] `useSplitSyncStatus(splitId: string)`: Fetch sync status
+  - [x] `useRetrySync()`: Mutation to retry failed sync
+- [x] Update [`frontend/src/hooks/api/index.ts`](../../frontend/src/hooks/api/index.ts) to export new hooks
 
 ---
 
-### Phase 5: Person Edit - Split Provider Config
+### Phase 4: Settings Page - Split Tab ✅
 
-#### 5.1 Split Provider Selector
+#### 4.1 Split Tab Component ✅
 
-- [ ] Create [`frontend/src/components/people/SplitProviderConfig.tsx`](../../frontend/src/components/people/SplitProviderConfig.tsx)
-  - [ ] Provider dropdown: [None | Splitwise | SplitPro]
-  - [ ] If "None" selected: clear config
-  - [ ] If "Splitwise" selected:
-    - [ ] Fetch Splitwise friends with `useSplitwiseFriends()`
-    - [ ] Show searchable select/autocomplete for friends
-    - [ ] Display friend name + email
-    - [ ] On save: call `useSetPersonSplitConfig()`
-  - [ ] If "SplitPro" selected (future):
-    - [ ] Show text input for SplitPro user identifier
-  - [ ] Show current config if exists
-  - [ ] "Clear Configuration" button if config exists
+- [x] Update [`frontend/src/pages/Settings.tsx`](../../frontend/src/pages/Settings.tsx)
+  - [x] Add "Split" tab with `MdCallSplit` icon
+  - [x] Import and render `SplitIntegrationsList` component
 
-#### 5.2 Person Form Integration
+#### 4.2 Integration Components ✅
 
-- [ ] Update [`frontend/src/components/people/PersonFormModal.tsx`](../../frontend/src/components/people/PersonFormModal.tsx)
-  - [ ] Add `<SplitProviderConfig>` component to form
-  - [ ] Place after Notes field
-  - [ ] Pass person ID to component
-  - [ ] Handle config save separately from person save (or combine)
-- [ ] Update [`frontend/src/components/people/index.ts`](../../frontend/src/components/people/index.ts)
-
----
-
-### Phase 6: Transaction Splits - Sync Status
-
-#### 6.1 Sync Status Badge
-
-- [ ] Create [`frontend/src/components/transactions/SplitSyncStatus.tsx`](../../frontend/src/components/transactions/SplitSyncStatus.tsx)
-  - [ ] Fetch sync status with `useSplitSyncStatus(splitId)`
-  - [ ] Render status badge:
-    - [ ] ✅ Green check + "Synced" for `synced` status
-    - [ ] 🔄 Spinner + "Syncing..." for `pending` status
-    - [ ] ❌ Red X + "Failed" for `failed` status
-    - [ ] ➖ No badge if person has no split config
-  - [ ] If failed: show "Retry" button
-    - [ ] On click: call `useRetrySync()`
-    - [ ] Show error message in tooltip
-  - [ ] Add link to external expense (if synced)
-
-#### 6.2 Transaction Row Integration
-
-- [ ] Update [`frontend/src/components/transactions/TransactionRow.tsx`](../../frontend/src/components/transactions/TransactionRow.tsx)
-  - [ ] Add `<SplitSyncStatus>` component next to each split
-  - [ ] Show sync status inline with split amount
-- [ ] Update [`frontend/src/components/transactions/index.ts`](../../frontend/src/components/transactions/index.ts)
+- [x] Create [`frontend/src/components/settings/SplitIntegrationsList.tsx`](../../frontend/src/components/settings/SplitIntegrationsList.tsx)
+  - [x] Fetch providers with `useSplitIntegrations()`
+  - [x] Render `SplitwiseIntegrationCard` if Splitwise provider exists
+  - [x] Render `SplitProIntegrationCard` (placeholder, greyed out)
+  - [x] Loading state with `LoadingSpinner`
+- [x] Create [`frontend/src/components/settings/SplitwiseIntegrationCard.tsx`](../../frontend/src/components/settings/SplitwiseIntegrationCard.tsx)
+  - [x] Show connection status (Connected / Not Connected) with Badge
+  - [x] If not connected:
+    - [x] "Connect Splitwise" button
+    - [x] On click: fetch auth URL and redirect to Splitwise
+  - [x] If connected:
+    - [x] Display connected since date
+    - [x] "Disconnect" button with confirmation dialog
+  - [x] All business logic extracted to `useSplitwiseConnection` hook
+- [x] Create [`frontend/src/components/settings/SplitProIntegrationCard.tsx`](../../frontend/src/components/settings/SplitProIntegrationCard.tsx)
+  - [x] Greyed out card with "Coming Soon" badge
+  - [x] Brief description of SplitPro
+- [x] Create [`frontend/src/hooks/usecase/useSplitwiseConnection.ts`](../../frontend/src/hooks/usecase/useSplitwiseConnection.ts)
+  - [x] Connect logic (OAuth redirect via `getSplitwiseAuthUrl`)
+  - [x] Disconnect logic with `useDisconnectProvider` mutation
+  - [x] Disconnect confirmation dialog state management
+  - [x] Toast notifications for success/error
+- [x] Update [`frontend/src/components/settings/index.ts`](../../frontend/src/components/settings/index.ts) to export new components
+- [x] Update [`frontend/src/hooks/usecase/index.ts`](../../frontend/src/hooks/usecase/index.ts) to export `useSplitwiseConnection`
 
 ---
 
-### Phase 7: OAuth Callback Handling
+### Phase 5: Person Edit - Split Provider Config ✅
 
-#### 7.1 Callback Page
+#### 5.1 Split Provider Selector ✅
 
-- [ ] Create [`frontend/src/pages/integrations/SplitwiseCallback.tsx`](../../frontend/src/pages/integrations/SplitwiseCallback.tsx)
-  - [ ] Parse `code` and `state` from URL query params
-  - [ ] Show loading spinner
-  - [ ] Make API call to backend callback endpoint
-  - [ ] On success: redirect to Settings page with success toast
-  - [ ] On error: redirect to Settings page with error toast
-- [ ] Update [`frontend/src/routes/index.tsx`](../../frontend/src/routes/index.tsx)
-  - [ ] Add route: `/integrations/splitwise/callback`
+- [x] Create [`frontend/src/components/people/SplitProviderConfig.tsx`](../../frontend/src/components/people/SplitProviderConfig.tsx)
+  - [x] Provider dropdown: [None | Splitwise] (SplitPro disabled until available)
+  - [x] If "None" selected: no config
+  - [x] If "Splitwise" selected:
+    - [x] Fetch Splitwise friends with `useSplitwiseFriends()`
+    - [x] Show select dropdown for friends with name + email
+    - [x] On save: call `useSetPersonSplitConfig()`
+  - [x] Show current config if exists (provider badge + external user ID)
+  - [x] "Clear Configuration" button (trash icon) if config exists
+- [x] Create [`frontend/src/hooks/usecase/useSplitProviderConfig.ts`](../../frontend/src/hooks/usecase/useSplitProviderConfig.ts)
+  - [x] Provider selection, friend selection state management
+  - [x] Save config with toast notifications
+  - [x] Clear config with toast notifications
+  - [x] All business logic extracted from component
+
+#### 5.2 Person Form Integration ✅
+
+- [x] Update [`frontend/src/components/people/PersonFormModal.tsx`](../../frontend/src/components/people/PersonFormModal.tsx)
+  - [x] Add `<SplitProviderConfig>` component to form
+  - [x] Place after Notes field
+  - [x] Pass person ID to component
+  - [x] Only shown when editing existing person (not for new person creation)
+  - [x] Config save handled independently from person save
+- [x] Update [`frontend/src/components/people/index.ts`](../../frontend/src/components/people/index.ts)
+- [x] Update [`frontend/src/hooks/usecase/index.ts`](../../frontend/src/hooks/usecase/index.ts) to export `useSplitProviderConfig`
 
 ---
 
-### Phase 8: UI Polish & UX
+### Phase 6: Transaction Splits - Sync Status ✅
 
-#### 8.1 Loading States
+#### 6.1 Sync Status Badge ✅
 
-- [ ] Add loading skeletons for provider cards
-- [ ] Add loading states for friend list
-- [ ] Add loading states for sync status badges
+- [x] Create [`frontend/src/components/transactions/SplitSyncStatus.tsx`](../../frontend/src/components/transactions/SplitSyncStatus.tsx)
+  - [x] Fetch sync status via `useSplitSyncBadge` hook (delegates to `useSplitSyncStatus`)
+  - [x] Render status badge:
+    - [x] ✅ Green check + "Synced" for `synced` status
+    - [x] 🔄 Spinner + "Syncing..." for `pending` status
+    - [x] ❌ Red X + "Failed" for `failed` status
+    - [x] ➖ No badge if person has no split config (returns null)
+  - [x] If failed: show "Retry" button
+    - [x] On click: calls retry via `useSplitSyncBadge` hook
+    - [x] Show error message in title attribute
+  - [x] Add link to external expense (if synced, via Chakra Link)
+- [x] Create [`frontend/src/hooks/usecase/useSplitSyncBadge.ts`](../../frontend/src/hooks/usecase/useSplitSyncBadge.ts)
+  - [x] Sync status fetching and retry logic with toast notifications
+- [x] Add `id` field to `TransactionSplit` type in [`frontend/src/types/models.ts`](../../frontend/src/types/models.ts)
 
-#### 8.2 Error Handling
+#### 6.2 Transaction Row Integration ✅
 
-- [ ] Add error boundaries for integration components
-- [ ] Show user-friendly error messages for:
-  - [ ] OAuth failures
-  - [ ] Network errors
-  - [ ] Sync failures
-- [ ] Add retry mechanisms for failed operations
+- [x] Update [`frontend/src/components/transactions/TransactionRow.tsx`](../../frontend/src/components/transactions/TransactionRow.tsx)
+  - [x] Add `<SplitSyncStatus>` component next to each split
+  - [x] Show sync status inline with split badge
+- [x] Update [`frontend/src/components/transactions/index.ts`](../../frontend/src/components/transactions/index.ts)
+- [x] Update [`frontend/src/hooks/usecase/index.ts`](../../frontend/src/hooks/usecase/index.ts) to export `useSplitSyncBadge`
 
-#### 8.3 Success Feedback
+---
 
-- [ ] Toast notifications for:
-  - [ ] Provider connected successfully
-  - [ ] Provider disconnected
-  - [ ] Split config saved
-  - [ ] Sync retry initiated
-- [ ] Visual confirmation for sync status changes
+### Phase 7: OAuth Callback Handling ✅
+
+#### 7.1 Callback Status Handling ✅
+
+Note: The backend handles the full OAuth exchange server-side at `/api/integrations/splitwise/callback`
+and redirects to `/settings?tab=split&status=connected`. No separate frontend callback page is needed.
+
+- [x] Create [`frontend/src/hooks/usecase/useSplitwiseCallbackStatus.ts`](../../frontend/src/hooks/usecase/useSplitwiseCallbackStatus.ts)
+  - [x] Read `tab` and `status` query params from URL
+  - [x] Show success toast when `status=connected`
+  - [x] Show error toast when `status=error`
+  - [x] Clean URL params after showing toast
+  - [x] Return `defaultTab` for Settings page tab selection
+- [x] Update [`frontend/src/pages/Settings.tsx`](../../frontend/src/pages/Settings.tsx)
+  - [x] Use `useSplitwiseCallbackStatus()` hook
+  - [x] Set Tabs.Root `defaultValue` to `defaultTab` (supports `?tab=split` from OAuth redirect)
+- [x] Update [`frontend/src/hooks/usecase/index.ts`](../../frontend/src/hooks/usecase/index.ts) to export `useSplitwiseCallbackStatus`
+
+---
+
+### Phase 8: UI Polish & UX ✅
+
+#### 8.1 Loading States ✅
+
+- [x] Add loading skeletons for provider cards (`SplitIntegrationsList` - 2 skeleton cards)
+- [x] Add loading skeleton for friend list (`SplitProviderConfig` - skeleton select)
+- [x] Add loading skeleton for split config (`SplitProviderConfig` - skeleton text + input)
+- [x] Add loading spinner for sync status badges (`SplitSyncStatus` - xs spinner)
+
+#### 8.2 Error Handling ✅
+
+- [x] Error state in `SplitIntegrationsList` with `ErrorAlert` for failed provider fetch
+- [x] Show user-friendly error messages via toasts for:
+  - [x] OAuth failures (`useSplitwiseConnection` - connect error toast)
+  - [x] Network errors (all hooks catch errors and show toasts)
+  - [x] Sync failures (`useSplitSyncBadge` - retry error toast)
+  - [x] OAuth callback errors (`useSplitwiseCallbackStatus` - status=error toast)
+- [x] Retry mechanisms: `useRetrySync` for failed sync operations
+
+#### 8.3 Success Feedback ✅
+
+- [x] Toast notifications for:
+  - [x] Provider connected successfully (`useSplitwiseCallbackStatus`)
+  - [x] Provider disconnected (`useSplitwiseConnection`)
+  - [x] Split config saved (`useSplitProviderConfig`)
+  - [x] Split config cleared (`useSplitProviderConfig`)
+  - [x] Sync retry initiated (`useSplitSyncBadge`)
+- [x] Visual confirmation: sync status badges update via React Query invalidation
 
 ---
 

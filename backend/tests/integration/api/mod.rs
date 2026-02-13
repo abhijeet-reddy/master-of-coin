@@ -9,6 +9,8 @@
 //! - Category endpoints
 //! - People endpoints
 //! - Dashboard endpoints
+//! - Split provider integration endpoints (test_split_providers)
+//! - Split sync status endpoints (test_split_sync)
 
 #[path = "../common/mod.rs"]
 mod common;
@@ -27,4 +29,6 @@ mod test_import_api;
 mod test_import_service;
 mod test_people;
 mod test_scope_enforcement;
+mod test_split_providers;
+mod test_split_sync;
 mod test_transactions;

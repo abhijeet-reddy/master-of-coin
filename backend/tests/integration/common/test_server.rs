@@ -93,6 +93,8 @@ fn create_test_config() -> Config {
             expiration_hours: 24,
         },
         import: master_of_coin_backend::config::ImportConfig::default(),
+        splitwise: None,
+        encryption_key_configured: false,
     }
 }
 

@@ -50,10 +50,34 @@ async fn main() {
         tracing::info!("✅ Database migrations completed successfully");
     }
 
-    // 5. Build application state
+    // 5. Log integration configuration status
+    if config.is_splitwise_configured() {
+        tracing::info!(
+            "✅ Splitwise integration configured (redirect URI: {})",
+            config.splitwise.as_ref().unwrap().redirect_uri
+        );
+    } else if config.splitwise.is_some() {
+        tracing::warn!(
+            "⚠️  Splitwise OAuth configured but ENCRYPTION_KEY is missing - integration disabled"
+        );
+    } else {
+        tracing::info!(
+            "ℹ️  Splitwise integration not configured (set SPLITWISE_CLIENT_ID, SPLITWISE_CLIENT_SECRET, SPLITWISE_REDIRECT_URI to enable)"
+        );
+    }
+
+    if config.encryption_key_configured {
+        tracing::info!("✅ Encryption key configured for provider credentials");
+    } else {
+        tracing::info!(
+            "ℹ️  Encryption key not configured (set ENCRYPTION_KEY for split provider support)"
+        );
+    }
+
+    // 6. Build application state
     let state = master_of_coin_backend::AppState::new(pool, config.clone());
 
-    // 6. Create router with middleware layers
+    // 7. Create router with middleware layers
     // Middleware is applied in reverse order (bottom to top):
     // - Routes with auth middleware (innermost, applied in routes.rs)
     // - Request logging middleware
@@ -64,7 +88,7 @@ async fn main() {
         ))
         .layer(master_of_coin_backend::middleware::cors::create_cors_layer());
 
-    // 7. Bind to configured address and start server
+    // 8. Bind to configured address and start server
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let listener = tokio::net::TcpListener::bind(&addr)
         .await

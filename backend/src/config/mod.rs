@@ -14,6 +14,13 @@
 //! - `SERVER_PORT`: Server port (default: "13153")
 //! - `DATABASE_MAX_CONNECTIONS`: Maximum database connections (default: 10)
 //! - `JWT_EXPIRATION_HOURS`: JWT token expiration in hours (default: 24)
+//!
+//! ## Optional Integration Environment Variables
+//!
+//! - `ENCRYPTION_KEY`: AES-256-GCM encryption key for provider credentials (base64-encoded)
+//! - `SPLITWISE_CLIENT_ID`: Splitwise OAuth2 client ID
+//! - `SPLITWISE_CLIENT_SECRET`: Splitwise OAuth2 client secret
+//! - `SPLITWISE_REDIRECT_URI`: Splitwise OAuth2 redirect URI
 
 use serde::Deserialize;
 
@@ -24,6 +31,8 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub jwt: JwtConfig,
     pub import: ImportConfig,
+    pub splitwise: Option<SplitwiseConfig>,
+    pub encryption_key_configured: bool,
 }
 
 /// Server configuration
@@ -68,11 +77,48 @@ impl Default for ImportConfig {
     }
 }
 
+/// Splitwise OAuth2 configuration (optional - only needed for Splitwise integration)
+#[derive(Debug, Clone, Deserialize)]
+pub struct SplitwiseConfig {
+    /// Splitwise OAuth2 client ID
+    pub client_id: String,
+    /// Splitwise OAuth2 client secret
+    pub client_secret: String,
+    /// Splitwise OAuth2 redirect URI
+    pub redirect_uri: String,
+}
+
 impl Config {
     /// Load configuration from environment variables
     pub fn from_env() -> Result<Self, ConfigError> {
         // Load .env file if it exists
         dotenvy::dotenv().ok();
+
+        // Load optional Splitwise OAuth configuration
+        let splitwise = match (
+            std::env::var("SPLITWISE_CLIENT_ID"),
+            std::env::var("SPLITWISE_CLIENT_SECRET"),
+            std::env::var("SPLITWISE_REDIRECT_URI"),
+        ) {
+            (Ok(client_id), Ok(client_secret), Ok(redirect_uri))
+                if !client_id.is_empty()
+                    && !client_id.starts_with("your_")
+                    && !client_secret.is_empty()
+                    && !client_secret.starts_with("your_") =>
+            {
+                Some(SplitwiseConfig {
+                    client_id,
+                    client_secret,
+                    redirect_uri,
+                })
+            }
+            _ => None,
+        };
+
+        // Check if encryption key is configured (needed for split provider credentials)
+        let encryption_key_configured = std::env::var("ENCRYPTION_KEY")
+            .map(|key| !key.is_empty() && !key.starts_with("generate_"))
+            .unwrap_or(false);
 
         let config = Config {
             server: ServerConfig {
@@ -110,12 +156,19 @@ impl Config {
                 duplicate_confidence_threshold: std::env::var("IMPORT_DUPLICATE_THRESHOLD")
                     .unwrap_or_else(|_| "MEDIUM".to_string()),
             },
+            splitwise,
+            encryption_key_configured,
         };
 
         // Validate configuration
         config.validate()?;
 
         Ok(config)
+    }
+
+    /// Check if Splitwise integration is fully configured
+    pub fn is_splitwise_configured(&self) -> bool {
+        self.splitwise.is_some() && self.encryption_key_configured
     }
 
     /// Validate configuration
@@ -161,6 +214,15 @@ impl Config {
         use crate::types::ConfidenceLevel;
         ConfidenceLevel::from_str(&self.import.duplicate_confidence_threshold)
             .map_err(|e| ConfigError::InvalidConfig(e))?;
+
+        // Validate Splitwise config consistency: if Splitwise is configured, encryption key must be too
+        if self.splitwise.is_some() && !self.encryption_key_configured {
+            return Err(ConfigError::InvalidConfig(
+                "ENCRYPTION_KEY must be configured when Splitwise OAuth is enabled. \
+                 Generate one with: openssl rand -base64 32"
+                    .to_string(),
+            ));
+        }
 
         Ok(())
     }

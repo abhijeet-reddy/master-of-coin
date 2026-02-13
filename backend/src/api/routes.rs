@@ -20,6 +20,24 @@
 //! - `/api/v1/people/*` - People and debt management
 //! - `/api/v1/categories/*` - Category management
 //! - `/api/v1/api-keys/*` - API key management
+//! - `/api/v1/integrations/*` - Split provider integrations
+//!
+//! ### Integration Routes (Authentication Required)
+//! - `GET /api/v1/integrations/splitwise/auth-url` - Get Splitwise OAuth URL
+//! - `GET /api/v1/integrations/splitwise/callback` - Handle Splitwise OAuth callback
+//! - `GET /api/v1/integrations/splitwise/friends` - List Splitwise friends
+//! - `GET /api/v1/integrations/providers` - List configured providers
+//! - `DELETE /api/v1/integrations/providers/:id` - Disconnect a provider
+//! - `GET /api/v1/integrations/providers/:id/friends` - Get provider friends
+//!
+//! ### Person Split Config Routes (Authentication Required)
+//! - `PUT /api/v1/people/:id/split-config` - Set split provider config for person
+//! - `GET /api/v1/people/:id/split-config` - Get split provider config for person
+//! - `DELETE /api/v1/people/:id/split-config` - Delete split provider config for person
+//!
+//! ### Split Sync Routes (Authentication Required)
+//! - `GET /api/v1/splits/:id/sync-status` - Get sync status for a split
+//! - `POST /api/v1/splits/:id/retry-sync` - Retry a failed sync
 //!
 //! Protected routes automatically require a valid JWT token or API key in the
 //! `Authorization: Bearer <token>` header.
@@ -288,6 +306,31 @@ pub fn create_router(state: AppState) -> Router {
                 require_scope(ResourceType::People, OperationType::Write, auth, req, next)
             })),
         )
+        // Person split config routes - with scope enforcement (uses People scope)
+        .route(
+            "/people/:id/split-config",
+            get(handlers::people::get_split_config).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(ResourceType::People, OperationType::Read, auth, req, next)
+                },
+            )),
+        )
+        .route(
+            "/people/:id/split-config",
+            put(handlers::people::set_split_config).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(ResourceType::People, OperationType::Write, auth, req, next)
+                },
+            )),
+        )
+        .route(
+            "/people/:id/split-config",
+            delete(handlers::people::delete_split_config).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(ResourceType::People, OperationType::Write, auth, req, next)
+                },
+            )),
+        )
         // Categories - with scope enforcement
         .route(
             "/categories",
@@ -336,6 +379,59 @@ pub fn create_router(state: AppState) -> Router {
                     next,
                 )
             })),
+        )
+        // Split sync status - with scope enforcement (uses Transactions scope)
+        .route(
+            "/splits/:id/sync-status",
+            get(handlers::split_sync::get_sync_status).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/splits/:id/retry-sync",
+            post(handlers::split_sync::retry_sync).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        // Splitwise OAuth integration routes (no scope check - always accessible)
+        .route(
+            "/integrations/splitwise/auth-url",
+            get(handlers::splitwise_integration::get_auth_url),
+        )
+        .route(
+            "/integrations/splitwise/callback",
+            get(handlers::splitwise_integration::oauth_callback),
+        )
+        .route(
+            "/integrations/splitwise/friends",
+            get(handlers::splitwise_integration::list_splitwise_friends),
+        )
+        // Provider management routes (no scope check - always accessible)
+        .route(
+            "/integrations/providers",
+            get(handlers::split_providers::list_providers),
+        )
+        .route(
+            "/integrations/providers/:id",
+            delete(handlers::split_providers::disconnect_provider),
+        )
+        .route(
+            "/integrations/providers/:id/friends",
+            get(handlers::split_providers::get_provider_friends),
         )
         // API Keys - no scope enforcement (always accessible to authenticated users)
         // API keys cannot manage other API keys via API key authentication

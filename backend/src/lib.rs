@@ -70,11 +70,22 @@ pub struct AppState {
     pub db: DbPool,
     /// Application configuration
     pub config: Config,
+    /// Split sync service for syncing transaction splits to external providers
+    pub split_sync: Option<services::split_sync_service::SplitSyncService>,
 }
 
 impl AppState {
     /// Create a new AppState instance
     pub fn new(db: DbPool, config: Config) -> Self {
-        Self { db, config }
+        // Initialize split sync service
+        let split_sync = Some(services::split_sync_service::SplitSyncService::new(
+            db.clone(),
+        ));
+
+        Self {
+            db,
+            config,
+            split_sync,
+        }
     }
 }

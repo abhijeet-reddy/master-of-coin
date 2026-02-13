@@ -5,7 +5,7 @@ use crate::{
     models::{
         CreateTransactionRequest, TransactionFilter, TransactionResponse, UpdateTransactionRequest,
     },
-    services::transaction_service,
+    services::{split_sync_service::SplitSyncService, transaction_service},
 };
 use axum::{
     Json,
@@ -41,6 +41,15 @@ pub async fn create(
 
     let transaction = transaction_service::create_transaction(&state.db, user_id, request).await?;
 
+    // Trigger split sync if splits were created (fire-and-forget, don't block response)
+    if let Some(ref splits) = transaction.splits {
+        if !splits.is_empty() {
+            let split_ids: Vec<Uuid> = splits.iter().map(|s| s.id).collect();
+            let transaction_id = transaction.id;
+            trigger_split_sync_created(state.split_sync.clone(), transaction_id, split_ids).await;
+        }
+    }
+
     Ok((StatusCode::CREATED, Json(transaction)))
 }
 
@@ -73,6 +82,13 @@ pub async fn update(
     let transaction =
         transaction_service::update_transaction(&state.db, id, user_id, request).await?;
 
+    // Trigger split sync update for all splits (fire-and-forget)
+    if let Some(ref splits) = transaction.splits {
+        for split in splits {
+            trigger_split_sync_updated(state.split_sync.clone(), split.id).await;
+        }
+    }
+
     Ok(Json(transaction))
 }
 
@@ -86,7 +102,20 @@ pub async fn delete(
     let user_id = auth_context.user_id();
     tracing::info!("Deleting transaction {} for user {}", id, user_id);
 
+    // Get splits before deletion so we can notify sync service
+    let existing = transaction_service::get_transaction(&state.db, id, user_id).await?;
+    let split_ids: Vec<Uuid> = existing
+        .splits
+        .as_ref()
+        .map(|s| s.iter().map(|split| split.id).collect())
+        .unwrap_or_default();
+
     transaction_service::delete_transaction(&state.db, id, user_id).await?;
+
+    // Trigger split sync deletion for each split (fire-and-forget)
+    for split_id in split_ids {
+        trigger_split_sync_deleted(state.split_sync.clone(), id, split_id).await;
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -143,4 +172,54 @@ pub async fn bulk_create(
             },
         },
     }))
+}
+
+// --- Split Sync Helper Functions ---
+// These are fire-and-forget: sync failures never block transaction operations.
+
+/// Trigger sync after splits are created on a transaction
+async fn trigger_split_sync_created(
+    sync_service: Option<SplitSyncService>,
+    transaction_id: Uuid,
+    split_ids: Vec<Uuid>,
+) {
+    if let Some(service) = sync_service {
+        if let Err(e) = service
+            .on_transaction_splits_created(transaction_id, split_ids)
+            .await
+        {
+            tracing::warn!(
+                "Split sync failed after creating splits for transaction {}: {}",
+                transaction_id,
+                e
+            );
+        }
+    }
+}
+
+/// Trigger sync after a split is updated
+async fn trigger_split_sync_updated(sync_service: Option<SplitSyncService>, split_id: Uuid) {
+    if let Some(service) = sync_service {
+        if let Err(e) = service.on_split_updated(split_id).await {
+            tracing::warn!("Split sync failed after updating split {}: {}", split_id, e);
+        }
+    }
+}
+
+/// Trigger sync after a split is deleted
+async fn trigger_split_sync_deleted(
+    sync_service: Option<SplitSyncService>,
+    transaction_id: Uuid,
+    split_id: Uuid,
+) {
+    if let Some(service) = sync_service {
+        if let Err(e) = service.on_split_deleted(transaction_id, split_id).await {
+            tracing::warn!(
+                "Split sync failed after deleting split {} from transaction {}: {}",
+                split_id,
+                transaction_id,
+                e
+            );
+        }
+    }
 }

@@ -67,11 +67,11 @@ impl SplitwiseProvider {
         let mut params = Vec::new();
         for (i, user) in users.iter().enumerate() {
             params.push((
-                format!("users__{}_user_id", i),
+                format!("users__{}__user_id", i),
                 user.external_user_id.clone(),
             ));
-            params.push((format!("users__{}_paid_share", i), user.paid_share.clone()));
-            params.push((format!("users__{}_owed_share", i), user.owed_share.clone()));
+            params.push((format!("users__{}__paid_share", i), user.paid_share.clone()));
+            params.push((format!("users__{}__owed_share", i), user.owed_share.clone()));
         }
         params
     }
@@ -111,7 +111,10 @@ impl SplitProvider for SplitwiseProvider {
             ("cost".to_string(), request.cost),
             ("description".to_string(), request.description),
             ("currency_code".to_string(), request.currency_code),
-            ("date".to_string(), request.date.to_rfc3339()),
+            (
+                "date".to_string(),
+                request.date.format("%Y-%m-%dT%H:%M:%S").to_string(),
+            ),
         ];
 
         // Add group_id if provided
@@ -152,8 +155,15 @@ impl SplitProvider for SplitwiseProvider {
             .map_err(|e| SplitProviderError::InvalidResponse(e.to_string()))?;
 
         // Check for errors in response
+        // Splitwise returns "errors": {} on success, so we need to check for non-empty errors
         if let Some(errors) = json_response.errors {
-            if !errors.is_null() {
+            let has_errors = match &errors {
+                Value::Object(map) => !map.is_empty(),
+                Value::Array(arr) => !arr.is_empty(),
+                Value::Null => false,
+                _ => true,
+            };
+            if has_errors {
                 return Err(SplitProviderError::ApiError(format!(
                     "Splitwise errors: {}",
                     errors
@@ -196,7 +206,10 @@ impl SplitProvider for SplitwiseProvider {
             params.push(("cost".to_string(), cost));
         }
         if let Some(date) = request.date {
-            params.push(("date".to_string(), date.to_rfc3339()));
+            params.push((
+                "date".to_string(),
+                date.format("%Y-%m-%dT%H:%M:%S").to_string(),
+            ));
         }
         if let Some(notes) = request.notes {
             params.push(("details".to_string(), notes));
@@ -235,9 +248,15 @@ impl SplitProvider for SplitwiseProvider {
         let json_response: SplitwiseExpenseResponse = serde_json::from_str(&body)
             .map_err(|e| SplitProviderError::InvalidResponse(e.to_string()))?;
 
-        // Check for errors
+        // Check for errors (Splitwise returns "errors": {} on success)
         if let Some(errors) = json_response.errors {
-            if !errors.is_null() {
+            let has_errors = match &errors {
+                Value::Object(map) => !map.is_empty(),
+                Value::Array(arr) => !arr.is_empty(),
+                Value::Null => false,
+                _ => true,
+            };
+            if has_errors {
                 return Err(SplitProviderError::ApiError(format!(
                     "Splitwise errors: {}",
                     errors

@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::DbPool;
 use crate::errors::{ApiError, ApiResult};
+use crate::models::account::Account;
 use crate::models::person_split_config::PersonSplitConfig;
 use crate::models::split_provider::SplitProvider as SplitProviderModel;
 use crate::models::split_sync_record::{
@@ -16,7 +17,9 @@ use crate::models::split_sync_record::{
 use crate::models::transaction::Transaction;
 use crate::models::transaction_split::TransactionSplit;
 use crate::repositories::split_sync_record::SplitSyncRecordRepository;
-use crate::schema::{person_split_configs, split_providers, transaction_splits, transactions};
+use crate::schema::{
+    accounts, person_split_configs, split_providers, transaction_splits, transactions,
+};
 use crate::services::split_provider::{
     CreateExternalExpense, ExpenseUser, SplitProvider, SplitwiseProvider, UpdateExternalExpense,
 };
@@ -210,7 +213,9 @@ impl SplitSyncService {
         let record = SplitSyncRecordRepository::find_by_id(&self.pool, sync_record_id)?
             .ok_or_else(|| ApiError::NotFound("Sync record not found".to_string()))?;
 
-        if record.retry_count >= MAX_RETRY_COUNT {
+        let current_retry_count = record.retry_count;
+
+        if current_retry_count >= MAX_RETRY_COUNT {
             return Err(ApiError::BadRequest(
                 "Maximum retry count exceeded".to_string(),
             ));
@@ -225,6 +230,8 @@ impl SplitSyncService {
             .find(record.transaction_split_id)
             .first::<TransactionSplit>(&mut conn)?;
 
+        let provider_id = record.split_provider_id;
+
         let (transaction, splits_with_configs) = self
             .fetch_transaction_and_splits(split.transaction_id)
             .await?;
@@ -232,9 +239,14 @@ impl SplitSyncService {
         // Group by provider and retry
         let grouped = self.group_splits_by_provider(splits_with_configs);
 
-        if let Some(splits_group) = grouped.get(&record.split_provider_id) {
-            self.sync_splits_group(&transaction, record.split_provider_id, splits_group.clone())
-                .await?;
+        if let Some(splits_group) = grouped.get(&provider_id) {
+            self.sync_splits_group_with_retry_count(
+                &transaction,
+                provider_id,
+                splits_group.clone(),
+                current_retry_count + 1,
+            )
+            .await?;
         }
 
         // Fetch updated record
@@ -304,6 +316,18 @@ impl SplitSyncService {
         provider_id: Uuid,
         splits: Vec<(TransactionSplit, PersonSplitConfig)>,
     ) -> ApiResult<()> {
+        self.sync_splits_group_with_retry_count(transaction, provider_id, splits, 0)
+            .await
+    }
+
+    /// Sync a group of splits to a provider with a specific retry count
+    async fn sync_splits_group_with_retry_count(
+        &self,
+        transaction: &Transaction,
+        provider_id: Uuid,
+        splits: Vec<(TransactionSplit, PersonSplitConfig)>,
+        retry_count: i32,
+    ) -> ApiResult<()> {
         // Fetch provider
         let mut conn = self.pool.get().map_err(|e| {
             tracing::error!("Failed to get DB connection: {}", e);
@@ -337,14 +361,34 @@ impl SplitSyncService {
             ApiError::InternalWithMessage(format!("Failed to decrypt credentials: {}", e))
         })?;
 
-        // Build expense users
-        let users = self.build_expense_users(transaction, &splits)?;
+        // Get the payer's external user ID from the provider credentials
+        // (the authenticated user who paid the full amount)
+        let payer_external_id = credentials
+            .get("splitwise_user_id")
+            .and_then(|v| {
+                v.as_i64()
+                    .map(|id| id.to_string())
+                    .or_else(|| v.as_str().map(|s| s.to_string()))
+            })
+            .ok_or_else(|| {
+                ApiError::InternalWithMessage(
+                    "Missing splitwise_user_id in provider credentials".to_string(),
+                )
+            })?;
 
-        // Create expense request
+        // Fetch account to get currency code
+        let account = accounts::table
+            .find(transaction.account_id)
+            .first::<Account>(&mut conn)?;
+
+        // Build expense users
+        let users = self.build_expense_users(transaction, &splits, &payer_external_id)?;
+
+        // Create expense request (use absolute value since expenses are stored as negative)
         let request = CreateExternalExpense {
             description: transaction.title.clone(),
-            cost: transaction.amount.to_string(),
-            currency_code: "USD".to_string(), // TODO: Get from account
+            cost: transaction.amount.abs().to_string(),
+            currency_code: account.currency.as_str().to_string(),
             date: transaction.date,
             group_id: None, // TODO: Support groups
             users,
@@ -354,49 +398,31 @@ impl SplitSyncService {
         // Call provider to create expense
         match provider.create_expense(&credentials, request).await {
             Ok(result) => {
-                // Create sync records for all splits in this group
+                // Upsert sync records for all splits in this group
                 for (split, _) in splits {
-                    let new_record = NewSplitSyncRecord {
-                        transaction_split_id: split.id,
-                        split_provider_id: provider_id,
-                        external_expense_id: Some(result.external_expense_id.clone()),
-                        sync_status: SyncStatus::Synced.as_str().to_string(),
-                        last_sync_at: Some(Utc::now()),
-                        last_error: None,
-                        retry_count: 0,
-                    };
-
-                    if let Err(e) = SplitSyncRecordRepository::create(&self.pool, new_record) {
-                        tracing::error!(
-                            "Failed to create sync record for split {}: {}",
-                            split.id,
-                            e
-                        );
-                    }
+                    self.upsert_sync_record(
+                        split.id,
+                        provider_id,
+                        Some(result.external_expense_id.clone()),
+                        SyncStatus::Synced,
+                        None,
+                        retry_count,
+                    );
                 }
 
                 Ok(())
             }
             Err(e) => {
-                // Create failed sync records
+                // Upsert failed sync records
                 for (split, _) in splits {
-                    let new_record = NewSplitSyncRecord {
-                        transaction_split_id: split.id,
-                        split_provider_id: provider_id,
-                        external_expense_id: None,
-                        sync_status: SyncStatus::Failed.as_str().to_string(),
-                        last_sync_at: Some(Utc::now()),
-                        last_error: Some(e.to_string()),
-                        retry_count: 0,
-                    };
-
-                    if let Err(e) = SplitSyncRecordRepository::create(&self.pool, new_record) {
-                        tracing::error!(
-                            "Failed to create failed sync record for split {}: {}",
-                            split.id,
-                            e
-                        );
-                    }
+                    self.upsert_sync_record(
+                        split.id,
+                        provider_id,
+                        None,
+                        SyncStatus::Failed,
+                        Some(e.to_string()),
+                        retry_count,
+                    );
                 }
 
                 Err(ApiError::External(format!(
@@ -464,8 +490,22 @@ impl SplitSyncService {
             ApiError::InternalWithMessage(format!("Failed to decrypt credentials: {}", e))
         })?;
 
+        // Get the payer's external user ID from the provider credentials
+        let payer_external_id = credentials
+            .get("splitwise_user_id")
+            .and_then(|v| {
+                v.as_i64()
+                    .map(|id| id.to_string())
+                    .or_else(|| v.as_str().map(|s| s.to_string()))
+            })
+            .ok_or_else(|| {
+                ApiError::InternalWithMessage(
+                    "Missing splitwise_user_id in provider credentials".to_string(),
+                )
+            })?;
+
         // Build expense users
-        let users = self.build_expense_users(transaction, &splits)?;
+        let users = self.build_expense_users(transaction, &splits, &payer_external_id)?;
 
         // Create update request
         let request = UpdateExternalExpense {
@@ -591,41 +631,97 @@ impl SplitSyncService {
         Ok(())
     }
 
+    /// Upsert a sync record: update if exists, create if not
+    ///
+    /// This avoids unique constraint violations when retrying failed syncs.
+    fn upsert_sync_record(
+        &self,
+        split_id: Uuid,
+        provider_id: Uuid,
+        external_expense_id: Option<String>,
+        status: SyncStatus,
+        last_error: Option<String>,
+        retry_count: i32,
+    ) {
+        // Check if a record already exists for this split+provider
+        match SplitSyncRecordRepository::find_by_split_and_provider(
+            &self.pool,
+            split_id,
+            provider_id,
+        ) {
+            Ok(Some(existing)) => {
+                // Update existing record
+                let update = UpdateSplitSyncRecord {
+                    external_expense_id: external_expense_id.clone(),
+                    sync_status: Some(status.as_str().to_string()),
+                    last_sync_at: Some(Utc::now()),
+                    last_error,
+                    retry_count: Some(retry_count),
+                };
+                if let Err(e) = SplitSyncRecordRepository::update(&self.pool, existing.id, update) {
+                    tracing::error!("Failed to update sync record for split {}: {}", split_id, e);
+                }
+            }
+            Ok(None) => {
+                // Create new record
+                let new_record = NewSplitSyncRecord {
+                    transaction_split_id: split_id,
+                    split_provider_id: provider_id,
+                    external_expense_id,
+                    sync_status: status.as_str().to_string(),
+                    last_sync_at: Some(Utc::now()),
+                    last_error,
+                    retry_count,
+                };
+                if let Err(e) = SplitSyncRecordRepository::create(&self.pool, new_record) {
+                    tracing::error!("Failed to create sync record for split {}: {}", split_id, e);
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    "Failed to look up sync record for split {}: {}",
+                    split_id,
+                    e
+                );
+            }
+        }
+    }
+
     /// Build expense users from transaction and splits
     ///
     /// The payer is the transaction owner (user who paid the full amount)
-    /// Each split represents an amount owed by that person
+    /// Each split represents an amount owed by that person.
+    /// All amounts are sent as absolute values since Splitwise requires cost >= 0.
     fn build_expense_users(
         &self,
         transaction: &Transaction,
         splits: &[(TransactionSplit, PersonSplitConfig)],
+        payer_external_id: &str,
     ) -> ApiResult<Vec<ExpenseUser>> {
         let mut users = Vec::new();
 
-        // Calculate total split amount (reserved for future use in validation)
-        let _total_split: BigDecimal = splits.iter().map(|(s, _)| &s.amount).sum();
+        // Use absolute value of transaction amount (expenses are stored as negative)
+        let abs_amount = transaction.amount.abs();
 
-        // Payer paid the full transaction amount and owes nothing
-        // We need to get the payer's external user ID from their person config
-        // For now, we'll assume the first split's config provider has the payer
-        // This is a simplification - in reality, we'd need to track the payer separately
-        let payer_external_id = splits
-            .first()
-            .map(|(_, config)| config.external_user_id.clone())
-            .ok_or_else(|| ApiError::BadRequest("No splits provided".to_string()))?;
+        // Calculate total split amount (what others owe), also as absolute values
+        let total_split: BigDecimal = splits.iter().map(|(s, _)| s.amount.abs()).sum();
+
+        // Payer paid the full amount and owes their own share
+        // (total amount minus what others owe)
+        let payer_owed = &abs_amount - &total_split;
 
         users.push(ExpenseUser {
-            external_user_id: payer_external_id,
-            paid_share: transaction.amount.to_string(),
-            owed_share: "0.00".to_string(),
+            external_user_id: payer_external_id.to_string(),
+            paid_share: abs_amount.to_string(),
+            owed_share: payer_owed.to_string(),
         });
 
-        // Each split person owes their split amount and paid nothing
+        // Each split person owes their split amount (absolute) and paid nothing
         for (split, config) in splits {
             users.push(ExpenseUser {
                 external_user_id: config.external_user_id.clone(),
                 paid_share: "0.00".to_string(),
-                owed_share: split.amount.to_string(),
+                owed_share: split.amount.abs().to_string(),
             });
         }
 

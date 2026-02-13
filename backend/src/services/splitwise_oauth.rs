@@ -24,8 +24,10 @@ pub enum SplitwiseOAuthError {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SplitwiseTokens {
     pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: i64,
+    #[serde(default)]
+    pub refresh_token: Option<String>,
+    #[serde(default)]
+    pub expires_in: Option<i64>,
     pub token_type: String,
 }
 
@@ -111,6 +113,11 @@ impl SplitwiseOAuth {
         &self,
         code: String,
     ) -> Result<SplitwiseTokens, SplitwiseOAuthError> {
+        tracing::info!(
+            "Exchanging authorization code for tokens (redirect_uri: {})",
+            self.redirect_uri
+        );
+
         let params = [
             ("grant_type", "authorization_code"),
             ("code", &code),
@@ -133,6 +140,8 @@ impl SplitwiseOAuth {
             .await
             .unwrap_or_else(|_| "Failed to read response body".to_string());
 
+        tracing::info!("Splitwise token response: HTTP {} - {}", status, body);
+
         if !status.is_success() {
             return Err(SplitwiseOAuthError::OAuthError(format!(
                 "Token exchange failed: HTTP {}: {}",
@@ -140,7 +149,8 @@ impl SplitwiseOAuth {
             )));
         }
 
-        serde_json::from_str(&body).map_err(|e| SplitwiseOAuthError::InvalidResponse(e.to_string()))
+        serde_json::from_str(&body)
+            .map_err(|e| SplitwiseOAuthError::InvalidResponse(format!("{} (body: {})", e, body)))
     }
 
     /// Refresh an expired access token
@@ -244,11 +254,13 @@ impl SplitwiseOAuth {
     ///
     /// JSON value ready to be encrypted and stored
     pub fn build_credentials(tokens: &SplitwiseTokens, user_id: i64) -> Value {
-        let expires_at = Utc::now() + Duration::seconds(tokens.expires_in);
+        // Default to 1 year expiry if not provided by Splitwise
+        let expires_in = tokens.expires_in.unwrap_or(365 * 24 * 3600);
+        let expires_at = Utc::now() + Duration::seconds(expires_in);
 
         json!({
             "access_token": tokens.access_token,
-            "refresh_token": tokens.refresh_token,
+            "refresh_token": tokens.refresh_token.as_deref().unwrap_or(""),
             "token_expires_at": expires_at.to_rfc3339(),
             "splitwise_user_id": user_id
         })

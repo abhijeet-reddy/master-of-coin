@@ -12,14 +12,7 @@ use axum::{
     extract::{Extension, Query, State},
     response::{IntoResponse, Redirect, Response},
 };
-use rand::Rng;
 use serde::{Deserialize, Serialize};
-
-/// Request to get Splitwise OAuth authorization URL
-#[derive(Debug, Deserialize)]
-pub struct GetAuthUrlQuery {
-    // Future: could add optional redirect_to parameter
-}
 
 /// Response with OAuth authorization URL
 #[derive(Debug, Serialize)]
@@ -45,10 +38,11 @@ pub struct SplitwiseFriend {
 }
 
 /// Get Splitwise OAuth authorization URL
-/// GET /api/integrations/splitwise/auth-url
+/// GET /api/v1/integrations/splitwise/auth-url
 ///
-/// Generates a Splitwise OAuth URL with a random state parameter for CSRF protection.
-/// The state is stored temporarily (in practice, would use Redis or signed JWT).
+/// Generates a Splitwise OAuth URL with a signed state parameter that embeds
+/// the user_id. This allows the callback (which is a public endpoint) to
+/// identify the user without requiring authentication.
 pub async fn get_auth_url(
     State(_state): State<AppState>,
     Extension(auth_context): Extension<AuthContext>,
@@ -59,16 +53,10 @@ pub async fn get_auth_url(
     // Create OAuth service
     let oauth = SplitwiseOAuth::from_env().map_err(|e| ApiError::Configuration(e.to_string()))?;
 
-    // Generate cryptographically random state (32 bytes = 64 hex chars)
-    let state: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(64)
-        .map(char::from)
-        .collect();
-
-    // TODO: Store state in cache/session with expiry (5 minutes)
-    // For now, we'll validate in callback that state exists
-    // In production: store in Redis with key "splitwise_oauth_state:{user_id}:{state}"
+    // Generate signed state that embeds user_id (encrypted with ENCRYPTION_KEY)
+    let state = utils::create_signed_state(user_id).map_err(|e| {
+        ApiError::InternalWithMessage(format!("Failed to create OAuth state: {}", e))
+    })?;
 
     // Generate authorization URL
     let auth_url = oauth.generate_auth_url(state.clone());
@@ -76,26 +64,28 @@ pub async fn get_auth_url(
     Ok(Json(AuthUrlResponse { auth_url, state }))
 }
 
-/// Handle Splitwise OAuth callback
-/// GET /api/integrations/splitwise/callback?code=XXX&state=YYY
+/// Handle Splitwise OAuth callback (PUBLIC endpoint - no auth required)
+/// GET /api/v1/integrations/splitwise/callback?code=XXX&state=YYY
+///
+/// This endpoint is called by Splitwise after the user authorizes the app.
+/// Since it's a browser redirect from Splitwise, there's no auth token.
+/// The user_id is extracted from the encrypted state parameter instead.
 ///
 /// Exchanges the authorization code for tokens, fetches user info,
 /// encrypts and stores credentials, then redirects to Settings page.
 pub async fn oauth_callback(
     State(state): State<AppState>,
-    Extension(auth_context): Extension<AuthContext>,
     Query(query): Query<OAuthCallbackQuery>,
 ) -> Result<Response, ApiError> {
-    let user_id = auth_context.user_id();
-    tracing::info!("Handling Splitwise OAuth callback for user {}", user_id);
+    tracing::info!("Handling Splitwise OAuth callback");
 
-    // TODO: Validate state parameter
-    // In production: check Redis for "splitwise_oauth_state:{user_id}:{state}"
-    // For now, we accept any state (security risk in production!)
-    tracing::warn!(
-        "State validation not implemented - accepting state: {}",
-        query.state
-    );
+    // Verify and extract user_id from the signed state parameter
+    let user_id = utils::verify_signed_state(&query.state).map_err(|e| {
+        tracing::error!("OAuth state verification failed: {}", e);
+        ApiError::BadRequest(format!("Invalid OAuth state: {}", e))
+    })?;
+
+    tracing::info!("OAuth state verified for user_id: {}", user_id);
 
     // Create OAuth service
     let oauth = SplitwiseOAuth::from_env().map_err(|e| ApiError::Configuration(e.to_string()))?;
@@ -142,14 +132,13 @@ pub async fn oauth_callback(
     repositories::split_provider::upsert_provider(&state.db, user_id, new_provider).await?;
 
     // Redirect to Settings page with success message
-    // In production, would use a query parameter or session flash message
     let redirect_url = "/settings?tab=split&status=connected";
 
     Ok(Redirect::to(redirect_url).into_response())
 }
 
 /// List Splitwise friends for the authenticated user
-/// GET /api/integrations/splitwise/friends
+/// GET /api/v1/integrations/splitwise/friends
 ///
 /// Fetches the user's Splitwise friends list for mapping to People.
 pub async fn list_splitwise_friends(

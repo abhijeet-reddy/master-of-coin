@@ -10,6 +10,7 @@
 //! ### Public Routes (No Authentication)
 //! - `POST /api/v1/auth/register` - User registration
 //! - `POST /api/v1/auth/login` - User login
+//! - `GET /api/v1/integrations/splitwise/callback` - Handle Splitwise OAuth callback (user identified via encrypted state)
 //!
 //! ### Protected Routes (Authentication Required)
 //! - `GET /api/v1/auth/me` - Get current user
@@ -75,7 +76,13 @@ pub fn create_router(state: AppState) -> Router {
     // Public routes (no authentication required)
     let auth_routes = Router::new()
         .route("/auth/register", post(handlers::auth::register))
-        .route("/auth/login", post(handlers::auth::login));
+        .route("/auth/login", post(handlers::auth::login))
+        // Splitwise OAuth callback - must be public since it's a browser redirect from Splitwise
+        // User identity is verified via encrypted state parameter
+        .route(
+            "/integrations/splitwise/callback",
+            get(handlers::splitwise_integration::oauth_callback),
+        );
 
     // Protected routes (authentication required)
     let protected_routes = Router::new()
@@ -408,13 +415,10 @@ pub fn create_router(state: AppState) -> Router {
             })),
         )
         // Splitwise OAuth integration routes (no scope check - always accessible)
+        // Note: callback route is in public routes (auth_routes) since it's a browser redirect
         .route(
             "/integrations/splitwise/auth-url",
             get(handlers::splitwise_integration::get_auth_url),
-        )
-        .route(
-            "/integrations/splitwise/callback",
-            get(handlers::splitwise_integration::oauth_callback),
         )
         .route(
             "/integrations/splitwise/friends",

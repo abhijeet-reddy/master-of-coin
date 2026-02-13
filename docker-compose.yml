@@ -13,6 +13,12 @@ services:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=13153
       - RUST_LOG=${RUST_LOG:-info}
+      # Splitwise OAuth2 Configuration
+      - SPLITWISE_CLIENT_ID=${SPLITWISE_CLIENT_ID}
+      - SPLITWISE_CLIENT_SECRET=${SPLITWISE_CLIENT_SECRET}
+      - SPLITWISE_REDIRECT_URI=${SPLITWISE_REDIRECT_URI}
+      # Encryption key for provider credentials
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
     ports:
       - "13153:13153"
     depends_on:

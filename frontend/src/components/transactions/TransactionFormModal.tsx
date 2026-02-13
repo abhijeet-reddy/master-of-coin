@@ -21,7 +21,7 @@ import type {
   Category,
   Person,
   Transaction,
-  TransactionSplit,
+  TransactionSplitRequest,
   CreateTransactionRequest,
 } from '@/types';
 
@@ -78,7 +78,7 @@ export const TransactionFormModal = ({
   onSubmit,
 }: TransactionFormModalProps) => {
   const [isSplitEnabled, setIsSplitEnabled] = useState(false);
-  const [splits, setSplits] = useState<TransactionSplit[]>([]);
+  const [splits, setSplits] = useState<TransactionSplitRequest[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 

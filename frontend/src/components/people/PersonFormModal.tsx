@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Field } from '@/components/ui/field';
 import { ErrorAlert } from '@/components/common';
+import { SplitProviderConfig } from '@/components/people/SplitProviderConfig';
 import { useCreatePerson, useUpdatePerson } from '@/hooks';
 import type { Person } from '@/types';
 
@@ -164,6 +165,9 @@ export const PersonFormModal = ({ isOpen, onClose, person, onSuccess }: PersonFo
                   rows={3}
                 />
               </Field>
+
+              {/* Split Provider Config (only for existing persons) */}
+              {person && <SplitProviderConfig personId={person.id} />}
             </VStack>
           </form>
         </DialogBody>

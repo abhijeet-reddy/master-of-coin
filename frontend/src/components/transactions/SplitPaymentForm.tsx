@@ -1,13 +1,13 @@
 import { Box, Button, HStack, IconButton, Input, Text, VStack } from '@chakra-ui/react';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
-import type { Person, TransactionSplit } from '@/types';
+import type { Person, TransactionSplitRequest } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 
 interface SplitPaymentFormProps {
   totalAmount: number;
-  splits: TransactionSplit[];
+  splits: TransactionSplitRequest[];
   people: Person[];
-  onChange: (splits: TransactionSplit[]) => void;
+  onChange: (splits: TransactionSplitRequest[]) => void;
 }
 
 export const SplitPaymentForm = ({

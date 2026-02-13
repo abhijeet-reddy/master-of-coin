@@ -5,3 +5,6 @@ export { ApiKeyCreatedModal } from './ApiKeyCreatedModal';
 export { EditApiKeyModal } from './EditApiKeyModal';
 export { RevokeApiKeyDialog } from './RevokeApiKeyDialog';
 export { ScopeSelector } from './ScopeSelector';
+export { SplitIntegrationsList } from './SplitIntegrationsList';
+export { SplitwiseIntegrationCard } from './SplitwiseIntegrationCard';
+export { SplitProIntegrationCard } from './SplitProIntegrationCard';

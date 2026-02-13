@@ -65,12 +65,22 @@ export interface DebtTransaction {
   date: string;
 }
 
-// Transaction types
-export interface TransactionSplit {
+// Transaction split types
+
+/** Split data sent to the API when creating/editing */
+export interface TransactionSplitRequest {
   person_id: string;
   person_name?: string;
   amount: string;
 }
+
+/** Split data returned from the API (includes server-assigned id) */
+export interface TransactionSplitResponse extends TransactionSplitRequest {
+  id: string;
+}
+
+/** Alias for backward compatibility - use TransactionSplitResponse for API data */
+export type TransactionSplit = TransactionSplitResponse;
 
 // Base transaction from API
 export interface Transaction {

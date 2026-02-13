@@ -6,3 +6,4 @@ export { TransactionFilters } from './TransactionFilters';
 export type { TransactionFilterValues } from './TransactionFilters';
 export { TransactionFormModal } from './TransactionFormModal';
 export { SplitPaymentForm } from './SplitPaymentForm';
+export { SplitSyncStatus } from './SplitSyncStatus';

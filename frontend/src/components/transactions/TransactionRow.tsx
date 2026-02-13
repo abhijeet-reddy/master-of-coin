@@ -3,6 +3,7 @@ import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers, FiTrash2 } fro
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction } from '@/types';
 import { formatCurrency, formatTime } from '@/utils/formatters';
+import { SplitSyncStatus } from './SplitSyncStatus';
 
 interface TransactionRowProps {
   transaction: EnrichedTransaction;
@@ -86,14 +87,19 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
                 </Badge>
               )}
 
-              {/* Split indicator */}
+              {/* Split indicator with sync status */}
               {transaction.splits && transaction.splits.length > 0 && (
-                <Badge colorScheme="purple" fontSize="xs">
-                  <HStack gap={1}>
-                    <Icon as={FiUsers} boxSize={3} />
-                    <Text>Split</Text>
-                  </HStack>
-                </Badge>
+                <HStack gap={1} flexWrap="wrap">
+                  <Badge colorScheme="purple" fontSize="xs">
+                    <HStack gap={1}>
+                      <Icon as={FiUsers} boxSize={3} />
+                      <Text>Split</Text>
+                    </HStack>
+                  </Badge>
+                  {transaction.splits.map((split) => (
+                    <SplitSyncStatus key={split.id} splitId={split.id} />
+                  ))}
+                </HStack>
               )}
 
               {/* Time on mobile */}

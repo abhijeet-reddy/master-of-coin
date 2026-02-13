@@ -38,3 +38,13 @@ export { default as useDeleteCategory } from './useDeleteCategory';
 export { default as useDashboardSummary } from './useDashboardSummary';
 export { default as useEnrichedTransactions } from './useEnrichedTransactions';
 export { default as useEnrichedBudgetStatuses } from './useEnrichedBudgetStatuses';
+
+// Split integration hooks
+export { useSplitIntegrations, useDisconnectProvider } from './useSplitIntegrations';
+export { default as useSplitwiseFriends } from './useSplitwiseFriends';
+export {
+  usePersonSplitConfig,
+  useSetPersonSplitConfig,
+  useDeletePersonSplitConfig,
+} from './usePersonSplitConfig';
+export { useSplitSyncStatus, useRetrySync } from './useSplitSyncStatus';

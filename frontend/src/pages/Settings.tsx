@@ -21,11 +21,21 @@ import {
   CreateApiKeyModal,
   EditApiKeyModal,
   RevokeApiKeyDialog,
+  SplitIntegrationsList,
 } from '@/components/settings';
 import { useDocumentTitle } from '@/hooks/effects';
+import { useSplitwiseCallbackStatus } from '@/hooks/usecase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiKeys } from '@/hooks/api/apiKeys';
-import { MdPerson, MdSettings, MdSecurity, MdInfo, MdSave, MdVpnKey } from 'react-icons/md';
+import {
+  MdPerson,
+  MdSettings,
+  MdSecurity,
+  MdInfo,
+  MdSave,
+  MdVpnKey,
+  MdCallSplit,
+} from 'react-icons/md';
 import type { ApiKey } from '@/models/apiKey';
 import { Field } from '@/components/ui/field';
 import { useColorMode } from '@/components/ui/color-mode';
@@ -34,6 +44,7 @@ import type { CurrencyCode } from '@/types';
 
 export const Settings = () => {
   useDocumentTitle('Settings');
+  const { defaultTab } = useSplitwiseCallbackStatus();
   const { user } = useAuth();
   const { colorMode, toggleColorMode } = useColorMode();
 
@@ -122,7 +133,7 @@ export const Settings = () => {
     <Container maxW="container.xl" py={8}>
       <PageHeader title="Settings" subtitle="Manage your account and preferences" />
 
-      <Tabs.Root defaultValue="profile" variant="enclosed">
+      <Tabs.Root defaultValue={defaultTab} variant="enclosed">
         <Tabs.List mb={6}>
           <Tabs.Trigger value="profile">
             <HStack gap={2}>
@@ -140,6 +151,12 @@ export const Settings = () => {
             <HStack gap={2}>
               <Box as={MdSecurity} />
               <Text>Security</Text>
+            </HStack>
+          </Tabs.Trigger>
+          <Tabs.Trigger value="split">
+            <HStack gap={2}>
+              <Box as={MdCallSplit} />
+              <Text>Split</Text>
             </HStack>
           </Tabs.Trigger>
           <Tabs.Trigger value="api-keys">
@@ -430,6 +447,11 @@ export const Settings = () => {
               </Card.Body>
             </Card.Root>
           </VStack>
+        </Tabs.Content>
+
+        {/* Split Tab */}
+        <Tabs.Content value="split">
+          <SplitIntegrationsList />
         </Tabs.Content>
 
         {/* API Keys Tab */}

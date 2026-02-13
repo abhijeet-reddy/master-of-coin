@@ -1,0 +1,558 @@
+# Split Provider Integration - Implementation Checklist
+
+**Related Design**: [`design.md`](design.md)
+**GitHub Issue**: [#34](https://github.com/abhijeet-reddy/master-of-coin/issues/34)
+
+---
+
+## Backend Implementation Checklist
+
+### Phase 1: Database & Infrastructure (Foundation)
+
+#### 1.1 Database Migrations ✅
+
+- [x] Create migration: `split_providers` table
+  - [x] Add columns: id, user_id, provider_type, credentials (JSONB), is_active, timestamps
+  - [x] Add unique constraint on (user_id, provider_type)
+  - [x] Add index on user_id
+- [x] Create migration: `person_split_configs` table
+  - [x] Add columns: id, person_id, split_provider_id, external_user_id, timestamps
+  - [x] Add unique constraint on person_id
+  - [x] Add foreign keys with ON DELETE CASCADE
+  - [x] Add indexes on person_id and split_provider_id
+- [x] Create migration: `split_sync_records` table
+  - [x] Add columns: id, transaction_split_id, split_provider_id, external_expense_id, sync_status, last_sync_at, last_error, retry_count, timestamps
+  - [x] Add unique constraint on (transaction_split_id, split_provider_id)
+  - [x] Add indexes on transaction_split_id and sync_status
+- [x] Run migrations and verify schema with `diesel migration run`
+- [x] Update [`backend/src/schema.rs`](../../backend/src/schema.rs) with Diesel CLI
+
+#### 1.2 Models ✅
+
+- [x] Create [`backend/src/models/split_provider.rs`](../../backend/src/models/split_provider.rs)
+  - [x] `SplitProvider` struct (Queryable, Selectable, Identifiable)
+  - [x] `NewSplitProvider` struct (Insertable)
+  - [x] `UpdateSplitProvider` struct
+  - [x] `SplitProviderResponse` DTO
+  - [x] `CreateSplitProviderRequest` with validation
+- [x] Create [`backend/src/models/person_split_config.rs`](../../backend/src/models/person_split_config.rs)
+  - [x] `PersonSplitConfig` struct
+  - [x] `NewPersonSplitConfig` struct
+  - [x] `PersonSplitConfigResponse` DTO
+  - [x] `SetPersonSplitConfigRequest` with validation
+- [x] Create [`backend/src/models/split_sync_record.rs`](../../backend/src/models/split_sync_record.rs)
+  - [x] `SplitSyncRecord` struct
+  - [x] `NewSplitSyncRecord` struct
+  - [x] `SyncStatus` enum (Pending, Synced, Failed, Deleted)
+  - [x] `SplitSyncStatusResponse` DTO
+- [x] Update [`backend/src/models/mod.rs`](../../backend/src/models/mod.rs) to export new models
+
+#### 1.3 Encryption Utilities ✅
+
+- [x] Create [`backend/src/utils/encryption.rs`](../../backend/src/utils/encryption.rs)
+  - [x] `encrypt_credentials(data: &serde_json::Value) -> Result<String>`
+  - [x] `decrypt_credentials(encrypted: &str) -> Result<serde_json::Value>`
+  - [x] Use AES-256-GCM with key from `ENCRYPTION_KEY` env var
+  - [x] Add error handling for missing/invalid encryption key
+- [x] Add `ENCRYPTION_KEY` to [`.env.example`](../../.env.example)
+- [x] Update [`backend/src/utils/mod.rs`](../../backend/src/utils/mod.rs) to export encryption module
+- [x] Create integration tests in [`backend/tests/integration/database/test_encryption.rs`](../../backend/tests/integration/database/test_encryption.rs)
+- [x] All encryption tests passing (9/9) ✅
+
+#### 1.4 Provider Trait & Types ✅
+
+- [x] Create [`backend/src/services/split_provider/mod.rs`](../../backend/src/services/split_provider/mod.rs)
+  - [x] Define `SplitProvider` trait with async methods
+  - [x] `provider_type() -> &str`
+  - [x] `create_expense() -> Result<ExternalExpenseResult>`
+  - [x] `update_expense() -> Result<ExternalExpenseResult>`
+  - [x] `delete_expense() -> Result<()>`
+  - [x] `validate_credentials() -> Result<bool>`
+  - [x] `refresh_credentials() -> Result<Option<serde_json::Value>>`
+- [x] Create [`backend/src/services/split_provider/types.rs`](../../backend/src/services/split_provider/types.rs)
+  - [x] `CreateExternalExpense` struct
+  - [x] `UpdateExternalExpense` struct
+  - [x] `ExpenseUser` struct
+  - [x] `ExternalExpenseResult` struct
+  - [x] `SplitProviderError` enum
+- [x] Update [`backend/src/services/mod.rs`](../../backend/src/services/mod.rs) to export split_provider module
+- [x] Add dependencies: `aes-gcm`, `base64`, `async-trait` to [`Cargo.toml`](../../backend/Cargo.toml)
+
+---
+
+### Phase 2: Splitwise Provider Implementation
+
+#### 2.1 Splitwise Provider ✅
+
+- [x] Create [`backend/src/services/split_provider/splitwise.rs`](../../backend/src/services/split_provider/splitwise.rs)
+  - [x] `SplitwiseProvider` struct with HTTP client
+  - [x] Implement `SplitProvider` trait
+  - [x] `create_expense()`: POST to `/api/v3.0/create_expense`
+    - [x] Build users array with flattened format `users__0__user_id`, etc.
+    - [x] Handle Bearer token authentication
+    - [x] Parse response and extract expense ID
+  - [x] `update_expense()`: POST to `/api/v3.0/update_expense/{id}`
+  - [x] `delete_expense()`: POST to `/api/v3.0/delete_expense/{id}`
+  - [x] `validate_credentials()`: GET to `/api/v3.0/get_current_user`
+  - [x] `refresh_credentials()`: POST to `/oauth/token` with refresh_token
+- [x] Add Splitwise API constants (BASE_URL, endpoints)
+- [x] Add error mapping from Splitwise API errors to `SplitProviderError`
+- [x] Update [`backend/src/services/split_provider/mod.rs`](../../backend/src/services/split_provider/mod.rs) to export SplitwiseProvider
+
+#### 2.2 Splitwise OAuth2 Flow ✅
+
+- [x] Create [`backend/src/services/splitwise_oauth.rs`](../../backend/src/services/splitwise_oauth.rs)
+  - [x] `generate_auth_url(state: String) -> String`
+  - [x] `exchange_code_for_tokens(code: String) -> Result<SplitwiseTokens>`
+  - [x] `refresh_access_token(refresh_token: String) -> Result<SplitwiseTokens>`
+  - [x] `get_splitwise_user_info(access_token: String) -> Result<SplitwiseUser>`
+  - [x] `build_credentials()` helper for constructing credential JSON
+- [x] Add OAuth2 configuration from environment variables
+  - [x] `SPLITWISE_CLIENT_ID`
+  - [x] `SPLITWISE_CLIENT_SECRET`
+  - [x] `SPLITWISE_REDIRECT_URI`
+- [x] Update [`.env.example`](../../.env.example) with Splitwise OAuth vars
+- [x] Update [`backend/src/services/mod.rs`](../../backend/src/services/mod.rs) to export splitwise_oauth
+- [x] Add dependency: `urlencoding = "2.1"` to [`Cargo.toml`](../../backend/Cargo.toml)
+
+#### 2.3 Splitwise Integration Handlers ✅
+
+- [x] Create [`backend/src/handlers/splitwise_integration.rs`](../../backend/src/handlers/splitwise_integration.rs)
+  - [x] `get_auth_url()`: Generate OAuth URL with state token
+    - [x] Generate cryptographically random state
+    - [x] Store state in session/cache with expiry (TODO: implement Redis/JWT)
+    - [x] Return authorization URL
+  - [x] `oauth_callback()`: Handle OAuth callback
+    - [x] Validate state parameter (TODO: implement validation)
+    - [x] Exchange code for tokens
+    - [x] Fetch Splitwise user info
+    - [x] Encrypt and store credentials in `split_providers`
+    - [x] Redirect to Settings page with success message
+  - [x] `list_splitwise_friends()`: GET friends from Splitwise API
+    - [x] Fetch from `/api/v3.0/get_friends`
+    - [x] Return list of friends with IDs, names, emails
+- [x] Update [`backend/src/handlers/mod.rs`](../../backend/src/handlers/mod.rs) to export splitwise_integration
+- [x] Create [`backend/src/repositories/split_provider.rs`](../../backend/src/repositories/split_provider.rs) with CRUD operations
+- [x] Update [`backend/src/repositories/mod.rs`](../../backend/src/repositories/mod.rs) to export split_provider
+
+#### 2.4 Provider Management Handlers ✅
+
+- [x] Create [`backend/src/handlers/split_providers.rs`](../../backend/src/handlers/split_providers.rs)
+  - [x] `list_providers()`: List user's configured providers
+  - [x] `disconnect_provider()`: Delete provider and cascade to configs/sync records
+  - [x] `get_provider_friends()`: Proxy to provider's friend list API (supports Splitwise)
+- [x] Update [`backend/src/handlers/mod.rs`](../../backend/src/handlers/mod.rs)
+- [x] Enhanced [`backend/src/errors/mod.rs`](../../backend/src/errors/mod.rs) with new error variants
+
+---
+
+### Phase 3: Person Split Configuration ✅
+
+#### 3.1 Person Split Config Handlers ✅
+
+- [x] Update [`backend/src/handlers/people.rs`](../../backend/src/handlers/people.rs)
+  - [x] `set_split_config()`: PUT `/people/:id/split-config`
+    - [x] Validate person ownership
+    - [x] Validate provider exists and belongs to user
+    - [x] Validate external_user_id format
+    - [x] Upsert person_split_config
+  - [x] `get_split_config()`: GET `/people/:id/split-config`
+  - [x] `delete_split_config()`: DELETE `/people/:id/split-config`
+- [x] Create [`backend/src/repositories/person_split_config.rs`](../../backend/src/repositories/person_split_config.rs)
+  - [x] `find_by_person_id()`, `upsert_config()`, `delete_config()`
+- [x] Update [`backend/src/repositories/mod.rs`](../../backend/src/repositories/mod.rs) to export person_split_config
+
+#### 3.2 Person Response Enhancement ✅
+
+- [x] Update [`backend/src/models/person.rs`](../../backend/src/models/person.rs)
+  - [x] Add `split_config` field to `PersonResponse` (optional)
+  - [x] Create `PersonSplitConfigInfo` struct for response
+- [x] Update [`backend/src/repositories/person.rs`](../../backend/src/repositories/person.rs)
+  - [x] Add `build_person_response_with_config()` helper function
+
+---
+
+### Phase 4: Split Sync Service
+
+#### 4.1 Sync Service Core
+
+- [ ] Create [`backend/src/services/split_sync_service.rs`](../../backend/src/services/split_sync_service.rs)
+  - [ ] `SplitSyncService` struct with provider registry
+  - [ ] `new()`: Initialize with all providers (Splitwise, future providers)
+  - [ ] `on_transaction_splits_created()`: Sync all splits as one expense
+    - [ ] Group splits by provider
+    - [ ] Validate all splits use same provider
+    - [ ] Build ExpenseUser array (payer + all owed users)
+    - [ ] Call provider.create_expense()
+    - [ ] Store same external_expense_id for all splits
+    - [ ] Handle partial failures gracefully
+  - [ ] `on_split_updated()`: Update entire expense
+    - [ ] Fetch all splits for transaction
+    - [ ] Rebuild complete ExpenseUser array
+    - [ ] Call provider.update_expense()
+    - [ ] Update all sync records
+  - [ ] `on_split_deleted()`: Update or delete expense
+    - [ ] Check if any splits remain
+    - [ ] If none: delete expense
+    - [ ] If some: update expense with remaining users
+    - [ ] Delete sync record for deleted split
+  - [ ] `retry_failed_sync()`: Retry a specific failed sync
+- [ ] Add retry logic with exponential backoff
+- [ ] Add rate limit handling
+
+#### 4.2 Integration with Transaction Handler
+
+- [ ] Update [`backend/src/handlers/transactions.rs`](../../backend/src/handlers/transactions.rs)
+  - [ ] Inject `SplitSyncService` into handler
+  - [ ] After creating transaction + splits: call `on_transaction_splits_created()`
+  - [ ] After updating splits: call `on_split_updated()`
+  - [ ] After deleting split: call `on_split_deleted()`
+  - [ ] Ensure sync failures don't block transaction operations
+  - [ ] Log sync errors but return success for transaction
+
+#### 4.3 Sync Status Endpoints
+
+- [ ] Create [`backend/src/handlers/split_sync.rs`](../../backend/src/handlers/split_sync.rs)
+  - [ ] `get_sync_status()`: GET `/splits/:id/sync-status`
+  - [ ] `retry_sync()`: POST `/splits/:id/retry-sync`
+- [ ] Update [`backend/src/handlers/mod.rs`](../../backend/src/handlers/mod.rs)
+
+---
+
+### Phase 5: API Routes & Configuration
+
+#### 5.1 Route Registration
+
+- [ ] Update [`backend/src/api/routes.rs`](../../backend/src/api/routes.rs)
+  - [ ] Add Splitwise OAuth routes
+    - [ ] `GET /api/integrations/splitwise/auth-url`
+    - [ ] `GET /api/integrations/splitwise/callback`
+  - [ ] Add provider management routes
+    - [ ] `GET /api/integrations/providers`
+    - [ ] `DELETE /api/integrations/providers/:id`
+    - [ ] `GET /api/integrations/providers/:id/friends`
+  - [ ] Add person split config routes
+    - [ ] `PUT /api/people/:id/split-config`
+    - [ ] `GET /api/people/:id/split-config`
+    - [ ] `DELETE /api/people/:id/split-config`
+  - [ ] Add sync status routes
+    - [ ] `GET /api/splits/:id/sync-status`
+    - [ ] `POST /api/splits/:id/retry-sync`
+
+#### 5.2 AppState Updates
+
+- [ ] Update [`backend/src/main.rs`](../../backend/src/main.rs) or AppState
+  - [ ] Initialize `SplitSyncService` and add to AppState
+  - [ ] Load encryption key from environment
+  - [ ] Validate Splitwise OAuth configuration on startup
+
+---
+
+### Phase 6: Backend Testing
+
+#### 6.1 Unit Tests
+
+- [ ] Test encryption/decryption utilities
+- [ ] Test Splitwise provider methods (with mocked HTTP)
+- [ ] Test OAuth token exchange logic
+- [ ] Test sync service logic with mock providers
+
+#### 6.2 Integration Tests
+
+- [ ] Create [`backend/tests/integration/api/test_split_providers.rs`](../../backend/tests/integration/api/test_split_providers.rs)
+  - [ ] Test OAuth callback flow (with mock Splitwise)
+  - [ ] Test provider CRUD operations
+  - [ ] Test person split config CRUD
+  - [ ] Test sync record creation
+- [ ] Create [`backend/tests/integration/api/test_split_sync.rs`](../../backend/tests/integration/api/test_split_sync.rs)
+  - [ ] Test split creation triggers sync
+  - [ ] Test split update triggers sync
+  - [ ] Test split deletion triggers sync
+  - [ ] Test retry logic
+  - [ ] Test error handling
+
+---
+
+## Frontend Implementation Checklist
+
+### Phase 1: Services & API Clients
+
+#### 1.1 Integration Service
+
+- [ ] Create [`frontend/src/services/integrationService.ts`](../../frontend/src/services/integrationService.ts)
+  - [ ] `getSplitwiseAuthUrl(): Promise<{ auth_url: string }>`
+  - [ ] `listProviders(): Promise<SplitProvider[]>`
+  - [ ] `disconnectProvider(id: string): Promise<void>`
+  - [ ] `getProviderFriends(providerId: string): Promise<Friend[]>`
+
+#### 1.2 Person Split Config Service
+
+- [ ] Update [`frontend/src/services/personService.ts`](../../frontend/src/services/personService.ts)
+  - [ ] `setPersonSplitConfig(personId: string, config: SplitConfig): Promise<void>`
+  - [ ] `getPersonSplitConfig(personId: string): Promise<SplitConfig>`
+  - [ ] `deletePersonSplitConfig(personId: string): Promise<void>`
+
+#### 1.3 Split Sync Service
+
+- [ ] Create [`frontend/src/services/splitSyncService.ts`](../../frontend/src/services/splitSyncService.ts)
+  - [ ] `getSyncStatus(splitId: string): Promise<SyncStatus>`
+  - [ ] `retrySync(splitId: string): Promise<void>`
+
+---
+
+### Phase 2: TypeScript Types
+
+#### 2.1 Type Definitions
+
+- [ ] Create [`frontend/src/types/integration.ts`](../../frontend/src/types/integration.ts)
+  - [ ] `SplitProvider` interface
+  - [ ] `SplitProviderType` enum ('splitwise' | 'splitpro')
+  - [ ] `SplitwiseFriend` interface
+  - [ ] `SplitConfig` interface
+  - [ ] `SyncStatus` interface
+  - [ ] `SyncStatusType` enum ('pending' | 'synced' | 'failed' | 'deleted')
+- [ ] Update [`frontend/src/types/index.ts`](../../frontend/src/types/index.ts) to export integration types
+
+---
+
+### Phase 3: React Hooks
+
+#### 3.1 Integration Hooks
+
+- [ ] Create [`frontend/src/hooks/api/useIntegrations.ts`](../../frontend/src/hooks/api/useIntegrations.ts)
+  - [ ] `useIntegrations()`: Fetch list of providers with React Query
+  - [ ] `useDisconnectProvider()`: Mutation to disconnect provider
+- [ ] Create [`frontend/src/hooks/api/useSplitwiseFriends.ts`](../../frontend/src/hooks/api/useSplitwiseFriends.ts)
+  - [ ] `useSplitwiseFriends(providerId: string)`: Fetch Splitwise friends
+- [ ] Create [`frontend/src/hooks/api/usePersonSplitConfig.ts`](../../frontend/src/hooks/api/usePersonSplitConfig.ts)
+  - [ ] `usePersonSplitConfig(personId: string)`: Fetch config
+  - [ ] `useSetPersonSplitConfig()`: Mutation to set config
+  - [ ] `useDeletePersonSplitConfig()`: Mutation to delete config
+- [ ] Create [`frontend/src/hooks/api/useSplitSyncStatus.ts`](../../frontend/src/hooks/api/useSplitSyncStatus.ts)
+  - [ ] `useSplitSyncStatus(splitId: string)`: Fetch sync status
+  - [ ] `useRetrySync()`: Mutation to retry failed sync
+- [ ] Update [`frontend/src/hooks/api/index.ts`](../../frontend/src/hooks/api/index.ts) to export new hooks
+
+---
+
+### Phase 4: Settings Page - Split Tab
+
+#### 4.1 Split Tab Component
+
+- [ ] Update [`frontend/src/pages/Settings.tsx`](../../frontend/src/pages/Settings.tsx)
+  - [ ] Add "Split" tab with `MdCallSplit` icon
+  - [ ] Import and render `SplitIntegrationsList` component
+
+#### 4.2 Integration Components
+
+- [ ] Create [`frontend/src/components/settings/SplitIntegrationsList.tsx`](../../frontend/src/components/settings/SplitIntegrationsList.tsx)
+  - [ ] Fetch providers with `useIntegrations()`
+  - [ ] Render `SplitwiseIntegrationCard` if Splitwise provider exists
+  - [ ] Render `SplitProIntegrationCard` (placeholder, greyed out)
+  - [ ] Show empty state if no providers
+- [ ] Create [`frontend/src/components/settings/SplitwiseIntegrationCard.tsx`](../../frontend/src/components/settings/SplitwiseIntegrationCard.tsx)
+  - [ ] Show connection status (Connected / Not Connected)
+  - [ ] If not connected:
+    - [ ] "Connect Splitwise" button
+    - [ ] On click: fetch auth URL and redirect to Splitwise
+  - [ ] If connected:
+    - [ ] Display Splitwise user info (name, email)
+    - [ ] "Disconnect" button with confirmation dialog
+    - [ ] Show last sync timestamp
+- [ ] Create [`frontend/src/components/settings/SplitProIntegrationCard.tsx`](../../frontend/src/components/settings/SplitProIntegrationCard.tsx)
+  - [ ] Greyed out card with "Coming Soon" badge
+  - [ ] Brief description of SplitPro
+- [ ] Update [`frontend/src/components/settings/index.ts`](../../frontend/src/components/settings/index.ts) to export new components
+
+---
+
+### Phase 5: Person Edit - Split Provider Config
+
+#### 5.1 Split Provider Selector
+
+- [ ] Create [`frontend/src/components/people/SplitProviderConfig.tsx`](../../frontend/src/components/people/SplitProviderConfig.tsx)
+  - [ ] Provider dropdown: [None | Splitwise | SplitPro]
+  - [ ] If "None" selected: clear config
+  - [ ] If "Splitwise" selected:
+    - [ ] Fetch Splitwise friends with `useSplitwiseFriends()`
+    - [ ] Show searchable select/autocomplete for friends
+    - [ ] Display friend name + email
+    - [ ] On save: call `useSetPersonSplitConfig()`
+  - [ ] If "SplitPro" selected (future):
+    - [ ] Show text input for SplitPro user identifier
+  - [ ] Show current config if exists
+  - [ ] "Clear Configuration" button if config exists
+
+#### 5.2 Person Form Integration
+
+- [ ] Update [`frontend/src/components/people/PersonFormModal.tsx`](../../frontend/src/components/people/PersonFormModal.tsx)
+  - [ ] Add `<SplitProviderConfig>` component to form
+  - [ ] Place after Notes field
+  - [ ] Pass person ID to component
+  - [ ] Handle config save separately from person save (or combine)
+- [ ] Update [`frontend/src/components/people/index.ts`](../../frontend/src/components/people/index.ts)
+
+---
+
+### Phase 6: Transaction Splits - Sync Status
+
+#### 6.1 Sync Status Badge
+
+- [ ] Create [`frontend/src/components/transactions/SplitSyncStatus.tsx`](../../frontend/src/components/transactions/SplitSyncStatus.tsx)
+  - [ ] Fetch sync status with `useSplitSyncStatus(splitId)`
+  - [ ] Render status badge:
+    - [ ] ✅ Green check + "Synced" for `synced` status
+    - [ ] 🔄 Spinner + "Syncing..." for `pending` status
+    - [ ] ❌ Red X + "Failed" for `failed` status
+    - [ ] ➖ No badge if person has no split config
+  - [ ] If failed: show "Retry" button
+    - [ ] On click: call `useRetrySync()`
+    - [ ] Show error message in tooltip
+  - [ ] Add link to external expense (if synced)
+
+#### 6.2 Transaction Row Integration
+
+- [ ] Update [`frontend/src/components/transactions/TransactionRow.tsx`](../../frontend/src/components/transactions/TransactionRow.tsx)
+  - [ ] Add `<SplitSyncStatus>` component next to each split
+  - [ ] Show sync status inline with split amount
+- [ ] Update [`frontend/src/components/transactions/index.ts`](../../frontend/src/components/transactions/index.ts)
+
+---
+
+### Phase 7: OAuth Callback Handling
+
+#### 7.1 Callback Page
+
+- [ ] Create [`frontend/src/pages/integrations/SplitwiseCallback.tsx`](../../frontend/src/pages/integrations/SplitwiseCallback.tsx)
+  - [ ] Parse `code` and `state` from URL query params
+  - [ ] Show loading spinner
+  - [ ] Make API call to backend callback endpoint
+  - [ ] On success: redirect to Settings page with success toast
+  - [ ] On error: redirect to Settings page with error toast
+- [ ] Update [`frontend/src/routes/index.tsx`](../../frontend/src/routes/index.tsx)
+  - [ ] Add route: `/integrations/splitwise/callback`
+
+---
+
+### Phase 8: UI Polish & UX
+
+#### 8.1 Loading States
+
+- [ ] Add loading skeletons for provider cards
+- [ ] Add loading states for friend list
+- [ ] Add loading states for sync status badges
+
+#### 8.2 Error Handling
+
+- [ ] Add error boundaries for integration components
+- [ ] Show user-friendly error messages for:
+  - [ ] OAuth failures
+  - [ ] Network errors
+  - [ ] Sync failures
+- [ ] Add retry mechanisms for failed operations
+
+#### 8.3 Success Feedback
+
+- [ ] Toast notifications for:
+  - [ ] Provider connected successfully
+  - [ ] Provider disconnected
+  - [ ] Split config saved
+  - [ ] Sync retry initiated
+- [ ] Visual confirmation for sync status changes
+
+---
+
+### Phase 9: Frontend Testing
+
+#### 9.1 Component Tests
+
+- [ ] Test `SplitwiseIntegrationCard` component
+  - [ ] Connected state rendering
+  - [ ] Disconnect flow
+  - [ ] Connect button click
+- [ ] Test `SplitProviderConfig` component
+  - [ ] Provider selection
+  - [ ] Friend search/select
+  - [ ] Config save/delete
+- [ ] Test `SplitSyncStatus` component
+  - [ ] All status states render correctly
+  - [ ] Retry button works
+  - [ ] Error tooltip displays
+
+#### 9.2 Integration Tests
+
+- [ ] Test OAuth callback flow (with mocked backend)
+- [ ] Test person split config workflow end-to-end
+- [ ] Test sync status updates in transaction view
+
+---
+
+## Environment Setup Checklist
+
+### Backend Environment Variables
+
+- [ ] Add to [`.env.example`](../../.env.example):
+
+  ```
+  # Splitwise OAuth2
+  SPLITWISE_CLIENT_ID=your_client_id_here
+  SPLITWISE_CLIENT_SECRET=your_client_secret_here
+  SPLITWISE_REDIRECT_URI=http://localhost:3000/integrations/splitwise/callback
+
+  # Encryption for provider credentials
+  ENCRYPTION_KEY=generate_with_openssl_rand_base64_32
+  ```
+
+- [ ] Document how to get Splitwise OAuth credentials in README
+- [ ] Document how to generate encryption key
+
+### Frontend Environment Variables
+
+- [ ] Verify API base URL is configured correctly in [`.env`](../../frontend/.env)
+
+---
+
+## Documentation Checklist
+
+- [ ] Update main README with Split Provider Integration feature
+- [ ] Create user guide: "How to Connect Splitwise"
+- [ ] Create user guide: "How to Configure Split Tracking for People"
+- [ ] Document OAuth setup process for developers
+- [ ] Add troubleshooting guide for common sync issues
+- [ ] Update API documentation with new endpoints
+
+---
+
+## Pre-Release Checklist
+
+- [ ] All backend tests passing
+- [ ] All frontend tests passing
+- [ ] Manual testing of complete OAuth flow
+- [ ] Manual testing of split sync (create/update/delete)
+- [ ] Manual testing of retry mechanism
+- [ ] Security review of credential storage
+- [ ] Performance testing with multiple splits
+- [ ] Cross-browser testing (Chrome, Firefox, Safari)
+- [ ] Mobile responsive testing
+- [ ] Accessibility testing (keyboard navigation, screen readers)
+
+---
+
+## Post-Release Monitoring
+
+- [ ] Monitor sync failure rates
+- [ ] Monitor OAuth token refresh success rates
+- [ ] Monitor API rate limits from Splitwise
+- [ ] Collect user feedback on UX
+- [ ] Track feature adoption metrics
+
+---
+
+## Future Enhancements (Not in MVP)
+
+- [ ] SplitPro provider implementation (when API available)
+- [ ] Bi-directional sync (poll Splitwise for changes)
+- [ ] Bulk historical sync
+- [ ] Webhook support for real-time updates
+- [ ] Support for Splitwise groups
+- [ ] Conflict resolution UI for bi-directional sync

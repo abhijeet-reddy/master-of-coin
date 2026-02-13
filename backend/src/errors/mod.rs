@@ -39,11 +39,23 @@ pub enum ApiError {
     #[error("Validation error: {0}")]
     Validation(String),
 
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
     #[error("Conflict: {0}")]
     Conflict(String),
 
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
+    #[error("External service error: {0}")]
+    External(String),
+
     #[error("Internal server error")]
     Internal,
+
+    #[error("Internal server error: {0}")]
+    InternalWithMessage(String),
 }
 
 /// Error response structure for JSON responses
@@ -83,9 +95,24 @@ impl IntoResponse for ApiError {
                 tracing::warn!("Validation error: {}", msg);
                 (StatusCode::UNPROCESSABLE_ENTITY, msg.clone())
             }
+            ApiError::BadRequest(msg) => {
+                tracing::warn!("Bad request: {}", msg);
+                (StatusCode::BAD_REQUEST, msg.clone())
+            }
             ApiError::Conflict(msg) => {
                 tracing::warn!("Conflict: {}", msg);
                 (StatusCode::CONFLICT, msg.clone())
+            }
+            ApiError::Configuration(msg) => {
+                error!("Configuration error: {}", msg);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Configuration error: {}", msg),
+                )
+            }
+            ApiError::External(msg) => {
+                error!("External service error: {}", msg);
+                (StatusCode::BAD_GATEWAY, msg.clone())
             }
             ApiError::Internal => {
                 error!("Internal server error");
@@ -93,6 +120,10 @@ impl IntoResponse for ApiError {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal server error".to_string(),
                 )
+            }
+            ApiError::InternalWithMessage(msg) => {
+                error!("Internal server error: {}", msg);
+                (StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
             }
         };
 

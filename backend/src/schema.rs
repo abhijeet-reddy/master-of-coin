@@ -120,6 +120,48 @@ diesel::table! {
 }
 
 diesel::table! {
+    person_split_configs (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        split_provider_id -> Uuid,
+        #[max_length = 255]
+        external_user_id -> Varchar,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    split_providers (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        #[max_length = 50]
+        provider_type -> Varchar,
+        credentials -> Jsonb,
+        is_active -> Bool,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    split_sync_records (id) {
+        id -> Uuid,
+        transaction_split_id -> Uuid,
+        split_provider_id -> Uuid,
+        #[max_length = 255]
+        external_expense_id -> Nullable<Varchar>,
+        #[max_length = 20]
+        sync_status -> Varchar,
+        last_sync_at -> Nullable<Timestamptz>,
+        last_error -> Nullable<Text>,
+        retry_count -> Int4,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     transaction_splits (id) {
         id -> Uuid,
         transaction_id -> Uuid,
@@ -168,6 +210,11 @@ diesel::joinable!(budget_ranges -> budgets (budget_id));
 diesel::joinable!(budgets -> users (user_id));
 diesel::joinable!(categories -> users (user_id));
 diesel::joinable!(people -> users (user_id));
+diesel::joinable!(person_split_configs -> people (person_id));
+diesel::joinable!(person_split_configs -> split_providers (split_provider_id));
+diesel::joinable!(split_providers -> users (user_id));
+diesel::joinable!(split_sync_records -> split_providers (split_provider_id));
+diesel::joinable!(split_sync_records -> transaction_splits (transaction_split_id));
 diesel::joinable!(transaction_splits -> people (person_id));
 diesel::joinable!(transaction_splits -> transactions (transaction_id));
 diesel::joinable!(transactions -> accounts (account_id));
@@ -181,6 +228,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     budgets,
     categories,
     people,
+    person_split_configs,
+    split_providers,
+    split_sync_records,
     transaction_splits,
     transactions,
     users,

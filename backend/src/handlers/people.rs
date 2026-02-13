@@ -2,7 +2,10 @@ use crate::{
     AppState,
     auth::context::AuthContext,
     errors::ApiError,
-    models::{CreatePersonRequest, NewPerson, PersonResponse, UpdatePerson, UpdatePersonRequest},
+    models::{
+        CreatePersonRequest, NewPerson, NewPersonSplitConfig, PersonResponse,
+        PersonSplitConfigResponse, SetPersonSplitConfigRequest, UpdatePerson, UpdatePersonRequest,
+    },
     repositories, services,
 };
 use axum::{
@@ -200,6 +203,118 @@ pub async fn settle_debt(
 
     services::debt_service::settle_debt(&state.db, id, user_id, request.amount, request.account_id)
         .await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Set or update split provider configuration for a person
+/// PUT /people/:id/split-config
+pub async fn set_split_config(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(person_id): Path<Uuid>,
+    Json(request): Json<SetPersonSplitConfigRequest>,
+) -> Result<Json<PersonSplitConfigResponse>, ApiError> {
+    let user_id = auth_context.user_id();
+    tracing::info!(
+        "Setting split config for person {} by user {}",
+        person_id,
+        user_id
+    );
+
+    // Validate request
+    request
+        .validate()
+        .map_err(|e| ApiError::Validation(format!("Validation failed: {}", e)))?;
+
+    // Verify person ownership
+    let person = repositories::person::find_by_id(&state.db, person_id).await?;
+    if person.user_id != user_id {
+        return Err(ApiError::Forbidden(
+            "Person does not belong to user".to_string(),
+        ));
+    }
+
+    // Verify provider exists and belongs to user
+    let provider = repositories::split_provider::find_by_id(&state.db, request.split_provider_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Split provider not found".to_string()))?;
+
+    if provider.user_id != user_id {
+        return Err(ApiError::Forbidden(
+            "Split provider does not belong to user".to_string(),
+        ));
+    }
+
+    // Create or update config
+    let new_config = NewPersonSplitConfig {
+        person_id,
+        split_provider_id: request.split_provider_id,
+        external_user_id: request.external_user_id,
+    };
+
+    let config = repositories::person_split_config::upsert_config(&state.db, new_config).await?;
+
+    // Build response with provider type
+    let mut response = PersonSplitConfigResponse::from(config);
+    response.provider_type = provider.provider_type;
+
+    Ok(Json(response))
+}
+
+/// Get split provider configuration for a person
+/// GET /people/:id/split-config
+pub async fn get_split_config(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(person_id): Path<Uuid>,
+) -> Result<Json<PersonSplitConfigResponse>, ApiError> {
+    let user_id = auth_context.user_id();
+    tracing::debug!("Fetching split config for person {}", person_id);
+
+    // Verify person ownership
+    let person = repositories::person::find_by_id(&state.db, person_id).await?;
+    if person.user_id != user_id {
+        return Err(ApiError::Forbidden(
+            "Person does not belong to user".to_string(),
+        ));
+    }
+
+    // Get config
+    let config = repositories::person_split_config::find_by_person_id(&state.db, person_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Split config not found".to_string()))?;
+
+    // Get provider to include type in response
+    let provider = repositories::split_provider::find_by_id(&state.db, config.split_provider_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Split provider not found".to_string()))?;
+
+    let mut response = PersonSplitConfigResponse::from(config);
+    response.provider_type = provider.provider_type;
+
+    Ok(Json(response))
+}
+
+/// Delete split provider configuration for a person
+/// DELETE /people/:id/split-config
+pub async fn delete_split_config(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(person_id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    let user_id = auth_context.user_id();
+    tracing::info!("Deleting split config for person {}", person_id);
+
+    // Verify person ownership
+    let person = repositories::person::find_by_id(&state.db, person_id).await?;
+    if person.user_id != user_id {
+        return Err(ApiError::Forbidden(
+            "Person does not belong to user".to_string(),
+        ));
+    }
+
+    repositories::person_split_config::delete_config(&state.db, person_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

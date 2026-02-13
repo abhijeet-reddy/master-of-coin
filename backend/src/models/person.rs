@@ -71,6 +71,15 @@ pub struct UpdatePersonRequest {
 }
 
 // Response DTOs
+
+/// Split config info included in PersonResponse
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PersonSplitConfigInfo {
+    pub split_provider_id: Uuid,
+    pub provider_type: String,
+    pub external_user_id: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PersonResponse {
     pub id: Uuid,
@@ -79,6 +88,9 @@ pub struct PersonResponse {
     pub email: Option<String>,
     pub phone: Option<String>,
     pub notes: Option<String>,
+    /// Optional split provider configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub split_config: Option<PersonSplitConfigInfo>,
 }
 
 impl From<Person> for PersonResponse {
@@ -90,6 +102,7 @@ impl From<Person> for PersonResponse {
             email: person.email,
             phone: person.phone,
             notes: person.notes,
+            split_config: None, // Populated separately when needed
         }
     }
 }

@@ -8,4 +8,6 @@ pub mod csv_parser_service;
 pub mod debt_service;
 pub mod exchange_rate_service;
 pub mod import_service;
+pub mod split_provider;
+pub mod splitwise_oauth;
 pub mod transaction_service;

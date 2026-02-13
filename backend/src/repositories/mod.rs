@@ -4,5 +4,7 @@ pub mod api_key;
 pub mod budget;
 pub mod category;
 pub mod person;
+pub mod person_split_config;
+pub mod split_provider;
 pub mod transaction;
 pub mod user;

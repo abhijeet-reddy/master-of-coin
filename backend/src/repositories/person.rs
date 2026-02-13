@@ -165,6 +165,34 @@ pub async fn delete_person(pool: &DbPool, person_id: Uuid) -> Result<(), ApiErro
     })?
 }
 
+/// Helper to build PersonResponse with split config populated
+pub async fn build_person_response_with_config(
+    pool: &DbPool,
+    person: Person,
+) -> Result<crate::models::person::PersonResponse, ApiError> {
+    use crate::models::person::{PersonResponse, PersonSplitConfigInfo};
+
+    let mut response = PersonResponse::from(person.clone());
+
+    // Try to fetch split config
+    if let Some(config) =
+        crate::repositories::person_split_config::find_by_person_id(pool, person.id).await?
+    {
+        // Fetch provider to get type
+        if let Some(provider) =
+            crate::repositories::split_provider::find_by_id(pool, config.split_provider_id).await?
+        {
+            response.split_config = Some(PersonSplitConfigInfo {
+                split_provider_id: config.split_provider_id,
+                provider_type: provider.provider_type,
+                external_user_id: config.external_user_id,
+            });
+        }
+    }
+
+    Ok(response)
+}
+
 /// Get all splits for a person
 pub async fn list_splits_for_person(
     pool: &DbPool,

@@ -15,74 +15,133 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
-    # Use latest Ubuntu runner provided by GitHub
-    runs-on: ubuntu-latest
-    # Permissions required for this job
+  # ============================================================================
+  # Build platform-specific images in parallel (native runners = no QEMU)
+  # ============================================================================
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
-      contents: read # Read repository contents
-      packages: write # Push to GitHub Container Registry
-      attestations: write # Write build attestations
-      id-token: write # Allow OIDC token for signing
+      contents: read
+      packages: write
 
     steps:
-      # Step 1: Clone the repository code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up QEMU for multi-platform builds (ARM64 emulation)
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      # Step 3: Set up Docker Buildx for advanced build features
-      # Buildx enables multi-platform builds and better caching
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Step 4: Authenticate with GitHub Container Registry
-      # Uses GITHUB_TOKEN (automatically provided by GitHub Actions)
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }} # ghcr.io
-          username: ${{ github.actor }} # GitHub username who triggered workflow
-          password: ${{ secrets.GITHUB_TOKEN }} # Auto-generated token with registry access
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 5: Generate Docker image tags and labels
-      # Creates multiple tags for the same image (e.g., v1.2.3, v1.2, v1, latest)
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # Build and push by digest (no tag yet — tags applied in merge job)
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+      # Save digest to artifact for merge job
+      - name: Save digest artifact
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.runner }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # ============================================================================
+  # Merge platform images into multi-arch manifest and apply tags
+  # ============================================================================
+  merge:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}        # Full version: v1.2.3
-            type=semver,pattern={{major}}.{{minor}} # Major.minor: v1.2
-            type=semver,pattern={{major}}          # Major only: v1
-            type=raw,value=latest                  # Always tag as latest
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
 
-      # Step 6: Build Docker image and push to registry
-      # Builds for both AMD64 (x86_64) and ARM64 architectures
-      - name: Build and push Docker image
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: . # Build context is repository root
-          file: ./Dockerfile # Path to Dockerfile
-          push: true # Push image to registry after build
-          tags: ${{ steps.meta.outputs.tags }} # Apply all generated tags
-          labels: ${{ steps.meta.outputs.labels }} # Apply metadata labels
-          cache-from: type=gha # Use GitHub Actions cache for layers
-          cache-to: type=gha,mode=max # Save all layers to cache (max = all intermediate layers)
-          platforms: linux/amd64,linux/arm64 # Build for both x86_64 and ARM64
+      # Create multi-arch manifest from platform-specific digests
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
 
-      # Step 7: Generate cryptographic attestation for supply chain security
-      # Creates verifiable proof of how the image was built
+      - name: Inspect image and get digest
+        id: inspect
+        run: |
+          FULL_OUTPUT=$(docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }})
+          echo "${FULL_OUTPUT}"
+          DIGEST=$(echo "${FULL_OUTPUT}" | grep -m1 '^Digest:' | awk '{print $2}')
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "Manifest digest: ${DIGEST}"
+
+      # Generate cryptographic attestation for supply chain security
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.build.outputs.digest }} # SHA256 digest of built image
-          push-to-registry: true # Attach attestation to registry
+          subject-digest: ${{ steps.inspect.outputs.digest }}
+          push-to-registry: true

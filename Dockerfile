@@ -44,14 +44,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install cargo-chef and sccache via cargo-binstall (pre-compiled binaries, much faster)
+# Install cargo-chef via cargo-binstall (pre-compiled binary, much faster than cargo install)
 RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash \
-    && cargo binstall cargo-chef sccache --no-confirm
+    && cargo binstall cargo-chef --no-confirm
 
 # Use sparse registry protocol for faster crate index downloads
-# Enable sccache as the Rust compiler wrapper for compilation caching
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse \
-    RUSTC_WRAPPER=sccache
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # ============================================================================
 # Stage 3: Rust Planner - Analyze dependencies

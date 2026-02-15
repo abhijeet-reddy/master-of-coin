@@ -36,15 +36,22 @@ FROM rust:slim-bookworm AS chef
 
 WORKDIR /app
 
-# Install cargo-chef for efficient dependency caching
-RUN cargo install cargo-chef
-
 # Install build dependencies for Rust and PostgreSQL
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-chef and sccache via cargo-binstall (pre-compiled binaries, much faster)
+RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash \
+    && cargo binstall cargo-chef sccache --no-confirm
+
+# Use sparse registry protocol for faster crate index downloads
+# Enable sccache as the Rust compiler wrapper for compilation caching
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse \
+    RUSTC_WRAPPER=sccache
 
 # ============================================================================
 # Stage 3: Rust Planner - Analyze dependencies

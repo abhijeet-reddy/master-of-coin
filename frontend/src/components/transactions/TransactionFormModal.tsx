@@ -162,13 +162,16 @@ export const TransactionFormModal = ({
         category_id:
           data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
         notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
-        splits:
-          isSplitEnabled && splits.length > 0
+        splits: isSplitEnabled
+          ? splits.length > 0
             ? splits.map((split) => ({
                 person_id: split.person_id,
                 amount: parseFloat(split.amount), // Convert string to number
               }))
-            : undefined,
+            : [] // Explicitly send empty array to remove all splits
+          : transaction
+            ? [] // Editing existing transaction: send empty array to remove splits
+            : undefined, // New transaction: no splits key needed
       };
 
       await onSubmit(finalData);

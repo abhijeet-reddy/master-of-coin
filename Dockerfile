@@ -7,9 +7,6 @@
 # ============================================================================
 FROM node:20-alpine AS frontend-builder
 
-# Build argument for exchange rate API key (passed from environment)
-ARG EXCHANGE_RATE_API_KEY
-
 WORKDIR /frontend
 
 # Copy frontend package files for dependency installation
@@ -23,8 +20,7 @@ COPY frontend/ ./
 
 # Create .env file with build-time environment variables
 # Vite will embed VITE_* variables during build
-RUN echo "VITE_API_URL=/api/v1" > .env && \
-    echo "VITE_EXCHANGE_RATE_API_KEY=${EXCHANGE_RATE_API_KEY}" >> .env
+RUN echo "VITE_API_URL=/api/v1" > .env
 
 # Build frontend static files (outputs to dist/)
 RUN npm run build

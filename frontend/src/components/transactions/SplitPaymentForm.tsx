@@ -2,6 +2,7 @@ import { Box, Button, HStack, IconButton, Input, Text, VStack } from '@chakra-ui
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import type { Person, TransactionSplitRequest } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
+import { calculateEqualSplits } from '@/utils/splitCalculation';
 
 interface SplitPaymentFormProps {
   totalAmount: number;
@@ -23,14 +24,22 @@ export const SplitPaymentForm = ({
     const availablePerson = people.find((p) => !usedPersonIds.has(p.id));
 
     if (availablePerson) {
-      onChange([
-        ...splits,
-        {
-          person_id: availablePerson.id,
-          person_name: availablePerson.name,
-          amount: '0',
-        },
-      ]);
+      const newSplitCount = splits.length + 1;
+      const equalAmounts = calculateEqualSplits(totalAmount, newSplitCount);
+
+      // Redistribute all splits equally with penny distribution
+      const allPersons = [
+        ...splits.map((s) => ({ id: s.person_id, name: s.person_name })),
+        { id: availablePerson.id, name: availablePerson.name },
+      ];
+
+      onChange(
+        allPersons.map((person, i) => ({
+          person_id: person.id,
+          person_name: person.name,
+          amount: equalAmounts[i],
+        }))
+      );
     }
   };
 

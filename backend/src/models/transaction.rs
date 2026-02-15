@@ -151,6 +151,9 @@ pub struct UpdateTransactionRequest {
 
     #[validate(length(max = 1000, message = "Notes must not exceed 1000 characters"))]
     pub notes: Option<String>,
+
+    #[validate(nested)]
+    pub splits: Option<Vec<TransactionSplitInput>>,
 }
 
 // Custom validator for optional amount not being zero

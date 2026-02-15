@@ -299,7 +299,75 @@ pub async fn update_transaction(
         user_id
     );
 
-    Ok(TransactionResponse::from(updated))
+    // Handle splits if provided (replace strategy: delete all existing, create new)
+    let splits = if let Some(split_inputs) = request.splits {
+        // Delete existing splits
+        repositories::transaction::delete_splits_for_transaction(pool, transaction_id).await?;
+
+        // Create new splits
+        let mut created_splits = Vec::new();
+        for split_input in split_inputs {
+            // Verify person ownership
+            let person = repositories::person::find_by_id(pool, split_input.person_id).await?;
+            if person.user_id != user_id {
+                tracing::warn!(
+                    "User {} attempted to split with person {} owned by {}",
+                    user_id,
+                    split_input.person_id,
+                    person.user_id
+                );
+                return Err(ApiError::Unauthorized(
+                    "Person does not belong to user".to_string(),
+                ));
+            }
+
+            let split_amount =
+                BigDecimal::from_str(&split_input.amount.to_string()).map_err(|e| {
+                    tracing::error!("Failed to convert split amount: {}", e);
+                    ApiError::Validation("Invalid split amount".to_string())
+                })?;
+
+            let new_split = NewTransactionSplit {
+                transaction_id,
+                person_id: split_input.person_id,
+                amount: split_amount,
+            };
+
+            let split =
+                repositories::transaction::create_split(pool, transaction_id, new_split).await?;
+            created_splits.push(split);
+        }
+
+        if created_splits.is_empty() {
+            None
+        } else {
+            Some(
+                created_splits
+                    .into_iter()
+                    .map(|split| split.into())
+                    .collect(),
+            )
+        }
+    } else {
+        // Splits not provided in request — fetch existing splits
+        let existing_splits =
+            repositories::transaction::list_splits_for_transaction(pool, transaction_id).await?;
+        if existing_splits.is_empty() {
+            None
+        } else {
+            Some(
+                existing_splits
+                    .into_iter()
+                    .map(|split| split.into())
+                    .collect(),
+            )
+        }
+    };
+
+    let mut response = TransactionResponse::from(updated);
+    response.splits = splits;
+
+    Ok(response)
 }
 
 /// Delete a transaction

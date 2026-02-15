@@ -1230,6 +1230,337 @@ async fn test_update_transaction_unauthorized() {
 }
 
 // ============================================================================
+// Update Transaction Splits Tests
+// ============================================================================
+
+/// Test adding splits to an existing transaction that had no splits.
+///
+/// Verifies that:
+/// - Status code is 200 OK
+/// - Splits are created and returned in the response
+/// - Split data is correct
+#[tokio::test]
+async fn test_update_transaction_add_splits() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("updatesplitsadd_{}", timestamp),
+        &format!("updatesplitsadd_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Update Splits Add User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person1 = create_test_person(&server, &auth.token, "Person 1").await;
+    let person2 = create_test_person(&server, &auth.token, "Person 2").await;
+
+    // Create a transaction WITHOUT splits
+    let create_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "No Splits Initially",
+        "amount": -100.00,
+        "date": Utc::now().to_rfc3339()
+    });
+    let create_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &create_request,
+    )
+    .await;
+    assert_status(&create_response, 201);
+    let transaction: TransactionResponse = extract_json(create_response);
+    assert!(
+        transaction.splits.is_none(),
+        "Transaction should have no splits initially"
+    );
+
+    // Update the transaction to ADD splits
+    let update_request = json!({
+        "splits": [
+            { "person_id": person1.id, "amount": 30.00 },
+            { "person_id": person2.id, "amount": 20.00 }
+        ]
+    });
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+    assert_status(&update_response, 200);
+
+    let updated: TransactionResponse = extract_json(update_response);
+    assert!(
+        updated.splits.is_some(),
+        "Transaction should now have splits"
+    );
+    let splits = updated.splits.unwrap();
+    assert_eq!(splits.len(), 2, "Should have 2 splits");
+
+    // Verify split amounts
+    let total_split: f64 = splits
+        .iter()
+        .map(|s| s.amount.parse::<f64>().unwrap())
+        .sum();
+    assert_eq!(total_split, 50.00, "Total split amount should be 50.00");
+
+    // Verify splits persist via GET
+    let get_response = get_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get_response, 200);
+    let fetched: TransactionResponse = extract_json(get_response);
+    assert!(fetched.splits.is_some(), "Splits should persist after GET");
+    assert_eq!(fetched.splits.unwrap().len(), 2);
+}
+
+/// Test replacing splits on a transaction that already has splits.
+///
+/// Verifies that:
+/// - Old splits are removed
+/// - New splits are created
+/// - Response contains only the new splits
+#[tokio::test]
+async fn test_update_transaction_replace_splits() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("updatesplitsrepl_{}", timestamp),
+        &format!("updatesplitsrepl_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Update Splits Replace User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person1 = create_test_person(&server, &auth.token, "Person 1").await;
+    let person2 = create_test_person(&server, &auth.token, "Person 2").await;
+    let person3 = create_test_person(&server, &auth.token, "Person 3").await;
+
+    // Create a transaction WITH splits
+    let create_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "With Initial Splits",
+        "amount": -120.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [
+            { "person_id": person1.id, "amount": 40.00 },
+            { "person_id": person2.id, "amount": 40.00 }
+        ]
+    });
+    let create_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &create_request,
+    )
+    .await;
+    assert_status(&create_response, 201);
+    let transaction: TransactionResponse = extract_json(create_response);
+    assert_eq!(transaction.splits.as_ref().unwrap().len(), 2);
+
+    // Update with DIFFERENT splits (replace person2 with person3, change amounts)
+    let update_request = json!({
+        "splits": [
+            { "person_id": person1.id, "amount": 50.00 },
+            { "person_id": person3.id, "amount": 30.00 }
+        ]
+    });
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+    assert_status(&update_response, 200);
+
+    let updated: TransactionResponse = extract_json(update_response);
+    let splits = updated.splits.unwrap();
+    assert_eq!(splits.len(), 2, "Should have 2 new splits");
+
+    // Verify the new split persons
+    let person_ids: Vec<uuid::Uuid> = splits.iter().map(|s| s.person_id).collect();
+    assert!(person_ids.contains(&person1.id), "Should contain person1");
+    assert!(person_ids.contains(&person3.id), "Should contain person3");
+    assert!(
+        !person_ids.contains(&person2.id),
+        "Should NOT contain person2 (replaced)"
+    );
+
+    // Verify new amounts
+    let p1_split = splits.iter().find(|s| s.person_id == person1.id).unwrap();
+    assert_eq!(p1_split.amount, "50.00");
+    let p3_split = splits.iter().find(|s| s.person_id == person3.id).unwrap();
+    assert_eq!(p3_split.amount, "30.00");
+}
+
+/// Test removing all splits from a transaction by sending empty splits array.
+///
+/// Verifies that:
+/// - Status code is 200 OK
+/// - All splits are removed
+/// - Response has no splits
+#[tokio::test]
+async fn test_update_transaction_remove_splits() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("updatesplitsrem_{}", timestamp),
+        &format!("updatesplitsrem_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Update Splits Remove User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person1 = create_test_person(&server, &auth.token, "Person 1").await;
+
+    // Create a transaction WITH splits
+    let create_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Will Remove Splits",
+        "amount": -80.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [
+            { "person_id": person1.id, "amount": 40.00 }
+        ]
+    });
+    let create_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &create_request,
+    )
+    .await;
+    assert_status(&create_response, 201);
+    let transaction: TransactionResponse = extract_json(create_response);
+    assert!(transaction.splits.is_some(), "Should have splits initially");
+
+    // Update with empty splits array to REMOVE all splits
+    let update_request = json!({
+        "splits": []
+    });
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+    assert_status(&update_response, 200);
+
+    let updated: TransactionResponse = extract_json(update_response);
+    assert!(
+        updated.splits.is_none(),
+        "Splits should be removed (None) after sending empty array"
+    );
+
+    // Verify splits are gone via GET
+    let get_response = get_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get_response, 200);
+    let fetched: TransactionResponse = extract_json(get_response);
+    assert!(
+        fetched.splits.is_none(),
+        "Splits should remain removed after GET"
+    );
+}
+
+/// Test that updating without splits field leaves existing splits unchanged.
+///
+/// Verifies that:
+/// - Omitting splits from update request preserves existing splits
+/// - Other fields can be updated without affecting splits
+#[tokio::test]
+async fn test_update_transaction_preserves_splits_when_omitted() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("updatesplitspres_{}", timestamp),
+        &format!("updatesplitspres_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Update Splits Preserve User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person1 = create_test_person(&server, &auth.token, "Person 1").await;
+
+    // Create a transaction WITH splits
+    let create_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Has Splits",
+        "amount": -60.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [
+            { "person_id": person1.id, "amount": 30.00 }
+        ]
+    });
+    let create_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &create_request,
+    )
+    .await;
+    assert_status(&create_response, 201);
+    let transaction: TransactionResponse = extract_json(create_response);
+    assert_eq!(transaction.splits.as_ref().unwrap().len(), 1);
+
+    // Update only the title — do NOT include splits field
+    let update_request = json!({
+        "title": "Updated Title Only"
+    });
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+    assert_status(&update_response, 200);
+
+    let updated: TransactionResponse = extract_json(update_response);
+    assert_eq!(updated.title, "Updated Title Only");
+    assert!(
+        updated.splits.is_some(),
+        "Splits should be preserved when not included in update"
+    );
+    assert_eq!(
+        updated.splits.unwrap().len(),
+        1,
+        "Should still have 1 split"
+    );
+}
+
+// ============================================================================
 // Delete Transaction Tests
 // ============================================================================
 

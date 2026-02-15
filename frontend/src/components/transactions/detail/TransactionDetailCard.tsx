@@ -14,6 +14,7 @@ import {
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction, Person } from '@/types';
 import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters';
+import { SplitSyncStatus } from '@/components/transactions/SplitSyncStatus';
 
 interface TransactionDetailCardProps {
   transaction: EnrichedTransaction;
@@ -201,11 +202,18 @@ export const TransactionDetailCard = ({ transaction, people }: TransactionDetail
       {transaction.splits && transaction.splits.length > 0 && (
         <Card.Root>
           <Card.Header>
-            <HStack gap={2}>
-              <Icon as={FiUsers} color="fg.muted" />
-              <Text fontSize="lg" fontWeight="semibold" color="fg">
-                Split Payment
-              </Text>
+            <HStack gap={2} justify="space-between" width="100%">
+              <HStack gap={2}>
+                <Icon as={FiUsers} color="fg.muted" />
+                <Text fontSize="lg" fontWeight="semibold" color="fg">
+                  Split Payment
+                </Text>
+              </HStack>
+              <HStack gap={1}>
+                {transaction.splits?.map((split) => (
+                  <SplitSyncStatus key={split.id} splitId={split.id} showEmpty />
+                ))}
+              </HStack>
             </HStack>
           </Card.Header>
           <Card.Body>

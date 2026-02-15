@@ -4,6 +4,7 @@ import { useSplitSyncBadge } from '@/hooks/usecase';
 
 interface SplitSyncStatusProps {
   splitId: string;
+  showEmpty?: boolean;
 }
 
 /**
@@ -11,15 +12,22 @@ interface SplitSyncStatusProps {
  * Shows synced/pending/failed state with retry capability.
  * All business logic is delegated to useSplitSyncBadge hook.
  */
-export const SplitSyncStatus = ({ splitId }: SplitSyncStatusProps) => {
+export const SplitSyncStatus = ({ splitId, showEmpty = false }: SplitSyncStatusProps) => {
   const { primarySync, isLoading, isRetrying, handleRetry } = useSplitSyncBadge(splitId);
 
   if (isLoading) {
     return <Spinner size="xs" />;
   }
 
-  // No sync record means person has no split config
+  // No sync record — show "Not synced" badge if showEmpty, otherwise hide
   if (!primarySync) {
+    if (showEmpty) {
+      return (
+        <Badge colorPalette="gray" size="sm">
+          <Text>Not synced</Text>
+        </Badge>
+      );
+    }
     return null;
   }
 

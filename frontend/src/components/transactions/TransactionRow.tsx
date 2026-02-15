@@ -1,13 +1,16 @@
 import { Badge, Box, HStack, Icon, IconButton, Text, VStack } from '@chakra-ui/react';
 import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers, FiTrash2 } from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import type { EnrichedTransaction } from '@/types';
 import { formatCurrency, formatTime } from '@/utils/formatters';
 import { SplitSyncStatus } from './SplitSyncStatus';
 
 interface TransactionRowProps {
   transaction: EnrichedTransaction;
-  onClick: () => void;
+  onClick?: () => void;
+  /** Called on Shift+Click to open the edit modal inline */
+  onEdit?: (transaction: EnrichedTransaction) => void;
   onDelete?: (transaction: EnrichedTransaction) => void;
 }
 
@@ -24,11 +27,43 @@ const getCategoryIcon = (iconName?: string) => {
   return iconMap[iconName?.toLowerCase() || 'other'] || FaEuroSign;
 };
 
-export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRowProps) => {
+export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: TransactionRowProps) => {
+  const navigate = useNavigate();
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
 
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Shift+Click → open edit modal (if onEdit provided)
+    if (e.shiftKey && onEdit) {
+      e.preventDefault();
+      onEdit(transaction);
+      return;
+    }
+
+    if (onClick) {
+      onClick();
+    } else {
+      void navigate(`/transactions/${transaction.id}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      // Shift+Enter → edit
+      if (e.shiftKey && onEdit) {
+        onEdit(transaction);
+        return;
+      }
+      if (onClick) {
+        onClick();
+      } else {
+        void navigate(`/transactions/${transaction.id}`);
+      }
+    }
+  };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -44,17 +79,12 @@ export const TransactionRow = ({ transaction, onClick, onDelete }: TransactionRo
       borderColor="border"
       cursor="pointer"
       _hover={{ bg: 'gray.50', borderColor: 'gray.300' }}
-      onClick={onClick}
+      onClick={handleClick}
       transition="all 0.2s"
       role="button"
       tabIndex={0}
       aria-label={`View transaction: ${transaction.title}`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
+      onKeyDown={handleKeyDown}
     >
       <HStack justify="space-between" align="start" gap={3}>
         {/* Left side - Icon and details */}

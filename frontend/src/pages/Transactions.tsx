@@ -29,7 +29,7 @@ export const TransactionsPage = () => {
   useDocumentTitle('Transactions');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<EnrichedTransaction | null>(null);
+  const [editTransaction, setEditTransaction] = useState<EnrichedTransaction | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean;
     transaction: EnrichedTransaction | null;
@@ -161,26 +161,23 @@ export const TransactionsPage = () => {
   }, [filteredTransactions, convertAmount, isExchangeRatesLoading]);
 
   const handleAddTransaction = () => {
-    setSelectedTransaction(null);
+    setEditTransaction(null);
     onModalOpen();
   };
 
   const handleEditTransaction = (transaction: EnrichedTransaction) => {
-    setSelectedTransaction(transaction);
+    setEditTransaction(transaction);
     onModalOpen();
   };
 
   const handleModalClose = () => {
-    setSelectedTransaction(null);
+    setEditTransaction(null);
     onModalClose();
   };
 
   const handleSubmit = async (data: CreateTransactionRequest) => {
-    if (selectedTransaction) {
-      await updateMutation.mutateAsync({
-        id: selectedTransaction.id,
-        data,
-      });
+    if (editTransaction) {
+      await updateMutation.mutateAsync({ id: editTransaction.id, data });
     } else {
       await createMutation.mutateAsync(data);
     }
@@ -269,11 +266,11 @@ export const TransactionsPage = () => {
         />
       )}
 
-      {/* Transaction List */}
+      {/* Transaction List — clicking row navigates to detail, edit icon opens modal */}
       <TransactionList
         transactions={filteredTransactions}
         isLoading={isLoading}
-        onTransactionClick={handleEditTransaction}
+        onTransactionEdit={handleEditTransaction}
         onTransactionDelete={handleDeleteTransaction}
         onLoadMore={() => {
           void fetchNextPage();
@@ -282,25 +279,25 @@ export const TransactionsPage = () => {
         isFetchingMore={isFetchingNextPage}
       />
 
-      {/* Transaction Form Modal */}
+      {/* Transaction Form Modal (create & edit) */}
       <TransactionFormModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
         transaction={
-          selectedTransaction
+          editTransaction
             ? {
-                id: selectedTransaction.id,
+                id: editTransaction.id,
                 user_id: '',
-                account_id: selectedTransaction.account.id,
-                category_id: selectedTransaction.category?.id,
-                title: selectedTransaction.title,
-                amount: selectedTransaction.amount,
-                date: selectedTransaction.date,
-                notes: selectedTransaction.notes,
-                splits: selectedTransaction.splits,
-                user_share: selectedTransaction.user_share,
-                created_at: selectedTransaction.created_at,
-                updated_at: selectedTransaction.updated_at,
+                account_id: editTransaction.account.id,
+                category_id: editTransaction.category?.id,
+                title: editTransaction.title,
+                amount: editTransaction.amount,
+                date: editTransaction.date,
+                notes: editTransaction.notes,
+                splits: editTransaction.splits,
+                user_share: editTransaction.user_share,
+                created_at: editTransaction.created_at,
+                updated_at: editTransaction.updated_at,
               }
             : undefined
         }

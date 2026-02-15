@@ -9,7 +9,8 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 interface TransactionListProps {
   transactions: EnrichedTransaction[];
   isLoading?: boolean;
-  onTransactionClick: (transaction: EnrichedTransaction) => void;
+  onTransactionClick?: (transaction: EnrichedTransaction) => void;
+  onTransactionEdit?: (transaction: EnrichedTransaction) => void;
   onTransactionDelete?: (transaction: EnrichedTransaction) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
@@ -24,6 +25,7 @@ export const TransactionList = ({
   transactions,
   isLoading,
   onTransactionClick,
+  onTransactionEdit,
   onTransactionDelete,
   onLoadMore,
   hasMore,
@@ -144,7 +146,8 @@ export const TransactionList = ({
                 <TransactionRow
                   key={transaction.id}
                   transaction={transaction}
-                  onClick={() => onTransactionClick(transaction)}
+                  onClick={onTransactionClick ? () => onTransactionClick(transaction) : undefined}
+                  onEdit={onTransactionEdit}
                   onDelete={onTransactionDelete}
                 />
               ))}

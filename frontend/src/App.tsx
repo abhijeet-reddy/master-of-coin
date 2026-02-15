@@ -8,6 +8,7 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import Dashboard from '@/pages/Dashboard';
 import { TransactionsPage } from '@/pages/Transactions';
+import { TransactionDetailPage } from '@/pages/TransactionDetail';
 import { Accounts } from '@/pages/Accounts';
 import { Budgets } from '@/pages/Budgets';
 import { Categories } from '@/pages/Categories';
@@ -40,6 +41,7 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="transactions" element={<TransactionsPage />} />
+              <Route path="transactions/:id" element={<TransactionDetailPage />} />
               <Route path="accounts" element={<Accounts />} />
               <Route path="budgets" element={<Budgets />} />
               <Route path="categories" element={<Categories />} />

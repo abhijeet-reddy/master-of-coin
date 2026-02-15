@@ -5,7 +5,6 @@ import type {
   UpdateTransactionRequest,
   PaginatedResponse,
   QueryParams,
-  ApiResponse,
 } from '@/types';
 
 /**
@@ -46,16 +45,16 @@ export async function getTransactions(
  * Get a single transaction by ID
  */
 export async function getTransaction(id: string): Promise<Transaction> {
-  const response = await apiClient.get<ApiResponse<Transaction>>(`/transactions/${id}`);
-  return response.data.data;
+  const response = await apiClient.get<Transaction>(`/transactions/${id}`);
+  return response.data;
 }
 
 /**
  * Create a new transaction
  */
 export async function createTransaction(data: CreateTransactionRequest): Promise<Transaction> {
-  const response = await apiClient.post<ApiResponse<Transaction>>('/transactions', data);
-  return response.data.data;
+  const response = await apiClient.post<Transaction>('/transactions', data);
+  return response.data;
 }
 
 /**
@@ -65,8 +64,8 @@ export async function updateTransaction(
   id: string,
   data: UpdateTransactionRequest
 ): Promise<Transaction> {
-  const response = await apiClient.put<ApiResponse<Transaction>>(`/transactions/${id}`, data);
-  return response.data.data;
+  const response = await apiClient.put<Transaction>(`/transactions/${id}`, data);
+  return response.data;
 }
 
 /**

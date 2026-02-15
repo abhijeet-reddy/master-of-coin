@@ -9,3 +9,4 @@ export { default as useSplitwiseConnection } from './useSplitwiseConnection';
 export { default as useSplitProviderConfig } from './useSplitProviderConfig';
 export { default as useSplitSyncBadge } from './useSplitSyncBadge';
 export { default as useSplitwiseCallbackStatus } from './useSplitwiseCallbackStatus';
+export { default as useTransactionDetail } from './useTransactionDetail';

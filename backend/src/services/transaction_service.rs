@@ -1,4 +1,5 @@
 use bigdecimal::BigDecimal;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use uuid::Uuid;
 use validator::Validate;
@@ -299,13 +300,34 @@ pub async fn update_transaction(
         user_id
     );
 
-    // Handle splits if provided (replace strategy: delete all existing, create new)
+    // Handle splits if provided (upsert strategy: preserves split IDs for sync records)
     let splits = if let Some(split_inputs) = request.splits {
-        // Delete existing splits
-        repositories::transaction::delete_splits_for_transaction(pool, transaction_id).await?;
+        // Validate no duplicate person_ids in the request
+        let mut seen_persons = HashSet::new();
+        for input in &split_inputs {
+            if !seen_persons.insert(input.person_id) {
+                return Err(ApiError::Validation(
+                    "Duplicate person_id in splits".to_string(),
+                ));
+            }
+        }
 
-        // Create new splits
-        let mut created_splits = Vec::new();
+        // Fetch existing splits for this transaction
+        let existing_splits =
+            repositories::transaction::list_splits_for_transaction(pool, transaction_id).await?;
+
+        // Build person_id → existing split lookup
+        let existing_map: HashMap<Uuid, crate::models::transaction_split::TransactionSplit> =
+            existing_splits
+                .into_iter()
+                .map(|s| (s.person_id, s))
+                .collect();
+
+        // Track which existing person_ids are still present in the incoming request
+        let incoming_person_ids: HashSet<Uuid> = split_inputs.iter().map(|s| s.person_id).collect();
+
+        let mut result_splits = Vec::new();
+
         for split_input in split_inputs {
             // Verify person ownership
             let person = repositories::person::find_by_id(pool, split_input.person_id).await?;
@@ -327,22 +349,38 @@ pub async fn update_transaction(
                     ApiError::Validation("Invalid split amount".to_string())
                 })?;
 
-            let new_split = NewTransactionSplit {
-                transaction_id,
-                person_id: split_input.person_id,
-                amount: split_amount,
-            };
-
-            let split =
-                repositories::transaction::create_split(pool, transaction_id, new_split).await?;
-            created_splits.push(split);
+            if let Some(existing) = existing_map.get(&split_input.person_id) {
+                // UPDATE existing split amount (preserves split ID and sync records)
+                let updated =
+                    repositories::transaction::update_split_amount(pool, existing.id, split_amount)
+                        .await?;
+                result_splits.push(updated);
+            } else {
+                // CREATE new split
+                let new_split = NewTransactionSplit {
+                    transaction_id,
+                    person_id: split_input.person_id,
+                    amount: split_amount,
+                };
+                let split =
+                    repositories::transaction::create_split(pool, transaction_id, new_split)
+                        .await?;
+                result_splits.push(split);
+            }
         }
 
-        if created_splits.is_empty() {
+        // DELETE splits for persons no longer in the list
+        for (person_id, existing_split) in &existing_map {
+            if !incoming_person_ids.contains(person_id) {
+                repositories::transaction::delete_split_by_id(pool, existing_split.id).await?;
+            }
+        }
+
+        if result_splits.is_empty() {
             None
         } else {
             Some(
-                created_splits
+                result_splits
                     .into_iter()
                     .map(|split| split.into())
                     .collect(),

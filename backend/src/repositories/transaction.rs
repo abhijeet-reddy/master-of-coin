@@ -372,3 +372,57 @@ pub async fn delete_splits_for_transaction(
         ApiError::Internal
     })?
 }
+
+/// Update a split's amount by split ID (preserves split ID for sync records)
+pub async fn update_split_amount(
+    pool: &DbPool,
+    split_id: Uuid,
+    new_amount: BigDecimal,
+) -> Result<TransactionSplit, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::update(transaction_splits::table.find(split_id))
+            .set(transaction_splits::amount.eq(new_amount))
+            .get_result(&mut conn)
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to update split amount for split {}: {}",
+                    split_id,
+                    e
+                );
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Delete a single split by its ID
+pub async fn delete_split_by_id(pool: &DbPool, split_id: Uuid) -> Result<(), ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::delete(transaction_splits::table.find(split_id))
+            .execute(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to delete split {}: {}", split_id, e);
+                ApiError::from(e)
+            })
+            .map(|_| ())
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}

@@ -414,6 +414,33 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        // Transaction split sync (single entry point)
+        .route(
+            "/transactions/:id/sync-split",
+            post(handlers::split_sync::sync_split).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/transactions/:id/resolve-split-mismatch",
+            post(handlers::split_sync::resolve_split_mismatch).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Splitwise OAuth integration routes (no scope check - always accessible)
         // Note: callback route is in public routes (auth_routes) since it's a browser redirect
         .route(

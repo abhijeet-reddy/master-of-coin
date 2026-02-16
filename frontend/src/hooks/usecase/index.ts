@@ -10,3 +10,4 @@ export { default as useSplitProviderConfig } from './useSplitProviderConfig';
 export { default as useSplitSyncBadge } from './useSplitSyncBadge';
 export { default as useSplitwiseCallbackStatus } from './useSplitwiseCallbackStatus';
 export { default as useTransactionDetail } from './useTransactionDetail';
+export { default as useSplitSync } from './useSplitSync';

@@ -61,3 +61,69 @@ export interface SplitSyncStatus {
   retry_count: number;
   external_url?: string;
 }
+
+/** Result status from the sync-split endpoint */
+export type SplitSyncResultStatus = 'synced' | 'linked' | 'created' | 'mismatch';
+
+/** User in an external expense */
+export interface ExternalExpenseUser {
+  external_user_id: string;
+  first_name: string;
+  last_name: string;
+  paid_share: string;
+  owed_share: string;
+}
+
+/** External expense details (returned in mismatch) */
+export interface ExternalExpenseDetail {
+  description: string;
+  cost: string;
+  currency_code: string;
+  date: string;
+  users: ExternalExpenseUser[];
+}
+
+/** Local split share (returned in mismatch) */
+export interface LocalSplitShare {
+  external_user_id: string;
+  person_name: string;
+  owed_share: string;
+}
+
+/** Base response from POST /transactions/:id/sync-split */
+interface SplitSyncResultBase {
+  status: SplitSyncResultStatus;
+  message: string;
+  external_expense_id?: string;
+}
+
+/** Mismatch response with full comparison data */
+interface SplitSyncMismatchResult extends SplitSyncResultBase {
+  status: 'mismatch';
+  external_expense_id: string;
+  local_total: string;
+  external_total: string;
+  totals_differ: boolean;
+  local_splits: LocalSplitShare[];
+  external_expense: ExternalExpenseDetail;
+}
+
+/** Non-mismatch response (synced, linked, created) */
+interface SplitSyncOkResult extends SplitSyncResultBase {
+  status: 'synced' | 'linked' | 'created';
+}
+
+/** Discriminated union for all sync results */
+export type SplitSyncResult = SplitSyncMismatchResult | SplitSyncOkResult;
+
+/** Request body for POST /transactions/:id/resolve-split-mismatch */
+export interface ResolveMismatchRequest {
+  external_expense_id: string;
+  action: 'push' | 'pull';
+}
+
+/** Response from resolve-split-mismatch */
+export interface ResolveMismatchResult {
+  status: 'pushed' | 'pulled';
+  message: string;
+}

@@ -1,4 +1,4 @@
-import { Box, Card, HStack, VStack, Text, Badge, Icon, Separator } from '@chakra-ui/react';
+import { Box, Button, Card, HStack, VStack, Text, Badge, Icon, Separator } from '@chakra-ui/react';
 import {
   FiShoppingCart,
   FiHome,
@@ -10,6 +10,7 @@ import {
   FiTag,
   FiFileText,
   FiClock,
+  FiRefreshCw,
 } from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction, Person } from '@/types';
@@ -19,6 +20,8 @@ import { SplitSyncStatus } from '@/components/transactions/SplitSyncStatus';
 interface TransactionDetailCardProps {
   transaction: EnrichedTransaction;
   people: Person[];
+  onSync?: () => void;
+  isSyncing?: boolean;
 }
 
 const getCategoryIcon = (iconName?: string) => {
@@ -32,7 +35,12 @@ const getCategoryIcon = (iconName?: string) => {
   return iconMap[iconName?.toLowerCase() || 'other'] || FaEuroSign;
 };
 
-export const TransactionDetailCard = ({ transaction, people }: TransactionDetailCardProps) => {
+export const TransactionDetailCard = ({
+  transaction,
+  people,
+  onSync,
+  isSyncing,
+}: TransactionDetailCardProps) => {
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
@@ -213,6 +221,21 @@ export const TransactionDetailCard = ({ transaction, people }: TransactionDetail
                 {transaction.splits?.map((split) => (
                   <SplitSyncStatus key={split.id} splitId={split.id} showEmpty />
                 ))}
+                {onSync && (
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    colorScheme="blue"
+                    onClick={onSync}
+                    loading={isSyncing}
+                    aria-label="Sync with split provider"
+                  >
+                    <HStack gap={1}>
+                      <FiRefreshCw />
+                      <span>Sync</span>
+                    </HStack>
+                  </Button>
+                )}
               </HStack>
             </HStack>
           </Card.Header>

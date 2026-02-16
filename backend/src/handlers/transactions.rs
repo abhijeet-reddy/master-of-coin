@@ -41,12 +41,10 @@ pub async fn create(
 
     let transaction = transaction_service::create_transaction(&state.db, user_id, request).await?;
 
-    // Trigger split sync if splits were created (fire-and-forget, don't block response)
+    // Trigger split sync if splits were created (fire-and-forget)
     if let Some(ref splits) = transaction.splits {
         if !splits.is_empty() {
-            let split_ids: Vec<Uuid> = splits.iter().map(|s| s.id).collect();
-            let transaction_id = transaction.id;
-            trigger_split_sync_created(state.split_sync.clone(), transaction_id, split_ids).await;
+            trigger_split_sync(state.split_sync.clone(), transaction.id).await;
         }
     }
 
@@ -82,12 +80,8 @@ pub async fn update(
     let transaction =
         transaction_service::update_transaction(&state.db, id, user_id, request).await?;
 
-    // Trigger split sync update for all splits (fire-and-forget)
-    if let Some(ref splits) = transaction.splits {
-        for split in splits {
-            trigger_split_sync_updated(state.split_sync.clone(), split.id).await;
-        }
-    }
+    // On update: if already linked → push updated splits to provider; if not → regular sync
+    trigger_split_sync_on_update(state.split_sync.clone(), transaction.id).await;
 
     Ok(Json(transaction))
 }
@@ -177,36 +171,68 @@ pub async fn bulk_create(
 // --- Split Sync Helper Functions ---
 // These are fire-and-forget: sync failures never block transaction operations.
 
-/// Trigger sync after splits are created on a transaction
-async fn trigger_split_sync_created(
+/// Trigger split sync for a transaction (create, update, or re-sync).
+///
+/// Uses `sync_transaction()` which:
+/// 1. If already linked → fetches the linked expense and compares
+/// 2. If not linked → searches for matching expenses
+/// 3. Links, creates, or reports mismatch as needed
+async fn trigger_split_sync(sync_service: Option<SplitSyncService>, transaction_id: Uuid) {
+    if let Some(service) = sync_service {
+        match service.sync_transaction(transaction_id).await {
+            Ok(result) => {
+                let status = result
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                tracing::info!("Split sync for transaction {}: {}", transaction_id, status);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Split sync failed for transaction {}: {}",
+                    transaction_id,
+                    e
+                );
+            }
+        }
+    }
+}
+
+/// Trigger sync on transaction update.
+///
+/// If already linked to an external expense → pushes updated local splits.
+/// If not linked → runs regular sync logic (search, link, or create).
+async fn trigger_split_sync_on_update(
     sync_service: Option<SplitSyncService>,
     transaction_id: Uuid,
-    split_ids: Vec<Uuid>,
 ) {
     if let Some(service) = sync_service {
-        if let Err(e) = service
-            .on_transaction_splits_created(transaction_id, split_ids)
-            .await
-        {
-            tracing::warn!(
-                "Split sync failed after creating splits for transaction {}: {}",
-                transaction_id,
-                e
-            );
+        match service.sync_on_update(transaction_id).await {
+            Ok(result) => {
+                let status = result
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                tracing::info!(
+                    "Split sync on update for transaction {}: {}",
+                    transaction_id,
+                    status
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Split sync failed on update for transaction {}: {}",
+                    transaction_id,
+                    e
+                );
+            }
         }
     }
 }
 
-/// Trigger sync after a split is updated
-async fn trigger_split_sync_updated(sync_service: Option<SplitSyncService>, split_id: Uuid) {
-    if let Some(service) = sync_service {
-        if let Err(e) = service.on_split_updated(split_id).await {
-            tracing::warn!("Split sync failed after updating split {}: {}", split_id, e);
-        }
-    }
-}
-
-/// Trigger sync after a split is deleted
+/// Trigger sync cleanup after a split is deleted.
+///
+/// Keeps `on_split_deleted` since we need to delete/update the external expense.
 async fn trigger_split_sync_deleted(
     sync_service: Option<SplitSyncService>,
     transaction_id: Uuid,

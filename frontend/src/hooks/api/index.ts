@@ -47,4 +47,9 @@ export {
   useSetPersonSplitConfig,
   useDeletePersonSplitConfig,
 } from './usePersonSplitConfig';
-export { useSplitSyncStatus, useRetrySync } from './useSplitSyncStatus';
+export {
+  useSplitSyncStatus,
+  useRetrySync,
+  useSyncTransactionSplit,
+  useResolveSplitMismatch,
+} from './useSplitSyncStatus';

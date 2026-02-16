@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, useDisclosure } from '@chakra-ui/react';
 import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
-import { TransactionDetailCard, TransactionActions } from '@/components/transactions/detail';
+import {
+  TransactionDetailCard,
+  TransactionActions,
+  SplitMismatchModal,
+} from '@/components/transactions/detail';
 import { TransactionFormModal } from '@/components/transactions';
 import {
   useUpdateTransaction,
@@ -12,7 +16,7 @@ import {
   usePeople,
   useDocumentTitle,
 } from '@/hooks';
-import { useTransactionDetail } from '@/hooks/usecase';
+import { useTransactionDetail, useSplitSync } from '@/hooks/usecase';
 import type { CreateTransactionRequest } from '@/types';
 
 export const TransactionDetailPage = () => {
@@ -31,6 +35,10 @@ export const TransactionDetailPage = () => {
 
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
+
+  // Split sync
+  const { handleSync, handleResolve, closeMismatchModal, mismatchResult, isSyncing, isResolving } =
+    useSplitSync(id || '');
 
   useDocumentTitle(transaction ? `${transaction.title} — Transaction` : 'Transaction');
 
@@ -89,6 +97,9 @@ export const TransactionDetailPage = () => {
     );
   }
 
+  // Only show sync button if transaction has splits
+  const hasSplits = transaction.splits && transaction.splits.length > 0;
+
   return (
     <Box maxW="2xl" mx="auto">
       <PageHeader
@@ -102,7 +113,20 @@ export const TransactionDetailPage = () => {
         }
       />
 
-      <TransactionDetailCard transaction={transaction} people={people} />
+      <TransactionDetailCard
+        transaction={transaction}
+        people={people}
+        onSync={hasSplits ? handleSync : undefined}
+        isSyncing={isSyncing}
+      />
+
+      {/* Split Mismatch Modal */}
+      <SplitMismatchModal
+        result={mismatchResult}
+        onClose={closeMismatchModal}
+        onResolve={handleResolve}
+        isResolving={isResolving}
+      />
 
       {/* Edit Modal */}
       <TransactionFormModal

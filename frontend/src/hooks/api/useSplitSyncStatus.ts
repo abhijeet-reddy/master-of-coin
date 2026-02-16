@@ -1,5 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSyncStatus, retrySync } from '@/services/splitSyncService';
+import {
+  getSyncStatus,
+  retrySync,
+  syncTransactionSplit,
+  resolveSplitMismatch,
+} from '@/services/splitSyncService';
+import type { ResolveMismatchRequest } from '@/types';
 
 /**
  * Fetch sync status for a transaction split
@@ -29,6 +35,48 @@ export function useRetrySync() {
     mutationFn: (syncRecordId: string) => retrySync(syncRecordId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['splits'] });
+    },
+  });
+}
+
+/**
+ * Sync a transaction's splits with the external split provider.
+ * Invalidates split sync status and transaction queries on success.
+ *
+ * @returns React Query mutation for syncing transaction splits
+ */
+export function useSyncTransactionSplit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (transactionId: string) => syncTransactionSplit(transactionId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['splits'] });
+      void queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+}
+
+/**
+ * Resolve a split mismatch (push local or pull external).
+ * Invalidates split sync status and transaction queries on success.
+ *
+ * @returns React Query mutation for resolving split mismatches
+ */
+export function useResolveSplitMismatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      transactionId,
+      request,
+    }: {
+      transactionId: string;
+      request: ResolveMismatchRequest;
+    }) => resolveSplitMismatch(transactionId, request),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['splits'] });
+      void queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 }

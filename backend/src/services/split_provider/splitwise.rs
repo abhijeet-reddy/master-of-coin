@@ -5,8 +5,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{
-    CreateExternalExpense, ExpenseUser, ExternalExpenseResult, SplitProvider, SplitProviderError,
-    UpdateExternalExpense,
+    CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, ExternalExpenseResult,
+    ExternalExpenseUser, SplitProvider, SplitProviderError, UpdateExternalExpense,
 };
 
 /// Splitwise API provider implementation
@@ -315,6 +315,208 @@ impl SplitProvider for SplitwiseProvider {
         Ok(())
     }
 
+    async fn get_expenses(
+        &self,
+        credentials: &Value,
+        friend_id: Option<&str>,
+        dated_after: Option<&str>,
+        dated_before: Option<&str>,
+        limit: Option<u32>,
+    ) -> Result<Vec<ExternalExpenseDetail>, SplitProviderError> {
+        let access_token = Self::get_access_token(credentials)?;
+
+        let mut params: Vec<(&str, String)> = Vec::new();
+
+        if let Some(fid) = friend_id {
+            params.push(("friend_id", fid.to_string()));
+        }
+        if let Some(after) = dated_after {
+            params.push(("dated_after", after.to_string()));
+        }
+        if let Some(before) = dated_before {
+            params.push(("dated_before", before.to_string()));
+        }
+        let lim = limit.unwrap_or(50);
+        params.push(("limit", lim.to_string()));
+
+        let response = self
+            .http_client
+            .get(format!("{}/get_expenses", Self::BASE_URL))
+            .bearer_auth(&access_token)
+            .query(&params)
+            .send()
+            .await
+            .map_err(|e| SplitProviderError::NetworkError(e.to_string()))?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Failed to read response body".to_string());
+
+        if !status.is_success() {
+            return Err(Self::map_status_error(status, &body));
+        }
+
+        let json_response: SplitwiseGetExpensesResponse = serde_json::from_str(&body)
+            .map_err(|e| SplitProviderError::InvalidResponse(e.to_string()))?;
+
+        let expenses = json_response.expenses.unwrap_or_default();
+
+        let result: Vec<ExternalExpenseDetail> = expenses
+            .into_iter()
+            .filter(|exp| exp.deleted_at.is_none())
+            .map(|exp| {
+                let users = exp
+                    .users
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|u| ExternalExpenseUser {
+                        external_user_id: u.user.id.to_string(),
+                        first_name: u.user.first_name.unwrap_or_default(),
+                        last_name: u.user.last_name.unwrap_or_default(),
+                        paid_share: u.paid_share.unwrap_or_else(|| "0.00".to_string()),
+                        owed_share: u.owed_share.unwrap_or_else(|| "0.00".to_string()),
+                    })
+                    .collect();
+
+                ExternalExpenseDetail {
+                    external_expense_id: exp.id.to_string(),
+                    description: exp.description.unwrap_or_default(),
+                    cost: exp.cost.unwrap_or_else(|| "0.00".to_string()),
+                    currency_code: exp.currency_code.unwrap_or_else(|| "USD".to_string()),
+                    date: exp.date.unwrap_or_default(),
+                    users,
+                }
+            })
+            .collect();
+
+        Ok(result)
+    }
+
+    async fn get_expense_by_id(
+        &self,
+        credentials: &Value,
+        external_expense_id: &str,
+    ) -> Result<Option<ExternalExpenseDetail>, SplitProviderError> {
+        let access_token = Self::get_access_token(credentials)?;
+
+        let response = self
+            .http_client
+            .get(format!(
+                "{}/get_expense/{}",
+                Self::BASE_URL,
+                external_expense_id
+            ))
+            .bearer_auth(&access_token)
+            .send()
+            .await
+            .map_err(|e| SplitProviderError::NetworkError(e.to_string()))?;
+
+        let status = response.status();
+
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Failed to read response body".to_string());
+
+        if !status.is_success() {
+            return Err(Self::map_status_error(status, &body));
+        }
+
+        // Splitwise returns { "expense": { ... } } for single expense
+        let json: Value = serde_json::from_str(&body)
+            .map_err(|e| SplitProviderError::InvalidResponse(e.to_string()))?;
+
+        let expense_val = json.get("expense").ok_or_else(|| {
+            SplitProviderError::InvalidResponse("Missing 'expense' field".to_string())
+        })?;
+
+        // Check if deleted
+        if expense_val
+            .get("deleted_at")
+            .and_then(|v| v.as_str())
+            .is_some()
+        {
+            return Ok(None);
+        }
+
+        let id = expense_val.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+        let description = expense_val
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let cost = expense_val
+            .get("cost")
+            .and_then(|v| v.as_str())
+            .unwrap_or("0.00")
+            .to_string();
+        let currency_code = expense_val
+            .get("currency_code")
+            .and_then(|v| v.as_str())
+            .unwrap_or("USD")
+            .to_string();
+        let date = expense_val
+            .get("date")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Parse users array
+        let users = expense_val
+            .get("users")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|u| {
+                        let user_obj = u.get("user")?;
+                        Some(ExternalExpenseUser {
+                            external_user_id: user_obj
+                                .get("id")
+                                .and_then(|v| v.as_i64())
+                                .map(|id| id.to_string())
+                                .unwrap_or_default(),
+                            first_name: user_obj
+                                .get("first_name")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            last_name: user_obj
+                                .get("last_name")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            paid_share: u
+                                .get("paid_share")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("0.00")
+                                .to_string(),
+                            owed_share: u
+                                .get("owed_share")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("0.00")
+                                .to_string(),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Ok(Some(ExternalExpenseDetail {
+            external_expense_id: id.to_string(),
+            description,
+            cost,
+            currency_code,
+            date,
+            users,
+        }))
+    }
+
     async fn validate_credentials(&self, credentials: &Value) -> Result<bool, SplitProviderError> {
         let access_token = Self::get_access_token(credentials)?;
 
@@ -401,9 +603,46 @@ struct SplitwiseExpenseResponse {
     errors: Option<Value>,
 }
 
+/// Minimal expense for create/update responses
 #[derive(Debug, Deserialize)]
 struct SplitwiseExpense {
     id: i64,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    cost: Option<String>,
+    #[serde(default)]
+    currency_code: Option<String>,
+    #[serde(default)]
+    date: Option<String>,
+    #[serde(default)]
+    deleted_at: Option<String>,
+    #[serde(default)]
+    users: Option<Vec<SplitwiseExpenseUser>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SplitwiseExpenseUser {
+    user: SplitwiseUserInfo,
+    #[serde(default)]
+    paid_share: Option<String>,
+    #[serde(default)]
+    owed_share: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SplitwiseUserInfo {
+    id: i64,
+    #[serde(default)]
+    first_name: Option<String>,
+    #[serde(default)]
+    last_name: Option<String>,
+}
+
+/// Response for GET /get_expenses
+#[derive(Debug, Deserialize)]
+struct SplitwiseGetExpensesResponse {
+    expenses: Option<Vec<SplitwiseExpense>>,
 }
 
 #[derive(Debug, Deserialize)]

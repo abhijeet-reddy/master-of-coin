@@ -93,3 +93,11 @@ impl SplitSyncRecord {
         SyncStatus::from_str(&self.sync_status).unwrap_or(SyncStatus::Pending)
     }
 }
+
+/// Request body for resolving a split mismatch
+#[derive(Debug, serde::Deserialize)]
+pub struct ResolveMismatchRequest {
+    pub external_expense_id: String,
+    /// "push" to overwrite provider with local data, "pull" to update local transaction from provider
+    pub action: String,
+}

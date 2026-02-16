@@ -3,8 +3,8 @@ pub mod types;
 
 pub use splitwise::SplitwiseProvider;
 pub use types::{
-    CreateExternalExpense, ExpenseUser, ExternalExpenseResult, SplitProviderError,
-    UpdateExternalExpense,
+    CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, ExternalExpenseResult,
+    ExternalExpenseUser, SplitProviderError, UpdateExternalExpense,
 };
 
 use async_trait::async_trait;
@@ -82,6 +82,44 @@ pub trait SplitProvider: Send + Sync {
         credentials: &Value,
         external_expense_id: &str,
     ) -> Result<(), SplitProviderError>;
+
+    /// Get expenses from the external platform, filtered by date range and friend
+    ///
+    /// # Arguments
+    ///
+    /// * `credentials` - Provider-specific credentials
+    /// * `friend_id` - External user ID of the friend to filter expenses for
+    /// * `dated_after` - Only return expenses dated after this date (ISO format)
+    /// * `dated_before` - Only return expenses dated before this date (ISO format)
+    /// * `limit` - Maximum number of expenses to return
+    ///
+    /// # Returns
+    ///
+    /// List of external expenses with user details
+    async fn get_expenses(
+        &self,
+        credentials: &Value,
+        friend_id: Option<&str>,
+        dated_after: Option<&str>,
+        dated_before: Option<&str>,
+        limit: Option<u32>,
+    ) -> Result<Vec<ExternalExpenseDetail>, SplitProviderError>;
+
+    /// Get a single expense by its external ID
+    ///
+    /// # Arguments
+    ///
+    /// * `credentials` - Provider-specific credentials
+    /// * `external_expense_id` - The ID of the expense on the external platform
+    ///
+    /// # Returns
+    ///
+    /// The expense details, or None if not found/deleted
+    async fn get_expense_by_id(
+        &self,
+        credentials: &Value,
+        external_expense_id: &str,
+    ) -> Result<Option<ExternalExpenseDetail>, SplitProviderError>;
 
     /// Validate that credentials are still valid
     ///

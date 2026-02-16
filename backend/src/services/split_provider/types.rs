@@ -2,6 +2,33 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// External expense with user shares (returned from search/get)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalExpenseDetail {
+    /// ID of the expense on the external platform
+    pub external_expense_id: String,
+    /// Description/title
+    pub description: String,
+    /// Total cost as string
+    pub cost: String,
+    /// Currency code
+    pub currency_code: String,
+    /// Date of the expense
+    pub date: String,
+    /// Users involved with their shares
+    pub users: Vec<ExternalExpenseUser>,
+}
+
+/// User in an external expense (with names for display)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalExpenseUser {
+    pub external_user_id: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub paid_share: String,
+    pub owed_share: String,
+}
+
 /// Request to create an expense on an external platform
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateExternalExpense {

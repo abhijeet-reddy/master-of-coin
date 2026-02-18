@@ -303,3 +303,49 @@ async fn test_normal_transaction_still_works() {
         "Normal transaction should have debt_metadata: null"
     );
 }
+
+/// Test that GET /api/v1/transactions/:id works for debt transactions.
+#[tokio::test]
+async fn test_get_debt_transaction_by_id() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("debtget_{}", timestamp),
+        &format!("debtget_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Debt Get Test User",
+    )
+    .await;
+
+    // Create a person and a debt transaction
+    let person = create_test_person(&server, &auth.token, "DetailTestPerson").await;
+    let debt_txn = json!({
+        "payer_person_id": person.id,
+        "currency": "EUR",
+        "title": "Detail page test",
+        "amount": -30.0,
+        "date": "2026-02-18T20:00:00Z"
+    });
+    let response =
+        post_authenticated(&server, "/api/v1/debt-transactions", &auth.token, &debt_txn).await;
+    assert_status(&response, 201);
+    let created: TransactionResponse = extract_json(response);
+
+    // Now GET the transaction by ID — this should NOT return 404
+    let response = get_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", created.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&response, 200);
+
+    let detail: TransactionResponse = extract_json(response);
+    assert_eq!(detail.title, "Detail page test");
+    assert!(
+        detail.debt_metadata.is_some(),
+        "debt_metadata should be populated"
+    );
+}

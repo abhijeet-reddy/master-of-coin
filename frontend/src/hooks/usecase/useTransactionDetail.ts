@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTransaction, useAccounts, useCategories, usePeople } from '@/hooks/api';
+import { DEBT_ACCOUNT_INFO } from '@/constants/defaults';
 import type { EnrichedTransaction, Person } from '@/types';
 
 interface TransactionDetailResult {
@@ -29,7 +30,6 @@ export default function useTransactionDetail(id: string): TransactionDetailResul
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
     const account = accountMap.get(rawTransaction.account_id);
-    if (!account) return null;
 
     const category = rawTransaction.category_id
       ? categoryMap.get(rawTransaction.category_id)
@@ -40,18 +40,24 @@ export default function useTransactionDetail(id: string): TransactionDetailResul
       title: rawTransaction.title,
       amount: rawTransaction.amount,
       date: rawTransaction.date,
-      account: {
-        id: account.id,
-        name: account.name,
-        type: account.account_type,
-        currency: account.currency,
-      },
+      account: account
+        ? {
+            id: account.id,
+            name: account.name,
+            type: account.account_type,
+            currency: account.currency,
+          }
+        : {
+            id: rawTransaction.account_id,
+            ...DEBT_ACCOUNT_INFO,
+          },
       category: category
         ? { id: category.id, name: category.name, icon: category.icon }
         : undefined,
       notes: rawTransaction.notes,
       splits: rawTransaction.splits,
       user_share: rawTransaction.user_share,
+      debt_metadata: rawTransaction.debt_metadata,
       created_at: rawTransaction.created_at,
       updated_at: rawTransaction.updated_at,
     };

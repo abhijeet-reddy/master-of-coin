@@ -6,6 +6,7 @@ pub mod auth_service;
 pub mod budget_service;
 pub mod csv_parser_service;
 pub mod debt_service;
+pub mod debt_transaction_service;
 pub mod exchange_rate_service;
 pub mod import_service;
 pub mod split_provider;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Button, HStack, Input, Textarea, VStack } from '@chakra-ui/react';
+import { Badge, Box, Button, HStack, Input, Text, Textarea, VStack } from '@chakra-ui/react';
 import {
   DialogRoot,
   DialogContent,
@@ -16,45 +16,64 @@ import { z } from 'zod';
 import { Field } from '@/components/ui/field';
 import { ErrorAlert } from '@/components/common';
 import { SplitPaymentForm } from './SplitPaymentForm';
+import { CurrencyCode } from '@/types';
 import type {
   Account,
   Category,
   Person,
+  PayerMode,
   Transaction,
   TransactionSplitRequest,
   CreateTransactionRequest,
+  CreateDebtTransactionRequest,
 } from '@/types';
 
 // Validation schema
-const transactionSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  amount: z
-    .string()
-    .min(1, 'Amount is required')
-    .refine(
-      (val) => {
-        const num = parseFloat(val);
-        return !isNaN(num) && num > 0;
-      },
-      { message: 'Amount must be a positive number' }
-    ),
-  transaction_type: z.enum(['income', 'expense']),
-  account_id: z.string().min(1, 'Account is required'),
-  category_id: z.string().optional(),
-  date: z
-    .string()
-    .min(1, 'Date is required')
-    .refine(
-      (val) => {
-        const date = new Date(val);
-        const now = new Date();
-        return date <= now;
-      },
-      { message: 'Date cannot be in the future' }
-    ),
-  time: z.string().min(1, 'Time is required'),
-  notes: z.string().optional(),
-});
+const transactionSchema = z
+  .object({
+    title: z.string().min(1, 'Title is required'),
+    amount: z
+      .string()
+      .min(1, 'Amount is required')
+      .refine(
+        (val) => {
+          const num = parseFloat(val);
+          return !isNaN(num) && num > 0;
+        },
+        { message: 'Amount must be a positive number' }
+      ),
+    transaction_type: z.enum(['income', 'expense']),
+    payer_mode: z.enum(['self', 'other']),
+    account_id: z.string().optional(),
+    payer_person_id: z.string().optional(),
+    payer_currency: z.string().optional(),
+    category_id: z.string().optional(),
+    date: z
+      .string()
+      .min(1, 'Date is required')
+      .refine(
+        (val) => {
+          const date = new Date(val);
+          const now = new Date();
+          return date <= now;
+        },
+        { message: 'Date cannot be in the future' }
+      ),
+    time: z.string().min(1, 'Time is required'),
+    notes: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.payer_mode === 'self') {
+        return !!data.account_id && data.account_id.trim() !== '';
+      }
+      return !!data.payer_person_id && data.payer_person_id.trim() !== '';
+    },
+    {
+      message: 'Account is required when you paid, or select who paid',
+      path: ['account_id'],
+    }
+  );
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
@@ -66,6 +85,7 @@ interface TransactionFormModalProps {
   categories: Category[];
   people: Person[];
   onSubmit: (data: CreateTransactionRequest) => Promise<void>;
+  onSubmitDebt?: (data: CreateDebtTransactionRequest) => Promise<void>;
 }
 
 export const TransactionFormModal = ({
@@ -76,6 +96,7 @@ export const TransactionFormModal = ({
   categories,
   people,
   onSubmit,
+  onSubmitDebt,
 }: TransactionFormModalProps) => {
   const [isSplitEnabled, setIsSplitEnabled] = useState(false);
   const [splits, setSplits] = useState<TransactionSplitRequest[]>([]);
@@ -88,21 +109,26 @@ export const TransactionFormModal = ({
     formState: { errors },
     reset,
     watch,
+    setValue,
   } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       title: '',
       amount: '',
       transaction_type: 'expense',
+      payer_mode: 'self',
       account_id: '',
+      payer_person_id: '',
+      payer_currency: CurrencyCode.EUR,
       category_id: '',
       date: new Date().toISOString().split('T')[0],
-      time: new Date().toTimeString().slice(0, 5), // HH:MM format
+      time: new Date().toTimeString().slice(0, 5),
       notes: '',
     },
   });
 
   const amount = watch('amount');
+  const payerMode = watch('payer_mode') as PayerMode;
 
   // Reset form when modal opens/closes or transaction changes
   useEffect(() => {
@@ -110,27 +136,36 @@ export const TransactionFormModal = ({
       if (transaction) {
         const transactionAmount = parseFloat(transaction.amount);
         const transactionDate = new Date(transaction.date);
+        const isDebtTransaction = !!transaction.debt_metadata;
         reset({
           title: transaction.title,
           amount: Math.abs(transactionAmount).toString(),
           transaction_type: transactionAmount >= 0 ? 'income' : 'expense',
-          account_id: transaction.account_id,
+          payer_mode: isDebtTransaction ? 'other' : 'self',
+          account_id: isDebtTransaction ? '' : transaction.account_id,
+          payer_person_id: transaction.debt_metadata?.payer_person_id || '',
+          payer_currency: CurrencyCode.EUR,
           category_id: transaction.category_id || '',
           date: transaction.date.split('T')[0],
-          time: transactionDate.toTimeString().slice(0, 5), // Extract HH:MM
+          time: transactionDate.toTimeString().slice(0, 5),
           notes: transaction.notes || '',
         });
-        setIsSplitEnabled(!!transaction.splits && transaction.splits.length > 0);
-        setSplits(transaction.splits || []);
+        setIsSplitEnabled(
+          !isDebtTransaction && !!transaction.splits && transaction.splits.length > 0
+        );
+        setSplits(isDebtTransaction ? [] : transaction.splits || []);
       } else {
         reset({
           title: '',
           amount: '',
           transaction_type: 'expense',
+          payer_mode: 'self',
           account_id: '',
+          payer_person_id: '',
+          payer_currency: CurrencyCode.EUR,
           category_id: '',
           date: new Date().toISOString().split('T')[0],
-          time: new Date().toTimeString().slice(0, 5), // HH:MM format
+          time: new Date().toTimeString().slice(0, 5),
           notes: '',
         });
         setIsSplitEnabled(false);
@@ -145,36 +180,47 @@ export const TransactionFormModal = ({
     try {
       const dateValue = data.date || new Date().toISOString().split('T')[0];
       const timeValue = data.time && data.time.trim() !== '' ? data.time : '00:00';
-
-      // Combine date and time into ISO 8601 datetime format
       const formattedDate = new Date(`${dateValue}T${timeValue}:00Z`).toISOString();
 
-      // Set amount sign based on transaction type
-      // Income = positive, Expense = negative
       const amountValue = parseFloat(data.amount);
       const signedAmount = data.transaction_type === 'income' ? amountValue : -amountValue;
 
-      const finalData = {
-        title: data.title,
-        amount: signedAmount,
-        date: formattedDate, // ISO 8601 datetime format with time
-        account_id: data.account_id,
-        category_id:
-          data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
-        notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
-        splits: isSplitEnabled
-          ? splits.length > 0
-            ? splits.map((split) => ({
-                person_id: split.person_id,
-                amount: parseFloat(split.amount), // Convert string to number
-              }))
-            : [] // Explicitly send empty array to remove all splits
-          : transaction
-            ? [] // Editing existing transaction: send empty array to remove splits
-            : undefined, // New transaction: no splits key needed
-      };
-
-      await onSubmit(finalData);
+      if (data.payer_mode === 'other' && onSubmitDebt) {
+        // "Someone else paid" → create debt transaction
+        const debtData: CreateDebtTransactionRequest = {
+          payer_person_id: data.payer_person_id!,
+          currency: (data.payer_currency as CurrencyCode) || CurrencyCode.EUR,
+          title: data.title,
+          amount: signedAmount,
+          date: formattedDate,
+          category_id:
+            data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
+          notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
+        };
+        await onSubmitDebt(debtData);
+      } else {
+        // "I paid" → create normal transaction
+        const finalData: CreateTransactionRequest = {
+          title: data.title,
+          amount: signedAmount,
+          date: formattedDate,
+          account_id: data.account_id!,
+          category_id:
+            data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
+          notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
+          splits: isSplitEnabled
+            ? splits.length > 0
+              ? splits.map((split) => ({
+                  person_id: split.person_id,
+                  amount: parseFloat(split.amount),
+                }))
+              : []
+            : transaction
+              ? []
+              : undefined,
+        };
+        await onSubmit(finalData);
+      }
       onClose();
     } catch (error) {
       console.error('Failed to submit transaction:', error);
@@ -188,6 +234,17 @@ export const TransactionFormModal = ({
     setIsSplitEnabled(!isSplitEnabled);
     if (isSplitEnabled) {
       setSplits([]);
+    }
+  };
+
+  const handlePayerModeChange = (mode: PayerMode) => {
+    setValue('payer_mode', mode);
+    if (mode === 'other') {
+      setValue('account_id', '');
+      setIsSplitEnabled(false);
+      setSplits([]);
+    } else {
+      setValue('payer_person_id', '');
     }
   };
 
@@ -253,25 +310,101 @@ export const TransactionFormModal = ({
                 />
               </Field>
 
-              {/* Account */}
-              <Field label="Account" required errorText={errors.account_id?.message}>
-                <select
-                  {...register('account_id')}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
-                  }}
-                >
-                  <option value="">Select account</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              {/* Who Paid? Toggle */}
+              {!transaction && onSubmitDebt && (
+                <Field label="Who paid?">
+                  <HStack gap={2}>
+                    <Button
+                      size="sm"
+                      variant={payerMode === 'self' ? 'solid' : 'outline'}
+                      colorScheme={payerMode === 'self' ? 'blue' : 'gray'}
+                      onClick={() => handlePayerModeChange('self')}
+                      type="button"
+                    >
+                      I paid
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={payerMode === 'other' ? 'solid' : 'outline'}
+                      colorScheme={payerMode === 'other' ? 'orange' : 'gray'}
+                      onClick={() => handlePayerModeChange('other')}
+                      type="button"
+                    >
+                      Someone else paid
+                    </Button>
+                  </HStack>
+                </Field>
+              )}
+
+              {/* Account (shown when "I paid") */}
+              {payerMode === 'self' && (
+                <Field label="Account" required errorText={errors.account_id?.message}>
+                  <select
+                    {...register('account_id')}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '6px',
+                      border: '1px solid #E2E8F0',
+                    }}
+                  >
+                    <option value="">Select account</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+
+              {/* Payer Person + Currency (shown when "Someone else paid") */}
+              {payerMode === 'other' && (
+                <>
+                  <Field label="Paid by" required>
+                    <select
+                      {...register('payer_person_id')}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      <option value="">Select person</option>
+                      {people.map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Currency">
+                    <select
+                      {...register('payer_currency')}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      {Object.values(CurrencyCode).map((code) => (
+                        <option key={code} value={code}>
+                          {code}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Badge colorScheme="orange" p={2} borderRadius="md">
+                    <Text fontSize="sm">
+                      This won&apos;t affect any account balance. A debt will be tracked.
+                    </Text>
+                  </Badge>
+                </>
+              )}
 
               {/* Category */}
               <Field label="Category">
@@ -316,21 +449,23 @@ export const TransactionFormModal = ({
                 />
               </Field>
 
-              {/* Split Payment Toggle */}
-              <Box>
-                <Button
-                  size="sm"
-                  variant={isSplitEnabled ? 'solid' : 'outline'}
-                  colorScheme={isSplitEnabled ? 'blue' : 'gray'}
-                  onClick={handleSplitToggle}
-                  type="button"
-                >
-                  {isSplitEnabled ? 'Disable' : 'Enable'} Split Payment
-                </Button>
-              </Box>
+              {/* Split Payment Toggle (only when "I paid") */}
+              {payerMode === 'self' && (
+                <Box>
+                  <Button
+                    size="sm"
+                    variant={isSplitEnabled ? 'solid' : 'outline'}
+                    colorScheme={isSplitEnabled ? 'blue' : 'gray'}
+                    onClick={handleSplitToggle}
+                    type="button"
+                  >
+                    {isSplitEnabled ? 'Disable' : 'Enable'} Split Payment
+                  </Button>
+                </Box>
+              )}
 
               {/* Split Payment Form */}
-              {isSplitEnabled && (
+              {isSplitEnabled && payerMode === 'self' && (
                 <Box p={4} bg="bg.muted" borderRadius="md">
                   <SplitPaymentForm
                     totalAmount={parseFloat(amount) || 0}

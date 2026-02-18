@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import useAccounts from './useAccounts';
 import useCategories from './useCategories';
+import { DEBT_ACCOUNT_INFO } from '@/constants/defaults';
 import type { Transaction, EnrichedTransaction } from '@/types';
 
 /**
@@ -27,7 +28,7 @@ export default function useEnrichedTransactions(
 
     // Enrich transactions with account and category details
     return rawTransactions.map((transaction): EnrichedTransaction => {
-      const account = accountMap.get(transaction.account_id)!;
+      const account = accountMap.get(transaction.account_id);
       const category = transaction.category_id
         ? categoryMap.get(transaction.category_id)
         : undefined;
@@ -37,12 +38,17 @@ export default function useEnrichedTransactions(
         title: transaction.title,
         amount: transaction.amount,
         date: transaction.date,
-        account: {
-          id: account.id,
-          name: account.name,
-          type: account.account_type,
-          currency: account.currency,
-        },
+        account: account
+          ? {
+              id: account.id,
+              name: account.name,
+              type: account.account_type,
+              currency: account.currency,
+            }
+          : {
+              id: transaction.account_id,
+              ...DEBT_ACCOUNT_INFO,
+            },
         category: category
           ? {
               id: category.id,
@@ -53,6 +59,7 @@ export default function useEnrichedTransactions(
         notes: transaction.notes,
         splits: transaction.splits,
         user_share: transaction.user_share,
+        debt_metadata: transaction.debt_metadata,
         created_at: transaction.created_at,
         updated_at: transaction.updated_at,
       };

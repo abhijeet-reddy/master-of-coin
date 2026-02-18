@@ -7,6 +7,7 @@ use crate::{
     errors::ApiError,
     models::account::{Account, NewAccount, UpdateAccount},
     schema::{accounts, transactions},
+    types::{AccountType, CurrencyCode},
 };
 
 /// Create a new account
@@ -203,6 +204,106 @@ pub async fn calculate_balance(pool: &DbPool, account_id: Uuid) -> Result<BigDec
         tracing::error!("Task join error: {}", e);
         ApiError::Internal
     })?
+}
+
+/// List all accounts for a user, excluding DEBT pseudo-accounts
+pub async fn list_by_user_excluding_debt(
+    pool: &DbPool,
+    user_id: Uuid,
+) -> Result<Vec<Account>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        accounts::table
+            .filter(accounts::user_id.eq(user_id))
+            .filter(accounts::type_.ne(AccountType::Debt))
+            .order(accounts::created_at.desc())
+            .load(&mut conn)
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to list non-debt accounts for user {}: {}",
+                    user_id,
+                    e
+                );
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Find the DEBT pseudo-account for a given user and currency
+pub async fn find_debt_account(
+    pool: &DbPool,
+    user_id: Uuid,
+    currency: CurrencyCode,
+) -> Result<Option<Account>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        accounts::table
+            .filter(accounts::user_id.eq(user_id))
+            .filter(accounts::type_.eq(AccountType::Debt))
+            .filter(accounts::currency.eq(currency))
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to find debt account for user {} currency {:?}: {}",
+                    user_id,
+                    currency,
+                    e
+                );
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Find or lazily create a DEBT pseudo-account for a given user and currency.
+/// DEBT accounts are hidden from the UI and excluded from net worth calculations.
+pub async fn get_or_create_debt_account(
+    pool: &DbPool,
+    user_id: Uuid,
+    currency: CurrencyCode,
+) -> Result<Account, ApiError> {
+    // Try to find an existing DEBT account for this currency
+    if let Some(account) = find_debt_account(pool, user_id, currency).await? {
+        return Ok(account);
+    }
+
+    // Create a new DEBT account for this currency
+    let new_account = NewAccount {
+        user_id,
+        name: format!("Debts ({:?})", currency).to_uppercase(),
+        account_type: AccountType::Debt,
+        currency,
+        notes: Some("System account for tracking expenses paid by others".to_string()),
+    };
+
+    let account = create_account(pool, user_id, new_account).await?;
+
+    tracing::info!(
+        "Created DEBT account {} for user {} currency {:?}",
+        account.id,
+        user_id,
+        currency
+    );
+
+    Ok(account)
 }
 
 /// Check if account has any transactions

@@ -2,6 +2,7 @@ import apiClient from '@/lib/axios';
 import type {
   Transaction,
   CreateTransactionRequest,
+  CreateDebtTransactionRequest,
   UpdateTransactionRequest,
   PaginatedResponse,
   QueryParams,
@@ -73,4 +74,14 @@ export async function updateTransaction(
  */
 export async function deleteTransaction(id: string): Promise<void> {
   await apiClient.delete(`/transactions/${id}`);
+}
+
+/**
+ * Create a "paid by others" (debt) transaction
+ */
+export async function createDebtTransaction(
+  data: CreateDebtTransactionRequest
+): Promise<Transaction> {
+  const response = await apiClient.post<Transaction>('/debt-transactions', data);
+  return response.data;
 }

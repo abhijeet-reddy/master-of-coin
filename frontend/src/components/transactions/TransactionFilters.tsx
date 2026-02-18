@@ -10,6 +10,7 @@ export interface TransactionFilterValues {
   minAmount?: string;
   maxAmount?: string;
   transactionType?: 'all' | 'income' | 'expense';
+  paidByOthers?: 'all' | 'only' | 'exclude';
 }
 
 interface TransactionFiltersProps {
@@ -50,7 +51,8 @@ export const TransactionFilters = ({
     filters.endDate ||
     filters.minAmount ||
     filters.maxAmount ||
-    (filters.transactionType && filters.transactionType !== 'all');
+    (filters.transactionType && filters.transactionType !== 'all') ||
+    (filters.paidByOthers && filters.paidByOthers !== 'all');
 
   return (
     <Box p={4} bg="bg" borderRadius="lg" borderWidth="1px" borderColor="border" mb={4}>
@@ -101,6 +103,40 @@ export const TransactionFilters = ({
               onClick={() => onFilterChange({ ...filters, transactionType: 'expense' })}
             >
               Expense
+            </Button>
+          </HStack>
+        </Box>
+
+        {/* Paid by Others Filter */}
+        <Box>
+          <Text fontSize="sm" fontWeight="medium" mb={2}>
+            Paid by Others
+          </Text>
+          <HStack gap={2}>
+            <Button
+              size="sm"
+              variant={
+                !filters.paidByOthers || filters.paidByOthers === 'all' ? 'solid' : 'outline'
+              }
+              onClick={() => onFilterChange({ ...filters, paidByOthers: 'all' })}
+            >
+              All
+            </Button>
+            <Button
+              size="sm"
+              variant={filters.paidByOthers === 'only' ? 'solid' : 'outline'}
+              colorScheme="orange"
+              onClick={() => onFilterChange({ ...filters, paidByOthers: 'only' })}
+            >
+              Paid by Others
+            </Button>
+            <Button
+              size="sm"
+              variant={filters.paidByOthers === 'exclude' ? 'solid' : 'outline'}
+              colorScheme="gray"
+              onClick={() => onFilterChange({ ...filters, paidByOthers: 'exclude' })}
+            >
+              My Payments
             </Button>
           </HStack>
         </Box>

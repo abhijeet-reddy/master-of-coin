@@ -101,16 +101,28 @@ export const TransactionDetailCard = ({
         </Card.Header>
         <Card.Body>
           <VStack gap={4} align="stretch">
-            {/* Account */}
-            <HStack justify="space-between">
-              <HStack gap={2} color="fg.muted">
-                <Icon as={FiCreditCard} />
-                <Text fontSize="sm">Account</Text>
+            {/* Account or "Paid by" */}
+            {transaction.debt_metadata ? (
+              <HStack justify="space-between">
+                <HStack gap={2} color="fg.muted">
+                  <Icon as={FiUsers} />
+                  <Text fontSize="sm">Paid by</Text>
+                </HStack>
+                <Badge colorScheme="orange" fontSize="sm">
+                  {transaction.debt_metadata.payer_person_name}
+                </Badge>
               </HStack>
-              <Badge colorScheme="gray" fontSize="sm">
-                {transaction.account.name}
-              </Badge>
-            </HStack>
+            ) : (
+              <HStack justify="space-between">
+                <HStack gap={2} color="fg.muted">
+                  <Icon as={FiCreditCard} />
+                  <Text fontSize="sm">Account</Text>
+                </HStack>
+                <Badge colorScheme="gray" fontSize="sm">
+                  {transaction.account.name}
+                </Badge>
+              </HStack>
+            )}
 
             <Separator />
 
@@ -206,8 +218,8 @@ export const TransactionDetailCard = ({
         </Card.Root>
       )}
 
-      {/* Splits Card */}
-      {transaction.splits && transaction.splits.length > 0 && (
+      {/* Splits Card (hidden for debt transactions — split is system-managed) */}
+      {transaction.splits && transaction.splits.length > 0 && !transaction.debt_metadata && (
         <Card.Root>
           <Card.Header>
             <HStack gap={2} justify="space-between" width="100%">

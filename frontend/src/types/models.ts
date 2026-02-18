@@ -3,14 +3,16 @@
 import type { CurrencyCode } from './currency';
 
 // Account types
-export type AccountType =
-  | 'CHECKING'
-  | 'SAVINGS'
-  | 'CREDIT_CARD'
-  | 'INVESTMENT'
-  | 'LOAN'
-  | 'CASH'
-  | 'OTHER';
+export enum AccountType {
+  CHECKING = 'CHECKING',
+  SAVINGS = 'SAVINGS',
+  CREDIT_CARD = 'CREDIT_CARD',
+  INVESTMENT = 'INVESTMENT',
+  LOAN = 'LOAN',
+  CASH = 'CASH',
+  OTHER = 'OTHER',
+  DEBT = 'DEBT',
+}
 
 export interface Account {
   id: string;
@@ -82,6 +84,12 @@ export interface TransactionSplitResponse extends TransactionSplitRequest {
 /** Alias for backward compatibility - use TransactionSplitResponse for API data */
 export type TransactionSplit = TransactionSplitResponse;
 
+// Debt metadata for "paid by others" transactions
+export interface DebtMetadata {
+  payer_person_id: string;
+  payer_person_name: string;
+}
+
 // Base transaction from API
 export interface Transaction {
   id: string;
@@ -94,6 +102,7 @@ export interface Transaction {
   notes?: string;
   splits?: TransactionSplit[];
   user_share?: string;
+  debt_metadata?: DebtMetadata | null;
   created_at: string;
   updated_at: string;
 }
@@ -118,6 +127,7 @@ export interface EnrichedTransaction {
   splits?: TransactionSplit[];
   notes?: string;
   user_share?: string;
+  debt_metadata?: DebtMetadata | null;
   created_at: string;
   updated_at: string;
 }
@@ -133,6 +143,20 @@ export interface CreateTransactionRequest {
     person_id: string;
     amount: number; // Backend expects f64 (number)
   }[];
+}
+
+// Payer mode for transaction form
+export type PayerMode = 'self' | 'other';
+
+// Request for creating a "paid by others" (debt) transaction
+export interface CreateDebtTransactionRequest {
+  payer_person_id: string;
+  currency?: CurrencyCode;
+  category_id?: string;
+  title: string;
+  amount: number;
+  date: string;
+  notes?: string;
 }
 
 export interface UpdateTransactionRequest {

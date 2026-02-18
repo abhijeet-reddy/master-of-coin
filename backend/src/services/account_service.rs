@@ -10,6 +10,7 @@ use crate::{
         AccountResponse, CreateAccountRequest, NewAccount, NewTransaction, UpdateAccountRequest,
     },
     repositories,
+    types::AccountType,
 };
 
 /// Create a new account
@@ -120,10 +121,12 @@ pub async fn get_account(
     })
 }
 
-/// List all accounts for a user with their balances
+/// List all accounts for a user with their balances.
+/// DEBT pseudo-accounts are excluded from the list — they are system-managed
+/// accounts used for tracking expenses paid by others.
 pub async fn list_accounts(pool: &DbPool, user_id: Uuid) -> Result<Vec<AccountResponse>, ApiError> {
-    // Fetch all user accounts
-    let accounts = repositories::account::list_by_user(pool, user_id).await?;
+    // Fetch all user accounts, excluding DEBT pseudo-accounts
+    let accounts = repositories::account::list_by_user_excluding_debt(pool, user_id).await?;
 
     // Calculate balance for each account
     let mut responses = Vec::new();
@@ -145,7 +148,8 @@ pub async fn list_accounts(pool: &DbPool, user_id: Uuid) -> Result<Vec<AccountRe
     Ok(responses)
 }
 
-/// Update an account
+/// Update an account.
+/// DEBT pseudo-accounts cannot be updated by users — they are system-managed.
 pub async fn update_account(
     pool: &DbPool,
     account_id: Uuid,
@@ -160,6 +164,19 @@ pub async fn update_account(
 
     // Fetch and verify ownership
     let account = repositories::account::find_by_id(pool, account_id).await?;
+
+    // Prevent editing DEBT pseudo-accounts
+    if account.account_type == AccountType::Debt {
+        tracing::warn!(
+            "User {} attempted to update DEBT account {}",
+            user_id,
+            account_id
+        );
+        return Err(ApiError::Validation(
+            "Cannot modify system-managed debt accounts".to_string(),
+        ));
+    }
+
     if account.user_id != user_id {
         tracing::warn!(
             "User {} attempted to update account {} owned by {}",
@@ -198,7 +215,8 @@ pub async fn update_account(
     })
 }
 
-/// Delete an account (only if it has no transactions)
+/// Delete an account (only if it has no transactions).
+/// DEBT pseudo-accounts cannot be deleted by users — they are system-managed.
 pub async fn delete_account(
     pool: &DbPool,
     account_id: Uuid,
@@ -206,6 +224,19 @@ pub async fn delete_account(
 ) -> Result<(), ApiError> {
     // Fetch and verify ownership
     let account = repositories::account::find_by_id(pool, account_id).await?;
+
+    // Prevent deleting DEBT pseudo-accounts
+    if account.account_type == AccountType::Debt {
+        tracing::warn!(
+            "User {} attempted to delete DEBT account {}",
+            user_id,
+            account_id
+        );
+        return Err(ApiError::Validation(
+            "Cannot delete system-managed debt accounts".to_string(),
+        ));
+    }
+
     if account.user_id != user_id {
         tracing::warn!(
             "User {} attempted to delete account {} owned by {}",

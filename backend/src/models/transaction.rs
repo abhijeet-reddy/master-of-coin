@@ -207,6 +207,8 @@ pub struct TransactionResponse {
     pub notes: Option<String>,
     /// Splits associated with this transaction
     pub splits: Option<Vec<TransactionSplitResponse>>,
+    /// Debt metadata — populated for "paid by others" transactions, null otherwise
+    pub debt_metadata: Option<super::debt_transaction_metadata::DebtMetadataResponse>,
 }
 
 impl From<Transaction> for TransactionResponse {
@@ -220,7 +222,36 @@ impl From<Transaction> for TransactionResponse {
             amount: format!("{:.2}", transaction.amount),
             date: transaction.date,
             notes: transaction.notes,
+            splits: None,        // Populated separately when needed
+            debt_metadata: None, // Populated separately from LEFT JOIN
+        }
+    }
+}
+
+impl From<crate::repositories::transaction::TransactionWithDebtInfo> for TransactionResponse {
+    fn from(info: crate::repositories::transaction::TransactionWithDebtInfo) -> Self {
+        let debt_metadata = if let (Some(payer_id), Some(payer_name)) =
+            (info.payer_person_id, info.payer_person_name)
+        {
+            Some(super::debt_transaction_metadata::DebtMetadataResponse {
+                payer_person_id: payer_id,
+                payer_person_name: payer_name,
+            })
+        } else {
+            None
+        };
+
+        TransactionResponse {
+            id: info.transaction.id,
+            user_id: info.transaction.user_id,
+            account_id: info.transaction.account_id,
+            category_id: info.transaction.category_id,
+            title: info.transaction.title,
+            amount: format!("{:.2}", info.transaction.amount),
+            date: info.transaction.date,
+            notes: info.transaction.notes,
             splits: None, // Populated separately when needed
+            debt_metadata,
         }
     }
 }

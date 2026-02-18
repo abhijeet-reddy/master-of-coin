@@ -2,6 +2,7 @@ import { Badge, Box, HStack, Icon, IconButton, Text, VStack } from '@chakra-ui/r
 import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers, FiTrash2 } from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { AccountType } from '@/types';
 import type { EnrichedTransaction } from '@/types';
 import { formatCurrency, formatTime } from '@/utils/formatters';
 import { SplitSyncStatus } from './SplitSyncStatus';
@@ -105,10 +106,12 @@ export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: Trans
             </Text>
 
             <HStack gap={2} flexWrap="wrap">
-              {/* Account badge */}
-              <Badge colorScheme="gray" fontSize="xs">
-                {transaction.account.name}
-              </Badge>
+              {/* Account badge (hidden for DEBT accounts) */}
+              {transaction.account.type !== AccountType.DEBT && (
+                <Badge colorScheme="gray" fontSize="xs">
+                  {transaction.account.name}
+                </Badge>
+              )}
 
               {/* Category badge */}
               {transaction.category && (
@@ -117,20 +120,29 @@ export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: Trans
                 </Badge>
               )}
 
-              {/* Split indicator with sync status */}
-              {transaction.splits && transaction.splits.length > 0 && (
-                <HStack gap={1} flexWrap="wrap">
-                  <Badge colorScheme="purple" fontSize="xs">
-                    <HStack gap={1}>
-                      <Icon as={FiUsers} boxSize={3} />
-                      <Text>Split</Text>
-                    </HStack>
-                  </Badge>
-                  {transaction.splits.map((split) => (
-                    <SplitSyncStatus key={split.id} splitId={split.id} />
-                  ))}
-                </HStack>
+              {/* "Paid by" badge for debt transactions */}
+              {transaction.debt_metadata && (
+                <Badge colorScheme="orange" fontSize="xs">
+                  Paid by {transaction.debt_metadata.payer_person_name}
+                </Badge>
               )}
+
+              {/* Split indicator with sync status */}
+              {transaction.splits &&
+                transaction.splits.length > 0 &&
+                !transaction.debt_metadata && (
+                  <HStack gap={1} flexWrap="wrap">
+                    <Badge colorScheme="purple" fontSize="xs">
+                      <HStack gap={1}>
+                        <Icon as={FiUsers} boxSize={3} />
+                        <Text>Split</Text>
+                      </HStack>
+                    </Badge>
+                    {transaction.splits.map((split) => (
+                      <SplitSyncStatus key={split.id} splitId={split.id} />
+                    ))}
+                  </HStack>
+                )}
 
               {/* Time on mobile */}
               <Text fontSize="xs" color="fg.muted" display={{ base: 'block', md: 'none' }}>

@@ -3,6 +3,7 @@ pub mod account;
 pub mod api_key;
 pub mod budget;
 pub mod category;
+pub mod debt_transaction_metadata;
 pub mod person;
 pub mod person_split_config;
 pub mod split_provider;

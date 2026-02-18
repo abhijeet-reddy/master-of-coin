@@ -104,6 +104,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    debt_transaction_metadata (id) {
+        id -> Uuid,
+        transaction_id -> Uuid,
+        payer_person_id -> Uuid,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     people (id) {
         id -> Uuid,
         user_id -> Uuid,
@@ -209,6 +218,8 @@ diesel::joinable!(api_keys -> users (user_id));
 diesel::joinable!(budget_ranges -> budgets (budget_id));
 diesel::joinable!(budgets -> users (user_id));
 diesel::joinable!(categories -> users (user_id));
+diesel::joinable!(debt_transaction_metadata -> people (payer_person_id));
+diesel::joinable!(debt_transaction_metadata -> transactions (transaction_id));
 diesel::joinable!(people -> users (user_id));
 diesel::joinable!(person_split_configs -> people (person_id));
 diesel::joinable!(person_split_configs -> split_providers (split_provider_id));
@@ -227,6 +238,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     budget_ranges,
     budgets,
     categories,
+    debt_transaction_metadata,
     people,
     person_split_configs,
     split_providers,

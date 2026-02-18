@@ -23,7 +23,13 @@ import {
   useDocumentTitle,
 } from '@/hooks';
 import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
-import type { EnrichedTransaction, CreateTransactionRequest } from '@/types';
+import { createDebtTransaction } from '@/services/transactionService';
+import { useQueryClient } from '@tanstack/react-query';
+import type {
+  EnrichedTransaction,
+  CreateTransactionRequest,
+  CreateDebtTransactionRequest,
+} from '@/types';
 
 export const TransactionsPage = () => {
   useDocumentTitle('Transactions');
@@ -124,6 +130,10 @@ export const TransactionsPage = () => {
       if (filters.minAmount && absAmount < parseFloat(filters.minAmount)) return false;
       if (filters.maxAmount && absAmount > parseFloat(filters.maxAmount)) return false;
 
+      // Paid by others filter
+      if (filters.paidByOthers === 'only' && !transaction.debt_metadata) return false;
+      if (filters.paidByOthers === 'exclude' && transaction.debt_metadata) return false;
+
       return true;
     });
   }, [enrichedTransactions, filters]);
@@ -181,6 +191,12 @@ export const TransactionsPage = () => {
     } else {
       await createMutation.mutateAsync(data);
     }
+  };
+
+  const queryClient = useQueryClient();
+  const handleDebtSubmit = async (data: CreateDebtTransactionRequest) => {
+    await createDebtTransaction(data);
+    await queryClient.invalidateQueries({ queryKey: ['transactions'] });
   };
 
   const handleDeleteTransaction = (transaction: EnrichedTransaction) => {
@@ -305,6 +321,7 @@ export const TransactionsPage = () => {
         categories={categoriesData || []}
         people={peopleData || []}
         onSubmit={handleSubmit}
+        onSubmitDebt={handleDebtSubmit}
       />
 
       {/* Floating Action Button for Mobile */}

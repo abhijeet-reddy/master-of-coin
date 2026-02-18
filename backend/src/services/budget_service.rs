@@ -271,10 +271,11 @@ pub async fn calculate_budget_status(
     // Sum spending (only negative amounts for expenses), converting to primary currency
     let mut current_spending = BigDecimal::from(0);
 
-    for transaction in transactions
+    for result in transactions
         .iter()
-        .filter(|t| t.amount < BigDecimal::from(0))
+        .filter(|r| r.transaction.amount < BigDecimal::from(0))
     {
+        let transaction = &result.transaction;
         // Get the account to find its currency
         let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
 

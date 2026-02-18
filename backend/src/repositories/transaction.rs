@@ -10,8 +10,15 @@ use crate::{
         transaction::{NewTransaction, Transaction, TransactionFilter, UpdateTransaction},
         transaction_split::{NewTransactionSplit, TransactionSplit},
     },
-    schema::{transaction_splits, transactions},
+    schema::{debt_transaction_metadata, people, transaction_splits, transactions},
 };
+
+/// A transaction row joined with optional debt metadata (payer info).
+pub struct TransactionWithDebtInfo {
+    pub transaction: Transaction,
+    pub payer_person_id: Option<Uuid>,
+    pub payer_person_name: Option<String>,
+}
 
 /// Create a new transaction
 pub async fn create_transaction(
@@ -40,21 +47,48 @@ pub async fn create_transaction(
     })?
 }
 
-/// Find transaction by ID
-pub async fn find_by_id(pool: &DbPool, transaction_id: Uuid) -> Result<Transaction, ApiError> {
+/// Find transaction by ID with optional debt metadata via LEFT JOIN.
+pub async fn find_by_id(
+    pool: &DbPool,
+    transaction_id: Uuid,
+) -> Result<TransactionWithDebtInfo, ApiError> {
     let mut conn = pool.get().map_err(|e| {
         tracing::error!("Failed to get DB connection: {}", e);
         ApiError::Internal
     })?;
 
     tokio::task::spawn_blocking(move || {
-        transactions::table
-            .find(transaction_id)
+        let (transaction, payer_person_id, payer_person_name): (
+            Transaction,
+            Option<Uuid>,
+            Option<String>,
+        ) = transactions::table
+            .left_join(
+                debt_transaction_metadata::table
+                    .on(debt_transaction_metadata::transaction_id.eq(transactions::id)),
+            )
+            .left_join(
+                people::table.on(people::id
+                    .nullable()
+                    .eq(debt_transaction_metadata::payer_person_id.nullable())),
+            )
+            .filter(transactions::id.eq(transaction_id))
+            .select((
+                transactions::all_columns,
+                debt_transaction_metadata::payer_person_id.nullable(),
+                people::name.nullable(),
+            ))
             .first(&mut conn)
             .map_err(|e| {
                 tracing::error!("Failed to find transaction by id {}: {}", transaction_id, e);
                 ApiError::from(e)
-            })
+            })?;
+
+        Ok(TransactionWithDebtInfo {
+            transaction,
+            payer_person_id,
+            payer_person_name,
+        })
     })
     .await
     .map_err(|e| {
@@ -63,12 +97,12 @@ pub async fn find_by_id(pool: &DbPool, transaction_id: Uuid) -> Result<Transacti
     })?
 }
 
-/// List transactions for a user with optional filters
+/// List transactions for a user with optional filters, including debt metadata via LEFT JOIN.
 pub async fn list_transactions(
     pool: &DbPool,
     user_id: Uuid,
     filters: TransactionFilter,
-) -> Result<Vec<Transaction>, ApiError> {
+) -> Result<Vec<TransactionWithDebtInfo>, ApiError> {
     let mut conn = pool.get().map_err(|e| {
         tracing::error!("Failed to get DB connection: {}", e);
         ApiError::Internal
@@ -76,7 +110,21 @@ pub async fn list_transactions(
 
     tokio::task::spawn_blocking(move || {
         let mut query = transactions::table
+            .left_join(
+                debt_transaction_metadata::table
+                    .on(debt_transaction_metadata::transaction_id.eq(transactions::id)),
+            )
+            .left_join(
+                people::table.on(people::id
+                    .nullable()
+                    .eq(debt_transaction_metadata::payer_person_id.nullable())),
+            )
             .filter(transactions::user_id.eq(user_id))
+            .select((
+                transactions::all_columns,
+                debt_transaction_metadata::payer_person_id.nullable(),
+                people::name.nullable(),
+            ))
             .into_boxed();
 
         // Apply filters
@@ -125,17 +173,28 @@ pub async fn list_transactions(
         query = query.order(transactions::date.desc());
 
         // Apply pagination
-        let limit = filters.limit.unwrap_or(50).min(100); // TODO: Make default limit (50) and max (100) configurable
+        let limit = filters.limit.unwrap_or(50).min(100);
         let offset = filters.offset.unwrap_or(0);
 
-        query
+        let results: Vec<(Transaction, Option<Uuid>, Option<String>)> = query
             .limit(limit)
             .offset(offset)
             .load(&mut conn)
             .map_err(|e| {
                 tracing::error!("Failed to list transactions for user {}: {}", user_id, e);
                 ApiError::from(e)
-            })
+            })?;
+
+        Ok(results
+            .into_iter()
+            .map(
+                |(transaction, payer_person_id, payer_person_name)| TransactionWithDebtInfo {
+                    transaction,
+                    payer_person_id,
+                    payer_person_name,
+                },
+            )
+            .collect())
     })
     .await
     .map_err(|e| {

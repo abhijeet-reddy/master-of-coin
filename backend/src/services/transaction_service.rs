@@ -128,22 +128,22 @@ pub async fn create_transaction(
     Ok(response)
 }
 
-/// Get a transaction by ID with splits
+/// Get a transaction by ID with splits and debt metadata.
 pub async fn get_transaction(
     pool: &DbPool,
     transaction_id: Uuid,
     user_id: Uuid,
 ) -> Result<TransactionResponse, ApiError> {
-    // Fetch transaction
-    let transaction = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    // Fetch transaction with debt metadata via LEFT JOIN
+    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
 
     // Verify ownership
-    if transaction.user_id != user_id {
+    if result.transaction.user_id != user_id {
         tracing::warn!(
             "User {} attempted to access transaction {} owned by {}",
             user_id,
             transaction_id,
-            transaction.user_id
+            result.transaction.user_id
         );
         return Err(ApiError::Forbidden("Access denied".to_string()));
     }
@@ -155,7 +155,8 @@ pub async fn get_transaction(
         .map(|split| split.into())
         .collect::<Vec<_>>();
 
-    let mut response = TransactionResponse::from(transaction);
+    // Convert with debt_metadata populated from LEFT JOIN via From impl
+    let mut response = TransactionResponse::from(result);
     response.splits = if splits.is_empty() {
         None
     } else {
@@ -197,14 +198,14 @@ pub async fn list_transactions(
         }
     }
 
-    // List transactions
-    let transactions = repositories::transaction::list_transactions(pool, user_id, filters).await?;
+    // List transactions with debt metadata via LEFT JOIN
+    let results = repositories::transaction::list_transactions(pool, user_id, filters).await?;
 
     // Convert to responses with splits
     let mut responses = Vec::new();
-    for transaction in transactions {
-        let transaction_id = transaction.id;
-        let mut response = TransactionResponse::from(transaction);
+    for result in results {
+        let transaction_id = result.transaction.id;
+        let mut response = TransactionResponse::from(result);
 
         // Fetch splits for this transaction
         let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id)
@@ -239,13 +240,13 @@ pub async fn update_transaction(
     })?;
 
     // Fetch and verify ownership
-    let transaction = repositories::transaction::find_by_id(pool, transaction_id).await?;
-    if transaction.user_id != user_id {
+    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    if result.transaction.user_id != user_id {
         tracing::warn!(
             "User {} attempted to update transaction {} owned by {}",
             user_id,
             transaction_id,
-            transaction.user_id
+            result.transaction.user_id
         );
         return Err(ApiError::Forbidden("Access denied".to_string()));
     }
@@ -415,13 +416,13 @@ pub async fn delete_transaction(
     user_id: Uuid,
 ) -> Result<(), ApiError> {
     // Fetch and verify ownership
-    let transaction = repositories::transaction::find_by_id(pool, transaction_id).await?;
-    if transaction.user_id != user_id {
+    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    if result.transaction.user_id != user_id {
         tracing::warn!(
             "User {} attempted to delete transaction {} owned by {}",
             user_id,
             transaction_id,
-            transaction.user_id
+            result.transaction.user_id
         );
         return Err(ApiError::Forbidden("Access denied".to_string()));
     }

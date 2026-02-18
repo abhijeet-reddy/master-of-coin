@@ -19,12 +19,12 @@ import useCreateAccount from '@/hooks/api/useCreateAccount';
 import useUpdateAccount from '@/hooks/api/useUpdateAccount';
 import type { Account } from '@/types';
 import { DEFAULT_CURRENCY, CURRENCIES } from '@/constants';
-import { CurrencyCode } from '@/types';
+import { AccountType, CurrencyCode } from '@/types';
 
 // Validation schema
 const accountSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
-  type: z.enum(['CHECKING', 'SAVINGS', 'CREDIT_CARD', 'INVESTMENT', 'CASH', 'LOAN', 'OTHER']),
+  type: z.nativeEnum(AccountType),
   currency: z.nativeEnum(CurrencyCode),
   initial_balance: z.number().optional(),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
@@ -57,7 +57,7 @@ export const AccountFormModal = ({
     resolver: zodResolver(accountSchema),
     defaultValues: {
       name: '',
-      type: 'CHECKING',
+      type: AccountType.CHECKING,
       currency: DEFAULT_CURRENCY,
       initial_balance: 0,
       notes: '',
@@ -78,7 +78,7 @@ export const AccountFormModal = ({
       } else {
         reset({
           name: '',
-          type: 'CHECKING',
+          type: AccountType.CHECKING,
           currency: DEFAULT_CURRENCY,
           initial_balance: 0,
           notes: '',

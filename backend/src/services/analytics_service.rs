@@ -51,10 +51,12 @@ pub struct DashboardSummary {
     pub top_spending_categories: Vec<CategoryBreakdown>,
 }
 
-/// Calculate net worth (sum of all account balances converted to primary currency)
+/// Calculate net worth (sum of all account balances converted to primary currency).
+/// DEBT pseudo-accounts are excluded — they track expenses paid by others
+/// and should not affect net worth.
 pub async fn calculate_net_worth(pool: &DbPool, user_id: Uuid) -> Result<NetWorth, ApiError> {
-    // Get all user accounts
-    let accounts = repositories::account::list_by_user(pool, user_id).await?;
+    // Get all user accounts, excluding DEBT pseudo-accounts
+    let accounts = repositories::account::list_by_user_excluding_debt(pool, user_id).await?;
 
     // Initialize exchange rate service
     let exchange_service = ExchangeRateService::new()?;
@@ -114,7 +116,8 @@ pub async fn get_spending_trend(
     // Group by date
     let mut daily_spending: HashMap<String, BigDecimal> = HashMap::new();
 
-    for transaction in transactions {
+    for result in transactions {
+        let transaction = &result.transaction;
         // Only count expenses (negative amounts)
         if transaction.amount < BigDecimal::from(0) {
             let date_key = transaction.date.format("%Y-%m-%d").to_string();
@@ -178,7 +181,8 @@ pub async fn get_category_breakdown(
     let mut category_totals: HashMap<Option<Uuid>, BigDecimal> = HashMap::new();
     let mut total_spending = BigDecimal::from(0);
 
-    for transaction in &transactions {
+    for result in &transactions {
+        let transaction = &result.transaction;
         // Only count expenses (negative amounts)
         if transaction.amount < BigDecimal::from(0) {
             let spending = transaction.amount.abs();

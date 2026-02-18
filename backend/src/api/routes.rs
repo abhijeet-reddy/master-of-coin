@@ -156,6 +156,21 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        // Debt transactions (paid by others)
+        .route(
+            "/debt-transactions",
+            post(handlers::debt_transactions::create).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Bulk create transactions (general purpose)
         .route(
             "/transactions/bulk-create",

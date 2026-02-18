@@ -312,6 +312,7 @@ export const TransactionsPage = () => {
                 notes: editTransaction.notes,
                 splits: editTransaction.splits,
                 user_share: editTransaction.user_share,
+                debt_metadata: editTransaction.debt_metadata,
                 created_at: editTransaction.created_at,
                 updated_at: editTransaction.updated_at,
               }

@@ -54,7 +54,7 @@ export function useDeletePersonSplitConfig() {
   return useMutation({
     mutationFn: (personId: string) => deletePersonSplitConfig(personId),
     onSuccess: (_, personId) => {
-      void queryClient.invalidateQueries({ queryKey: ['people', personId, 'split-config'] });
+      queryClient.setQueryData(['people', personId, 'split-config'], null);
       void queryClient.invalidateQueries({ queryKey: ['people', personId] });
     },
   });

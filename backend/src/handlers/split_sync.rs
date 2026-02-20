@@ -2,7 +2,10 @@ use crate::{
     AppState,
     auth::context::AuthContext,
     errors::ApiError,
-    models::split_sync_record::{ResolveMismatchRequest, SplitSyncStatusResponse},
+    models::split_sync_record::{
+        ResolveMismatchRequest, SplitSyncStatusResponse, SyncExternalExpenseRequest,
+    },
+    repositories,
     repositories::split_sync_record::SplitSyncRecordRepository,
 };
 use axum::{
@@ -112,6 +115,62 @@ pub async fn sync_split(
         .ok_or_else(|| ApiError::Configuration("Split sync service not configured".to_string()))?;
 
     let result = sync_service.sync_transaction(transaction_id).await?;
+
+    Ok(Json(result))
+}
+
+/// Import a Splitwise expense where someone else paid as a "paid by others" debt transaction.
+///
+/// Fetches the expense from Splitwise, detects who paid, and creates a local DEBT
+/// account transaction with debt_transaction_metadata linking to the payer.
+///
+/// Idempotent: if the expense is already linked, returns "already_linked".
+///
+/// POST /integrations/splitwise/sync-external-expense
+pub async fn sync_external_expense(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Json(body): Json<SyncExternalExpenseRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let user_id = auth_context.user_id();
+    tracing::info!(
+        "Syncing external expense {} for user {}",
+        body.external_expense_id,
+        user_id
+    );
+
+    let sync_service = state
+        .split_sync
+        .as_ref()
+        .ok_or_else(|| ApiError::Configuration("Split sync service not configured".to_string()))?;
+
+    // Get the user's Splitwise provider
+    let provider =
+        repositories::split_provider::find_by_user_and_type(&state.db, user_id, "splitwise")
+            .await?
+            .ok_or_else(|| ApiError::NotFound("Splitwise not connected".to_string()))?;
+
+    if !provider.is_active {
+        return Err(ApiError::BadRequest(
+            "Splitwise provider is inactive. Please reconnect.".to_string(),
+        ));
+    }
+
+    // Fetch the expense from Splitwise
+    let expense = sync_service
+        .fetch_linked_expense(provider.id, &body.external_expense_id)
+        .await?
+        .ok_or_else(|| {
+            ApiError::NotFound(format!(
+                "Expense {} not found on Splitwise",
+                body.external_expense_id
+            ))
+        })?;
+
+    // Import the expense as a debt transaction
+    let result = sync_service
+        .sync_external_expense(user_id, &expense, provider.id)
+        .await?;
 
     Ok(Json(result))
 }

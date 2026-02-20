@@ -4,6 +4,7 @@ import type {
   CreateTransactionRequest,
   CreateDebtTransactionRequest,
   UpdateTransactionRequest,
+  UpdateExpenseDetailsRequest,
   PaginatedResponse,
   QueryParams,
 } from '@/types';
@@ -83,5 +84,19 @@ export async function createDebtTransaction(
   data: CreateDebtTransactionRequest
 ): Promise<Transaction> {
   const response = await apiClient.post<Transaction>('/debt-transactions', data);
+  return response.data;
+}
+
+/**
+ * Update expense details (total_cost, expense_participants) on a debt transaction
+ */
+export async function updateDebtExpenseDetails(
+  transactionId: string,
+  data: UpdateExpenseDetailsRequest
+): Promise<Transaction> {
+  const response = await apiClient.put<Transaction>(
+    `/debt-transactions/${transactionId}/metadata`,
+    data
+  );
   return response.data;
 }

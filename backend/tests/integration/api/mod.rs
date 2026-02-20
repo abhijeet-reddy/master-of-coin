@@ -33,4 +33,5 @@ mod test_people;
 mod test_scope_enforcement;
 mod test_split_providers;
 mod test_split_sync;
+mod test_splitwise_debt_sync;
 mod test_transactions;

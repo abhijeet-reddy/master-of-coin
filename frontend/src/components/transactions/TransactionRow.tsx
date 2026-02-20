@@ -120,11 +120,22 @@ export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: Trans
                 </Badge>
               )}
 
-              {/* "Paid by" badge for debt transactions */}
+              {/* "Paid by" badge + split badge + sync status for debt transactions */}
               {transaction.debt_metadata && (
-                <Badge colorScheme="orange" fontSize="xs">
-                  Paid by {transaction.debt_metadata.payer_person_name}
-                </Badge>
+                <HStack gap={1} flexWrap="wrap">
+                  <Badge colorScheme="orange" fontSize="xs">
+                    Paid by {transaction.debt_metadata.payer_person_name}
+                  </Badge>
+                  <Badge colorScheme="purple" fontSize="xs">
+                    <HStack gap={1}>
+                      <Icon as={FiUsers} boxSize={3} />
+                      <Text>Split</Text>
+                    </HStack>
+                  </Badge>
+                  {transaction.splits?.map((split) => (
+                    <SplitSyncStatus key={split.id} splitId={split.id} />
+                  ))}
+                </HStack>
               )}
 
               {/* Split indicator with sync status */}

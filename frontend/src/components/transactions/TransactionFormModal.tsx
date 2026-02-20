@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { Field } from '@/components/ui/field';
 import { ErrorAlert } from '@/components/common';
 import { SplitPaymentForm } from './SplitPaymentForm';
+import { DebtExpenseParticipantsForm } from './DebtExpenseParticipantsForm';
 import { CurrencyCode } from '@/types';
 import type {
   Account,
@@ -24,8 +25,10 @@ import type {
   PayerMode,
   Transaction,
   TransactionSplitRequest,
+  ExpenseParticipantInput,
   CreateTransactionRequest,
   CreateDebtTransactionRequest,
+  UpdateExpenseDetailsRequest,
 } from '@/types';
 
 // Validation schema
@@ -86,6 +89,10 @@ interface TransactionFormModalProps {
   people: Person[];
   onSubmit: (data: CreateTransactionRequest) => Promise<void>;
   onSubmitDebt?: (data: CreateDebtTransactionRequest) => Promise<void>;
+  onSubmitDebtMetadata?: (
+    transactionId: string,
+    data: UpdateExpenseDetailsRequest
+  ) => Promise<void>;
 }
 
 export const TransactionFormModal = ({
@@ -97,9 +104,11 @@ export const TransactionFormModal = ({
   people,
   onSubmit,
   onSubmitDebt,
+  onSubmitDebtMetadata,
 }: TransactionFormModalProps) => {
   const [isSplitEnabled, setIsSplitEnabled] = useState(false);
   const [splits, setSplits] = useState<TransactionSplitRequest[]>([]);
+  const [expenseParticipants, setExpenseParticipants] = useState<ExpenseParticipantInput[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -130,6 +139,10 @@ export const TransactionFormModal = ({
   const amount = watch('amount');
   const payerMode = watch('payer_mode') as PayerMode;
 
+  // Whether we're editing a debt transaction with expense participants
+  const isDebtWithParticipants =
+    !!transaction && payerMode === 'other' && expenseParticipants.length > 0;
+
   // Reset form when modal opens/closes or transaction changes
   useEffect(() => {
     if (isOpen) {
@@ -154,6 +167,24 @@ export const TransactionFormModal = ({
           !isDebtTransaction && !!transaction.splits && transaction.splits.length > 0
         );
         setSplits(isDebtTransaction ? [] : transaction.splits || []);
+
+        // Initialize expense participants from debt_metadata
+        if (
+          isDebtTransaction &&
+          transaction.debt_metadata?.expense_participants &&
+          transaction.debt_metadata.expense_participants.length > 0
+        ) {
+          setExpenseParticipants(
+            transaction.debt_metadata.expense_participants.map((p) => ({
+              name: p.name,
+              external_user_id: p.external_user_id ?? undefined,
+              paid_share: p.paid_share,
+              owed_share: p.owed_share,
+            }))
+          );
+        } else {
+          setExpenseParticipants([]);
+        }
       } else {
         reset({
           title: '',
@@ -170,9 +201,40 @@ export const TransactionFormModal = ({
         });
         setIsSplitEnabled(false);
         setSplits([]);
+        setExpenseParticipants([]);
       }
     }
   }, [isOpen, transaction, reset]);
+
+  // Track which participant index is the current user.
+  // Identified at form open by matching owed_share to the transaction amount.
+  const [userParticipantIndex, setUserParticipantIndex] = useState<number>(-1);
+
+  // Identify the user's participant index when expense participants are first loaded
+  useEffect(() => {
+    if (!isDebtWithParticipants || userParticipantIndex >= 0) return;
+    if (!transaction) return;
+
+    const txAmount = Math.abs(parseFloat(transaction.amount));
+    const idx = expenseParticipants.findIndex((p) => {
+      const owed = parseFloat(p.owed_share) || 0;
+      return Math.abs(owed - txAmount) < 0.01;
+    });
+    if (idx >= 0) {
+      setUserParticipantIndex(idx);
+    }
+  }, [expenseParticipants, isDebtWithParticipants, transaction, userParticipantIndex]);
+
+  // Auto-update amount when the user's participant owed_share changes
+  useEffect(() => {
+    if (!isDebtWithParticipants || userParticipantIndex < 0) return;
+    if (userParticipantIndex >= expenseParticipants.length) return;
+
+    const userShare = parseFloat(expenseParticipants[userParticipantIndex].owed_share) || 0;
+    if (userShare > 0) {
+      setValue('amount', userShare.toString());
+    }
+  }, [expenseParticipants, isDebtWithParticipants, userParticipantIndex, setValue]);
 
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
@@ -185,21 +247,34 @@ export const TransactionFormModal = ({
       const amountValue = parseFloat(data.amount);
       const signedAmount = data.transaction_type === 'income' ? amountValue : -amountValue;
 
-      if (data.payer_mode === 'other' && onSubmitDebt) {
-        // "Someone else paid" → create debt transaction
-        const debtData: CreateDebtTransactionRequest = {
-          payer_person_id: data.payer_person_id!,
-          currency: (data.payer_currency as CurrencyCode) || CurrencyCode.EUR,
-          title: data.title,
-          amount: signedAmount,
-          date: formattedDate,
-          category_id:
-            data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
-          notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
-        };
-        await onSubmitDebt(debtData);
+      if (data.payer_mode === 'other') {
+        // Editing a debt transaction with expense participants
+        if (transaction && isDebtWithParticipants && onSubmitDebtMetadata) {
+          const totalCost = expenseParticipants.reduce(
+            (sum, p) => sum + (parseFloat(p.owed_share) || 0),
+            0
+          );
+          const metadataData: UpdateExpenseDetailsRequest = {
+            total_cost: totalCost,
+            expense_participants: expenseParticipants,
+          };
+          await onSubmitDebtMetadata(transaction.id, metadataData);
+        } else if (onSubmitDebt) {
+          // Creating a new debt transaction
+          const debtData: CreateDebtTransactionRequest = {
+            payer_person_id: data.payer_person_id!,
+            currency: (data.payer_currency as CurrencyCode) || CurrencyCode.EUR,
+            title: data.title,
+            amount: signedAmount,
+            date: formattedDate,
+            category_id:
+              data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
+            notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
+          };
+          await onSubmitDebt(debtData);
+        }
       } else {
-        // "I paid" → create normal transaction
+        // "I paid" → create/update normal transaction
         const finalData: CreateTransactionRequest = {
           title: data.title,
           amount: signedAmount,
@@ -245,6 +320,7 @@ export const TransactionFormModal = ({
       setSplits([]);
     } else {
       setValue('payer_person_id', '');
+      setExpenseParticipants([]);
     }
   };
 
@@ -307,8 +383,16 @@ export const TransactionFormModal = ({
                   step="0.01"
                   min="0"
                   placeholder="0.00"
+                  readOnly={isDebtWithParticipants}
                 />
               </Field>
+
+              {/* "Amount auto-calculated" hint for debt with participants */}
+              {isDebtWithParticipants && (
+                <Text fontSize="xs" color="fg.muted" mt={-2}>
+                  Amount is auto-calculated from your share below.
+                </Text>
+              )}
 
               {/* Who Paid? Toggle */}
               {!transaction && onSubmitDebt && (
@@ -380,29 +464,33 @@ export const TransactionFormModal = ({
                     </select>
                   </Field>
 
-                  <Field label="Currency">
-                    <select
-                      {...register('payer_currency')}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        borderRadius: '6px',
-                        border: '1px solid #E2E8F0',
-                      }}
-                    >
-                      {Object.values(CurrencyCode).map((code) => (
-                        <option key={code} value={code}>
-                          {code}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+                  {!isDebtWithParticipants && (
+                    <Field label="Currency">
+                      <select
+                        {...register('payer_currency')}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          borderRadius: '6px',
+                          border: '1px solid #E2E8F0',
+                        }}
+                      >
+                        {Object.values(CurrencyCode).map((code) => (
+                          <option key={code} value={code}>
+                            {code}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
 
-                  <Badge colorScheme="orange" p={2} borderRadius="md">
-                    <Text fontSize="sm">
-                      This won&apos;t affect any account balance. A debt will be tracked.
-                    </Text>
-                  </Badge>
+                  {!isDebtWithParticipants && (
+                    <Badge colorScheme="orange" p={2} borderRadius="md">
+                      <Text fontSize="sm">
+                        This won&apos;t affect any account balance. A debt will be tracked.
+                      </Text>
+                    </Badge>
+                  )}
                 </>
               )}
 
@@ -448,6 +536,21 @@ export const TransactionFormModal = ({
                   rows={3}
                 />
               </Field>
+
+              {/* Expense Participants (for debt transactions with participants) */}
+              {isDebtWithParticipants && (
+                <Box p={4} bg="bg.muted" borderRadius="md">
+                  <Text fontSize="md" fontWeight="semibold" mb={3}>
+                    Expense Participants
+                  </Text>
+                  <DebtExpenseParticipantsForm
+                    participants={expenseParticipants}
+                    onChange={setExpenseParticipants}
+                    userShare={parseFloat(amount) || 0}
+                    userIndex={userParticipantIndex}
+                  />
+                </Box>
+              )}
 
               {/* Split Payment Toggle (only when "I paid") */}
               {payerMode === 'self' && (

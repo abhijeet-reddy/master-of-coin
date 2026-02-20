@@ -84,10 +84,20 @@ export interface TransactionSplitResponse extends TransactionSplitRequest {
 /** Alias for backward compatibility - use TransactionSplitResponse for API data */
 export type TransactionSplit = TransactionSplitResponse;
 
+// Expense participant in a "paid by others" transaction
+export interface ExpenseParticipant {
+  name: string;
+  external_user_id?: string;
+  paid_share: string;
+  owed_share: string;
+}
+
 // Debt metadata for "paid by others" transactions
 export interface DebtMetadata {
   payer_person_id: string;
   payer_person_name: string;
+  total_cost: string;
+  expense_participants?: ExpenseParticipant[] | null;
 }
 
 // Base transaction from API
@@ -157,6 +167,20 @@ export interface CreateDebtTransactionRequest {
   amount: number;
   date: string;
   notes?: string;
+}
+
+// Request for updating expense details on a debt transaction
+export interface UpdateExpenseDetailsRequest {
+  total_cost: number;
+  expense_participants: ExpenseParticipantInput[];
+}
+
+// Input DTO for an expense participant (matches backend ExpenseParticipantInput)
+export interface ExpenseParticipantInput {
+  name: string;
+  external_user_id?: string;
+  paid_share: string;
+  owed_share: string;
 }
 
 export interface UpdateTransactionRequest {

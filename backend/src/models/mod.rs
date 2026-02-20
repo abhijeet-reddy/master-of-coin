@@ -51,7 +51,7 @@ pub use api_key::{CreateApiKeyRequest, UpdateApiKeyRequest};
 pub use budget::{CreateBudgetRequest, UpdateBudgetRequest};
 pub use budget_range::{CreateBudgetRangeRequest, UpdateBudgetRangeRequest};
 pub use category::{CreateCategoryRequest, UpdateCategoryRequest};
-pub use debt_transaction_metadata::CreateDebtTransactionRequest;
+pub use debt_transaction_metadata::{CreateDebtTransactionRequest, UpdateExpenseDetailsRequest};
 pub use exchange_rate::ExchangeRateQuery;
 pub use person::{CreatePersonRequest, UpdatePersonRequest};
 pub use person_split_config::SetPersonSplitConfigRequest;

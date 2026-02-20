@@ -23,12 +23,13 @@ import {
   useDocumentTitle,
 } from '@/hooks';
 import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
-import { createDebtTransaction } from '@/services/transactionService';
+import { createDebtTransaction, updateDebtExpenseDetails } from '@/services/transactionService';
 import { useQueryClient } from '@tanstack/react-query';
 import type {
   EnrichedTransaction,
   CreateTransactionRequest,
   CreateDebtTransactionRequest,
+  UpdateExpenseDetailsRequest,
 } from '@/types';
 
 export const TransactionsPage = () => {
@@ -199,6 +200,14 @@ export const TransactionsPage = () => {
     await queryClient.invalidateQueries({ queryKey: ['transactions'] });
   };
 
+  const handleDebtMetadataSubmit = async (
+    transactionId: string,
+    data: UpdateExpenseDetailsRequest
+  ) => {
+    await updateDebtExpenseDetails(transactionId, data);
+    await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+  };
+
   const handleDeleteTransaction = (transaction: EnrichedTransaction) => {
     setDeleteDialog({ isOpen: true, transaction });
   };
@@ -323,6 +332,7 @@ export const TransactionsPage = () => {
         people={peopleData || []}
         onSubmit={handleSubmit}
         onSubmitDebt={handleDebtSubmit}
+        onSubmitDebtMetadata={handleDebtMetadataSubmit}
       />
 
       {/* Floating Action Button for Mobile */}

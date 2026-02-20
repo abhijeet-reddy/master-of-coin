@@ -171,6 +171,20 @@ pub fn create_router(state: AppState) -> Router {
                 },
             )),
         )
+        .route(
+            "/debt-transactions/:id/metadata",
+            put(handlers::debt_transactions::update_metadata).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Bulk create transactions (general purpose)
         .route(
             "/transactions/bulk-create",
@@ -465,6 +479,11 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/integrations/splitwise/friends",
             get(handlers::splitwise_integration::list_splitwise_friends),
+        )
+        // Sync an external Splitwise expense as a "paid by others" debt transaction
+        .route(
+            "/integrations/splitwise/sync-external-expense",
+            post(handlers::split_sync::sync_external_expense),
         )
         // Provider management routes (no scope check - always accessible)
         .route(

@@ -17,12 +17,15 @@ import {
   useDocumentTitle,
 } from '@/hooks';
 import { useTransactionDetail, useSplitSync } from '@/hooks/usecase';
-import type { CreateTransactionRequest } from '@/types';
+import { updateDebtExpenseDetails } from '@/services/transactionService';
+import { useQueryClient } from '@tanstack/react-query';
+import type { CreateTransactionRequest, UpdateExpenseDetailsRequest } from '@/types';
 
 export const TransactionDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const queryClient = useQueryClient();
 
   const { transaction, people, isLoading, error } = useTransactionDetail(id || '');
 
@@ -63,6 +66,16 @@ export const TransactionDetailPage = () => {
   const handleSubmit = async (data: CreateTransactionRequest) => {
     if (!id) return;
     await updateMutation.mutateAsync({ id, data });
+    onEditClose();
+  };
+
+  const handleDebtMetadataSubmit = async (
+    transactionId: string,
+    data: UpdateExpenseDetailsRequest
+  ) => {
+    await updateDebtExpenseDetails(transactionId, data);
+    await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    await queryClient.invalidateQueries({ queryKey: ['transaction', id] });
     onEditClose();
   };
 
@@ -143,6 +156,7 @@ export const TransactionDetailPage = () => {
           notes: transaction.notes,
           splits: transaction.splits,
           user_share: transaction.user_share,
+          debt_metadata: transaction.debt_metadata,
           created_at: transaction.created_at,
           updated_at: transaction.updated_at,
         }}
@@ -150,6 +164,7 @@ export const TransactionDetailPage = () => {
         categories={categoriesData || []}
         people={peopleData || []}
         onSubmit={handleSubmit}
+        onSubmitDebtMetadata={handleDebtMetadataSubmit}
       />
 
       {/* Delete Confirmation */}

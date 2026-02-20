@@ -94,3 +94,42 @@ pub async fn delete_by_transaction_id(pool: &DbPool, transaction_id: Uuid) -> Re
         ApiError::Internal
     })?
 }
+
+/// Update the expense details (total_cost and expense_participants) on existing debt metadata.
+pub async fn update_expense_details(
+    pool: &DbPool,
+    transaction_id: Uuid,
+    total_cost: bigdecimal::BigDecimal,
+    expense_participants: Option<serde_json::Value>,
+) -> Result<(), ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::update(
+            debt_transaction_metadata::table
+                .filter(debt_transaction_metadata::transaction_id.eq(transaction_id)),
+        )
+        .set((
+            debt_transaction_metadata::total_cost.eq(&total_cost),
+            debt_transaction_metadata::expense_participants.eq(&expense_participants),
+        ))
+        .execute(&mut conn)
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to update expense details for transaction {}: {}",
+                transaction_id,
+                e
+            );
+            ApiError::from(e)
+        })
+        .map(|_| ())
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}

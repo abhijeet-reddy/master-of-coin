@@ -13,11 +13,13 @@ use crate::{
     schema::{debt_transaction_metadata, people, transaction_splits, transactions},
 };
 
-/// A transaction row joined with optional debt metadata (payer info).
+/// A transaction row joined with optional debt metadata (payer info + expense details).
 pub struct TransactionWithDebtInfo {
     pub transaction: Transaction,
     pub payer_person_id: Option<Uuid>,
     pub payer_person_name: Option<String>,
+    pub total_cost: Option<bigdecimal::BigDecimal>,
+    pub expense_participants: Option<serde_json::Value>,
 }
 
 /// Create a new transaction
@@ -58,10 +60,12 @@ pub async fn find_by_id(
     })?;
 
     tokio::task::spawn_blocking(move || {
-        let (transaction, payer_person_id, payer_person_name): (
+        let (transaction, payer_person_id, payer_person_name, total_cost, expense_participants): (
             Transaction,
             Option<Uuid>,
             Option<String>,
+            Option<bigdecimal::BigDecimal>,
+            Option<serde_json::Value>,
         ) = transactions::table
             .left_join(
                 debt_transaction_metadata::table
@@ -77,6 +81,8 @@ pub async fn find_by_id(
                 transactions::all_columns,
                 debt_transaction_metadata::payer_person_id.nullable(),
                 people::name.nullable(),
+                debt_transaction_metadata::total_cost.nullable(),
+                debt_transaction_metadata::expense_participants.nullable(),
             ))
             .first(&mut conn)
             .map_err(|e| {
@@ -88,6 +94,8 @@ pub async fn find_by_id(
             transaction,
             payer_person_id,
             payer_person_name,
+            total_cost,
+            expense_participants,
         })
     })
     .await
@@ -124,6 +132,8 @@ pub async fn list_transactions(
                 transactions::all_columns,
                 debt_transaction_metadata::payer_person_id.nullable(),
                 people::name.nullable(),
+                debt_transaction_metadata::total_cost.nullable(),
+                debt_transaction_metadata::expense_participants.nullable(),
             ))
             .into_boxed();
 
@@ -176,7 +186,13 @@ pub async fn list_transactions(
         let limit = filters.limit.unwrap_or(50).min(100);
         let offset = filters.offset.unwrap_or(0);
 
-        let results: Vec<(Transaction, Option<Uuid>, Option<String>)> = query
+        let results: Vec<(
+            Transaction,
+            Option<Uuid>,
+            Option<String>,
+            Option<bigdecimal::BigDecimal>,
+            Option<serde_json::Value>,
+        )> = query
             .limit(limit)
             .offset(offset)
             .load(&mut conn)
@@ -188,10 +204,20 @@ pub async fn list_transactions(
         Ok(results
             .into_iter()
             .map(
-                |(transaction, payer_person_id, payer_person_name)| TransactionWithDebtInfo {
+                |(
                     transaction,
                     payer_person_id,
                     payer_person_name,
+                    total_cost,
+                    expense_participants,
+                )| {
+                    TransactionWithDebtInfo {
+                        transaction,
+                        payer_person_id,
+                        payer_person_name,
+                        total_cost,
+                        expense_participants,
+                    }
                 },
             )
             .collect())

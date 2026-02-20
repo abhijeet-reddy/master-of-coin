@@ -109,6 +109,8 @@ diesel::table! {
         transaction_id -> Uuid,
         payer_person_id -> Uuid,
         created_at -> Timestamptz,
+        total_cost -> Numeric,
+        expense_participants -> Nullable<Jsonb>,
     }
 }
 

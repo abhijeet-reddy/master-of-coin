@@ -98,3 +98,33 @@ pub async fn delete_config(pool: &DbPool, person_id: Uuid) -> Result<(), ApiErro
 
     Ok(())
 }
+
+/// Find person split config by external user ID and provider ID
+pub async fn find_by_external_user_id(
+    pool: &DbPool,
+    external_user_id: &str,
+    split_provider_id: Uuid,
+) -> Result<Option<PersonSplitConfig>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::InternalWithMessage("Failed to get database connection".to_string())
+    })?;
+
+    let ext_id = external_user_id.to_string();
+    tokio::task::spawn_blocking(move || {
+        person_split_configs::table
+            .filter(person_split_configs::external_user_id.eq(ext_id))
+            .filter(person_split_configs::split_provider_id.eq(split_provider_id))
+            .first::<PersonSplitConfig>(&mut conn)
+            .optional()
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::InternalWithMessage("Task execution error".to_string())
+    })?
+    .map_err(|e| {
+        tracing::error!("Database error: {}", e);
+        ApiError::from(e)
+    })
+}

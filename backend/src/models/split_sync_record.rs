@@ -101,3 +101,10 @@ pub struct ResolveMismatchRequest {
     /// "push" to overwrite provider with local data, "pull" to update local transaction from provider
     pub action: String,
 }
+
+/// Request body for importing an external expense as a "paid by others" transaction
+#[derive(Debug, serde::Deserialize)]
+pub struct SyncExternalExpenseRequest {
+    /// The external expense ID on the split provider (e.g., Splitwise expense ID)
+    pub external_expense_id: String,
+}

@@ -218,6 +218,139 @@ export const TransactionDetailCard = ({
         </Card.Root>
       )}
 
+      {/* Full Expense Breakdown — shown for debt transactions with expense_participants */}
+      {transaction.debt_metadata?.expense_participants &&
+        transaction.debt_metadata.expense_participants.length > 0 && (
+          <Card.Root>
+            <Card.Header>
+              <HStack gap={2} justify="space-between" width="100%">
+                <HStack gap={2}>
+                  <Icon as={FiUsers} color="fg.muted" />
+                  <Text fontSize="lg" fontWeight="semibold" color="fg">
+                    Full Expense
+                  </Text>
+                </HStack>
+                <HStack gap={1}>
+                  {transaction.splits?.map((split) => (
+                    <SplitSyncStatus key={split.id} splitId={split.id} showEmpty />
+                  ))}
+                  {onSync && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      colorScheme="blue"
+                      onClick={onSync}
+                      loading={isSyncing}
+                      aria-label="Sync with Splitwise"
+                    >
+                      <HStack gap={1}>
+                        <FiRefreshCw />
+                        <span>Sync</span>
+                      </HStack>
+                    </Button>
+                  )}
+                </HStack>
+              </HStack>
+            </Card.Header>
+            <Card.Body>
+              <VStack gap={3} align="stretch">
+                {/* Each participant's share */}
+                {transaction.debt_metadata.expense_participants.map((participant, idx) => {
+                  const isPayer = parseFloat(participant.paid_share) > 0;
+                  return (
+                    <HStack
+                      key={idx}
+                      justify="space-between"
+                      p={3}
+                      bg={isPayer ? 'orange.50' : 'gray.50'}
+                      borderRadius="md"
+                    >
+                      <HStack gap={2}>
+                        <Text fontSize="sm" fontWeight={isPayer ? 'semibold' : 'medium'}>
+                          {participant.name || 'Unknown'}
+                        </Text>
+                        {isPayer && (
+                          <Badge colorScheme="orange" fontSize="xs">
+                            Paid
+                          </Badge>
+                        )}
+                      </HStack>
+                      <Text fontSize="sm" fontWeight="bold">
+                        {formatCurrency(
+                          parseFloat(participant.owed_share),
+                          transaction.account.currency
+                        )}
+                      </Text>
+                    </HStack>
+                  );
+                })}
+
+                {/* Total */}
+                <Separator />
+                <HStack justify="space-between" px={3}>
+                  <Text fontSize="sm" fontWeight="semibold">
+                    Total
+                  </Text>
+                  <Text fontSize="sm" fontWeight="bold">
+                    {formatCurrency(
+                      parseFloat(transaction.debt_metadata.total_cost),
+                      transaction.account.currency
+                    )}
+                  </Text>
+                </HStack>
+              </VStack>
+            </Card.Body>
+          </Card.Root>
+        )}
+
+      {/* Debt Sync Card — shown for debt transactions WITHOUT expense_participants */}
+      {transaction.debt_metadata &&
+        !transaction.debt_metadata.expense_participants?.length &&
+        transaction.splits &&
+        transaction.splits.length > 0 && (
+          <Card.Root>
+            <Card.Header>
+              <HStack gap={2} justify="space-between" width="100%">
+                <HStack gap={2}>
+                  <Icon as={FiRefreshCw} color="fg.muted" />
+                  <Text fontSize="lg" fontWeight="semibold" color="fg">
+                    Splitwise Sync
+                  </Text>
+                </HStack>
+                <HStack gap={1}>
+                  {transaction.splits.map((split) => (
+                    <SplitSyncStatus key={split.id} splitId={split.id} showEmpty />
+                  ))}
+                  {onSync && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      colorScheme="blue"
+                      onClick={onSync}
+                      loading={isSyncing}
+                      aria-label="Sync with Splitwise"
+                    >
+                      <HStack gap={1}>
+                        <FiRefreshCw />
+                        <span>Sync</span>
+                      </HStack>
+                    </Button>
+                  )}
+                </HStack>
+              </HStack>
+            </Card.Header>
+            <Card.Body>
+              <Text fontSize="sm" color="fg.muted">
+                Sync this expense with Splitwise. The expense will be created with{' '}
+                <Text as="span" fontWeight="semibold">
+                  {transaction.debt_metadata.payer_person_name}
+                </Text>{' '}
+                as the payer.
+              </Text>
+            </Card.Body>
+          </Card.Root>
+        )}
+
       {/* Splits Card (hidden for debt transactions — split is system-managed) */}
       {transaction.splits && transaction.splits.length > 0 && !transaction.debt_metadata && (
         <Card.Root>

@@ -41,6 +41,21 @@ impl CurrencyCode {
             CurrencyCode::Cad => "CAD",
         }
     }
+
+    /// Parse from a currency code string (case-insensitive).
+    /// Returns `None` if the code is not recognized.
+    pub fn from_code(s: &str) -> Option<Self> {
+        match s.to_uppercase().as_str() {
+            "USD" => Some(CurrencyCode::Usd),
+            "EUR" => Some(CurrencyCode::Eur),
+            "GBP" => Some(CurrencyCode::Gbp),
+            "INR" => Some(CurrencyCode::Inr),
+            "JPY" => Some(CurrencyCode::Jpy),
+            "AUD" => Some(CurrencyCode::Aud),
+            "CAD" => Some(CurrencyCode::Cad),
+            _ => None,
+        }
+    }
 }
 
 impl ToSql<crate::schema::sql_types::CurrencyCode, Pg> for CurrencyCode {

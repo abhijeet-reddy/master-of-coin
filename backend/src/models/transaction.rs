@@ -237,9 +237,24 @@ impl From<crate::repositories::transaction::TransactionWithDebtInfo> for Transac
         let debt_metadata = if let (Some(payer_id), Some(payer_name)) =
             (info.payer_person_id, info.payer_person_name)
         {
+            // Parse expense_participants from JSONB
+            let participants = info.expense_participants.and_then(|json| {
+                serde_json::from_value::<
+                    Vec<super::debt_transaction_metadata::ExpenseParticipantResponse>,
+                >(json)
+                .ok()
+            });
+
+            let total_cost = info
+                .total_cost
+                .map(|tc| format!("{:.2}", tc))
+                .unwrap_or_else(|| "0.00".to_string());
+
             Some(super::debt_transaction_metadata::DebtMetadataResponse {
                 payer_person_id: payer_id,
                 payer_person_name: payer_name,
+                total_cost,
+                expense_participants: participants,
             })
         } else {
             None

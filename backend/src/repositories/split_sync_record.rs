@@ -146,6 +146,26 @@ impl SplitSyncRecordRepository {
         Ok(())
     }
 
+    /// Find sync records by external expense ID
+    ///
+    /// Used for idempotency checks — to see if we've already linked a local
+    /// transaction to a given external expense.
+    pub fn find_by_external_expense_id(
+        pool: &DbPool,
+        external_expense_id: &str,
+    ) -> ApiResult<Vec<SplitSyncRecord>> {
+        let mut conn = pool.get().map_err(|e| {
+            tracing::error!("Failed to get DB connection: {}", e);
+            ApiError::Internal
+        })?;
+
+        let records = split_sync_records::table
+            .filter(split_sync_records::external_expense_id.eq(external_expense_id))
+            .load::<SplitSyncRecord>(&mut conn)?;
+
+        Ok(records)
+    }
+
     /// Delete all sync records for a transaction split
     pub fn delete_by_split_id(pool: &DbPool, transaction_split_id: Uuid) -> ApiResult<usize> {
         let mut conn = pool.get().map_err(|e| {

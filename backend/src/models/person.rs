@@ -1,9 +1,20 @@
 use chrono::{DateTime, Utc};
 use diesel::{Identifiable, Insertable, Queryable, Selectable};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 
 use crate::schema::people;
+
+/// Deserialize a double-Option field: absent → None, null → Some(None), value → Some(Some(v)).
+/// Use with `#[serde(default, deserialize_with = "deserialize_optional_field")]`.
+pub fn deserialize_optional_field<'de, D>(
+    deserializer: D,
+) -> Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = people)]
@@ -40,9 +51,12 @@ pub struct CreatePerson {
 #[derive(Debug, Deserialize)]
 pub struct UpdatePerson {
     pub name: Option<String>,
-    pub email: Option<String>,
-    pub phone: Option<String>,
-    pub notes: Option<String>,
+    /// None = don't change, Some(None) = set to NULL, Some(Some(v)) = set to v
+    pub email: Option<Option<String>>,
+    /// None = don't change, Some(None) = set to NULL, Some(Some(v)) = set to v
+    pub phone: Option<Option<String>>,
+    /// None = don't change, Some(None) = set to NULL, Some(Some(v)) = set to v
+    pub notes: Option<Option<String>>,
 }
 
 // Request DTOs
@@ -58,16 +72,47 @@ pub struct CreatePersonRequest {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Deserialize, validator::Validate)]
+#[derive(Debug, Deserialize)]
 pub struct UpdatePersonRequest {
-    #[validate(length(min = 1, max = 100))]
     pub name: Option<String>,
-    #[validate(email)]
-    pub email: Option<String>,
-    #[validate(length(max = 20))]
-    pub phone: Option<String>,
-    #[validate(length(max = 500))]
-    pub notes: Option<String>,
+    /// Absent → don't change; null → clear; value → set
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
+    pub email: Option<Option<String>>,
+    /// Absent → don't change; null → clear; value → set
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
+    pub phone: Option<Option<String>>,
+    /// Absent → don't change; null → clear; value → set
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
+    pub notes: Option<Option<String>>,
+}
+
+impl UpdatePersonRequest {
+    /// Validate the request fields manually since validator crate
+    /// doesn't support Option<Option<String>> (double-Option pattern).
+    pub fn validate_fields(&self) -> Result<(), String> {
+        if let Some(ref name) = self.name {
+            if name.is_empty() || name.len() > 100 {
+                return Err("Name must be between 1 and 100 characters".to_string());
+            }
+        }
+        if let Some(Some(ref email)) = self.email {
+            // Basic email validation: must contain @
+            if !email.contains('@') || email.len() < 3 {
+                return Err("Invalid email format".to_string());
+            }
+        }
+        if let Some(Some(ref phone)) = self.phone {
+            if phone.len() > 20 {
+                return Err("Phone must be less than 20 characters".to_string());
+            }
+        }
+        if let Some(Some(ref notes)) = self.notes {
+            if notes.len() > 500 {
+                return Err("Notes must be less than 500 characters".to_string());
+            }
+        }
+        Ok(())
+    }
 }
 
 // Response DTOs

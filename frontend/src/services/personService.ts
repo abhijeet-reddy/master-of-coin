@@ -47,15 +47,15 @@ export async function createPerson(data: {
 /**
  * Update an existing person
  */
-export async function updatePerson(
-  id: string,
-  data: Partial<{
-    name: string;
-    email: string;
-    phone: string;
-    notes: string;
-  }>
-): Promise<Person> {
+/** Update data where nullable fields can be set to null to clear them */
+export type UpdatePersonData = {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+};
+
+export async function updatePerson(id: string, data: UpdatePersonData): Promise<Person> {
   const response = await apiClient.put<ApiResponse<Person>>(`/people/${id}`, data);
   return response.data.data;
 }

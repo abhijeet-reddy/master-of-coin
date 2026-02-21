@@ -81,17 +81,16 @@ export const PersonFormModal = ({ isOpen, onClose, person, onSuccess }: PersonFo
   }, [isOpen, person, reset]);
 
   const handleFormSubmit = (data: PersonFormData) => {
-    const personData = {
-      name: data.name,
-      email: data.email && data.email.trim() !== '' ? data.email : undefined,
-      phone: data.phone && data.phone.trim() !== '' ? data.phone : undefined,
-      notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
-    };
-
     if (person) {
-      // Update existing person
+      // Update existing person: send null for cleared fields so backend sets them to NULL
+      const updateData = {
+        name: data.name,
+        email: data.email && data.email.trim() !== '' ? data.email : null,
+        phone: data.phone && data.phone.trim() !== '' ? data.phone : null,
+        notes: data.notes && data.notes.trim() !== '' ? data.notes : null,
+      };
       updateMutation.mutate(
-        { id: person.id, data: personData },
+        { id: person.id, data: updateData },
         {
           onSuccess: () => {
             onSuccess();
@@ -100,8 +99,14 @@ export const PersonFormModal = ({ isOpen, onClose, person, onSuccess }: PersonFo
         }
       );
     } else {
-      // Create new person
-      createMutation.mutate(personData, {
+      // Create new person: omit empty fields entirely
+      const createData = {
+        name: data.name,
+        email: data.email && data.email.trim() !== '' ? data.email : undefined,
+        phone: data.phone && data.phone.trim() !== '' ? data.phone : undefined,
+        notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
+      };
+      createMutation.mutate(createData, {
         onSuccess: () => {
           onSuccess();
           onClose();

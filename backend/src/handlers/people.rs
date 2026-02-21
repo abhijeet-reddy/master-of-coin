@@ -105,9 +105,9 @@ pub async fn update(
     let user_id = auth_context.user_id();
     tracing::info!("Updating person {} for user {}", id, user_id);
 
-    // Validate request
+    // Validate request (manual validation for double-Option fields)
     request
-        .validate()
+        .validate_fields()
         .map_err(|e| ApiError::Validation(format!("Validation failed: {}", e)))?;
 
     // Verify ownership

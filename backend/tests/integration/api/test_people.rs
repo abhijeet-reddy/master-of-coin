@@ -735,6 +735,166 @@ async fn test_update_person_unauthorized() {
     assert_status(&response, 401);
 }
 
+/// Test that updating a person can clear optional fields by sending null.
+///
+/// This is the regression test for GitHub issue #35:
+/// "Update People isn't working — removing email address not reflected"
+///
+/// Verifies that:
+/// - Sending `null` for email clears it (sets to NULL in DB)
+/// - Sending `null` for phone clears it
+/// - Sending `null` for notes clears it
+/// - Other fields remain unchanged
+#[tokio::test]
+async fn test_update_person_clear_optional_fields() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("clearfields_{}", timestamp),
+        &format!("clearfields_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Clear Fields User",
+    )
+    .await;
+
+    // Create a person with all fields populated
+    let create_request = json!({
+        "name": "Full Person",
+        "email": "full@example.com",
+        "phone": "+9876543210",
+        "notes": "Some notes"
+    });
+    let create_response =
+        post_authenticated(&server, "/api/v1/people", &auth.token, &create_request).await;
+    assert_status(&create_response, 201);
+    let person: PersonResponse = extract_json(create_response);
+    assert_eq!(person.email, Some("full@example.com".to_string()));
+    assert_eq!(person.phone, Some("+9876543210".to_string()));
+    assert_eq!(person.notes, Some("Some notes".to_string()));
+
+    // Update: clear email by sending null
+    let update_request = json!({
+        "email": null
+    });
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/people/{}", person.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+    assert_status(&update_response, 200);
+
+    let updated: PersonResponse = extract_json(update_response);
+    assert_eq!(updated.name, "Full Person", "Name should remain unchanged");
+    assert_eq!(updated.email, None, "Email should be cleared (null)");
+    assert_eq!(
+        updated.phone,
+        Some("+9876543210".to_string()),
+        "Phone should remain unchanged"
+    );
+    assert_eq!(
+        updated.notes,
+        Some("Some notes".to_string()),
+        "Notes should remain unchanged"
+    );
+
+    // Update: clear all optional fields at once
+    let update_all_null = json!({
+        "phone": null,
+        "notes": null
+    });
+    let update_response2 = put_authenticated(
+        &server,
+        &format!("/api/v1/people/{}", person.id),
+        &auth.token,
+        &update_all_null,
+    )
+    .await;
+    assert_status(&update_response2, 200);
+
+    let updated2: PersonResponse = extract_json(update_response2);
+    assert_eq!(updated2.name, "Full Person", "Name should remain unchanged");
+    assert_eq!(updated2.email, None, "Email should still be null");
+    assert_eq!(updated2.phone, None, "Phone should be cleared (null)");
+    assert_eq!(updated2.notes, None, "Notes should be cleared (null)");
+
+    // Verify persistence: re-fetch the person
+    let get_response = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get_response, 200);
+    let fetched: PersonResponse = extract_json(get_response);
+    assert_eq!(fetched.email, None, "Email should persist as null");
+    assert_eq!(fetched.phone, None, "Phone should persist as null");
+    assert_eq!(fetched.notes, None, "Notes should persist as null");
+}
+
+/// Test that updating a person can set optional fields back after clearing.
+///
+/// Verifies that:
+/// - Fields can be set to null then back to a value
+/// - Round-trip works correctly
+#[tokio::test]
+async fn test_update_person_set_after_clear() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("setafterclear_{}", timestamp),
+        &format!("setafterclear_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Set After Clear User",
+    )
+    .await;
+
+    // Create person with email
+    let create_request = json!({
+        "name": "Roundtrip Person",
+        "email": "original@example.com"
+    });
+    let create_response =
+        post_authenticated(&server, "/api/v1/people", &auth.token, &create_request).await;
+    assert_status(&create_response, 201);
+    let person: PersonResponse = extract_json(create_response);
+
+    // Clear email
+    let clear_request = json!({ "email": null });
+    let clear_response = put_authenticated(
+        &server,
+        &format!("/api/v1/people/{}", person.id),
+        &auth.token,
+        &clear_request,
+    )
+    .await;
+    assert_status(&clear_response, 200);
+    let cleared: PersonResponse = extract_json(clear_response);
+    assert_eq!(cleared.email, None, "Email should be cleared");
+
+    // Set email to a new value
+    let set_request = json!({ "email": "new@example.com" });
+    let set_response = put_authenticated(
+        &server,
+        &format!("/api/v1/people/{}", person.id),
+        &auth.token,
+        &set_request,
+    )
+    .await;
+    assert_status(&set_response, 200);
+    let restored: PersonResponse = extract_json(set_response);
+    assert_eq!(
+        restored.email,
+        Some("new@example.com".to_string()),
+        "Email should be set to new value"
+    );
+}
+
 // ============================================================================
 // Delete Person Tests
 // ============================================================================

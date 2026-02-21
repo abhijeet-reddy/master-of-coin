@@ -80,6 +80,11 @@ pub async fn list_by_user(pool: &DbPool, user_id: Uuid) -> Result<Vec<Person>, A
 }
 
 /// Update person
+///
+/// Uses double-Option pattern for nullable fields:
+/// - `None` → field absent, don't change
+/// - `Some(None)` → field sent as null, set to NULL
+/// - `Some(Some(val))` → field sent with value, set to val
 pub async fn update_person(
     pool: &DbPool,
     person_id: Uuid,
@@ -101,27 +106,28 @@ pub async fn update_person(
                     ApiError::from(e)
                 })?;
         }
-        if let Some(email) = updates.email {
+        // Double-Option: Some(None) → set NULL, Some(Some(v)) → set v, None → skip
+        if let Some(email_value) = updates.email {
             diesel::update(people::table.find(person_id))
-                .set(people::email.eq(email))
+                .set(people::email.eq(email_value))
                 .execute(&mut conn)
                 .map_err(|e| {
                     tracing::error!("Failed to update person email {}: {}", person_id, e);
                     ApiError::from(e)
                 })?;
         }
-        if let Some(phone) = updates.phone {
+        if let Some(phone_value) = updates.phone {
             diesel::update(people::table.find(person_id))
-                .set(people::phone.eq(phone))
+                .set(people::phone.eq(phone_value))
                 .execute(&mut conn)
                 .map_err(|e| {
                     tracing::error!("Failed to update person phone {}: {}", person_id, e);
                     ApiError::from(e)
                 })?;
         }
-        if let Some(notes) = updates.notes {
+        if let Some(notes_value) = updates.notes {
             diesel::update(people::table.find(person_id))
-                .set(people::notes.eq(notes))
+                .set(people::notes.eq(notes_value))
                 .execute(&mut conn)
                 .map_err(|e| {
                     tracing::error!("Failed to update person notes {}: {}", person_id, e);

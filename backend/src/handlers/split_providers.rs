@@ -101,8 +101,9 @@ pub async fn get_provider_friends(
         .and_then(|v| v.as_str())
         .ok_or_else(|| ApiError::InternalWithMessage("Invalid credentials format".to_string()))?;
 
-    let credentials = utils::decrypt_credentials(encrypted)
-        .map_err(|e| ApiError::InternalWithMessage(format!("Failed to decrypt credentials: {}", e)))?;
+    let credentials = utils::decrypt_credentials(encrypted).map_err(|e| {
+        ApiError::InternalWithMessage(format!("Failed to decrypt credentials: {}", e))
+    })?;
 
     // Get access token
     let access_token = credentials

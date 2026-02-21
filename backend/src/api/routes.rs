@@ -228,6 +228,49 @@ pub fn create_router(state: AppState) -> Router {
                 },
             )),
         )
+        // Bulk sync - async job-based
+        .route(
+            "/sync",
+            post(handlers::bulk_sync::start_bulk_sync).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/sync/:job_id",
+            get(handlers::bulk_sync::get_bulk_sync).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/sync/:job_id/retry",
+            post(handlers::bulk_sync::retry_bulk_sync).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Bulk create transactions (general purpose)
         .route(
             "/transactions/bulk-create",

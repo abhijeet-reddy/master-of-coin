@@ -23,10 +23,12 @@ use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
 
 use master_of_coin_backend::DbPool;
+use master_of_coin_backend::models::bulk_sync::BulkSyncRequest;
 use master_of_coin_backend::models::drift_detection::DriftDetectionRequest;
 use master_of_coin_backend::repositories::background_job::BackgroundJobRepository;
-use master_of_coin_backend::services::drift_detection_service;
 use master_of_coin_backend::services::split_provider::{SplitProvider, SplitwiseProvider};
+use master_of_coin_backend::services::split_sync_service::SplitSyncService;
+use master_of_coin_backend::services::{bulk_sync_service, drift_detection_service};
 use master_of_coin_backend::types::JobType;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -78,7 +80,11 @@ async fn main() {
     let providers = init_providers();
     tracing::info!("Initialized {} split provider(s)", providers.len());
 
-    // 6. Read poll interval from environment
+    // 6. Initialize SplitSyncService for bulk sync jobs
+    let sync_service = SplitSyncService::new(pool.clone());
+    tracing::info!("SplitSyncService initialized for bulk sync jobs");
+
+    // 7. Read poll interval from environment
     let poll_interval_secs: u64 = std::env::var("WORKER_POLL_INTERVAL_SECS")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -86,14 +92,14 @@ async fn main() {
 
     tracing::info!("Poll interval: {} seconds", poll_interval_secs);
 
-    // 7. Startup recovery: mark stale RUNNING jobs as FAILED
+    // 8. Startup recovery: mark stale RUNNING jobs as FAILED
     startup_recovery(&pool);
 
-    // 8. Startup cleanup: delete terminal jobs older than 1 year
+    // 9. Startup cleanup: delete terminal jobs older than 1 year
     run_cleanup(&pool);
 
-    // 9. Start the poll loop
-    run_poll_loop(pool, providers, poll_interval_secs).await;
+    // 10. Start the poll loop
+    run_poll_loop(pool, providers, sync_service, poll_interval_secs).await;
 }
 
 /// Initialize split providers — same pattern as `SplitSyncService::new()`
@@ -176,6 +182,7 @@ fn run_cleanup(pool: &DbPool) {
 async fn run_poll_loop(
     pool: DbPool,
     providers: HashMap<String, Arc<dyn SplitProvider>>,
+    sync_service: SplitSyncService,
     poll_interval_secs: u64,
 ) {
     let providers = Arc::new(providers);
@@ -238,12 +245,14 @@ async fn run_poll_loop(
                 // Spawn the job execution in a separate task for concurrency
                 let pool_clone = pool.clone();
                 let providers_clone = Arc::clone(&providers);
+                let sync_service_clone = sync_service.clone();
                 let running_types_clone = Arc::clone(&running_types);
 
                 tokio::spawn(async move {
                     execute_job(
                         &pool_clone,
                         &providers_clone,
+                        &sync_service_clone,
                         job_id,
                         job_type,
                         job.user_id,
@@ -274,6 +283,7 @@ async fn run_poll_loop(
 async fn execute_job(
     pool: &DbPool,
     providers: &HashMap<String, Arc<dyn SplitProvider>>,
+    sync_service: &SplitSyncService,
     job_id: uuid::Uuid,
     job_type: JobType,
     user_id: uuid::Uuid,
@@ -282,7 +292,8 @@ async fn execute_job(
     tracing::info!("Executing job {} (type: {:?})", job_id, job_type);
 
     let result = match job_type {
-        JobType::DriftDetection => execute_drift_detection(pool, providers, user_id, input).await, // Future job types dispatched here
+        JobType::DriftDetection => execute_drift_detection(pool, providers, user_id, input).await,
+        JobType::BulkSync => execute_bulk_sync_job(sync_service, pool, user_id, input).await,
     };
 
     match result {
@@ -355,4 +366,44 @@ async fn execute_drift_detection(
         .map_err(|e| format!("Failed to serialize drift report: {}", e))?;
 
     Ok(result_json)
+}
+
+/// Execute a bulk sync job.
+///
+/// Parses the input as `BulkSyncRequest`, calls `execute_bulk_sync()`,
+/// and returns the serialized `BulkSyncReport`. Unlike drift detection which
+/// can fail (returns `ApiResult`), `execute_bulk_sync` always returns a
+/// `BulkSyncReport` — individual item failures are captured in the report.
+async fn execute_bulk_sync_job(
+    sync_service: &SplitSyncService,
+    pool: &DbPool,
+    user_id: uuid::Uuid,
+    input: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    // Parse input
+    let input_json = input.ok_or_else(|| "Missing input for bulk sync job".to_string())?;
+
+    let request: BulkSyncRequest = serde_json::from_value(input_json)
+        .map_err(|e| format!("Failed to parse bulk sync input: {}", e))?;
+
+    tracing::info!(
+        "Running bulk sync for user {} with {} item(s)",
+        user_id,
+        request.items.len()
+    );
+
+    // Call the bulk sync service — always returns a report (never errors)
+    let report =
+        bulk_sync_service::execute_bulk_sync(sync_service, pool, user_id, request.items).await;
+
+    tracing::info!(
+        "Bulk sync completed: {} succeeded, {} failed out of {} total",
+        report.summary.succeeded,
+        report.summary.failed,
+        report.summary.total
+    );
+
+    // Serialize the report to JSON
+    serde_json::to_value(&report)
+        .map_err(|e| format!("Failed to serialize bulk sync report: {}", e))
 }

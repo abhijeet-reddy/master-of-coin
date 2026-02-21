@@ -19,6 +19,7 @@ mod test_accounts;
 mod test_api_keys;
 mod test_auth;
 mod test_budgets;
+mod test_bulk_sync;
 mod test_categories;
 mod test_csv_import;
 mod test_currency_conversion;

@@ -3,6 +3,7 @@ pub mod api_key;
 pub mod background_job;
 pub mod budget;
 pub mod budget_range;
+pub mod bulk_sync;
 pub mod bulk_transaction;
 pub mod category;
 pub mod debt_transaction_metadata;
@@ -100,4 +101,10 @@ pub use drift_detection::{
     DriftDetectionJobResponse, DriftDetectionRequest, DriftReport, DriftSummary, DriftedItem,
     ExternalSplitInfo, LocalSplitInfo, LocalSplitRow, LocalTransactionGroup, MissingOnExternal,
     MissingOnLocal, StartJobResponse, UnmappedUser,
+};
+
+// Re-export bulk sync models
+pub use bulk_sync::{
+    BulkSyncJobResponse, BulkSyncReport, BulkSyncRequest, BulkSyncSummary, StartSyncJobResponse,
+    SyncAction, SyncItem, SyncItemResult,
 };

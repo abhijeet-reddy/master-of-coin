@@ -75,11 +75,11 @@ COPY backend/src ./src
 COPY backend/migrations ./migrations
 COPY backend/Cargo.toml backend/Cargo.lock ./
 
-# Build the actual application
-RUN cargo build --release --locked
+# Build both binaries (API server + worker)
+RUN cargo build --release --locked --bin master-of-coin-backend --bin worker
 
 # Strip debug symbols to reduce binary size
-RUN strip /app/target/release/master-of-coin-backend
+RUN strip /app/target/release/master-of-coin-backend /app/target/release/worker
 
 # ============================================================================
 # Stage 5: Runtime - Minimal production image
@@ -98,8 +98,9 @@ RUN apt-get update && apt-get install -y \
     && groupadd -g 1000 appuser \
     && useradd -m -u 1000 -g appuser appuser
 
-# Copy compiled binary from rust-builder stage
+# Copy compiled binaries from rust-builder stage
 COPY --from=rust-builder /app/target/release/master-of-coin-backend /app/backend
+COPY --from=rust-builder /app/target/release/worker /app/worker
 
 # Copy frontend static files from frontend-builder stage
 COPY --from=frontend-builder /frontend/dist /app/static

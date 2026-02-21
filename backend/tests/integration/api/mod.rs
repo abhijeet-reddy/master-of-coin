@@ -25,6 +25,7 @@ mod test_currency_conversion;
 mod test_dashboard;
 mod test_debt_accounts;
 mod test_debt_transactions;
+mod test_drift_detection;
 mod test_duplicate_detection;
 mod test_exchange_rates;
 mod test_import_api;

@@ -185,6 +185,49 @@ pub fn create_router(state: AppState) -> Router {
                 },
             )),
         )
+        // Drift detection - async job-based
+        .route(
+            "/drift-detection",
+            post(handlers::drift_detection::start_drift_detection).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/drift-detection/:job_id",
+            get(handlers::drift_detection::get_drift_detection).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/drift-detection/:job_id/retry",
+            post(handlers::drift_detection::retry_drift_detection).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Bulk create transactions (general purpose)
         .route(
             "/transactions/bulk-create",

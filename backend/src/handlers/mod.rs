@@ -6,6 +6,7 @@ pub mod budgets;
 pub mod categories;
 pub mod dashboard;
 pub mod debt_transactions;
+pub mod drift_detection;
 pub mod exchange_rates;
 pub mod import;
 pub mod people;

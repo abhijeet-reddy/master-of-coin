@@ -3,6 +3,18 @@ name = "master-of-coin-backend"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "master_of_coin_backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "master-of-coin-backend"
+path = "src/main.rs"
+
+[[bin]]
+name = "worker"
+path = "src/bin/worker.rs"
+
 [[test]]
 name = "integration_database"
 path = "tests/integration/database/mod.rs"

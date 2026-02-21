@@ -1,6 +1,7 @@
 // Repository modules for database operations
 pub mod account;
 pub mod api_key;
+pub mod background_job;
 pub mod budget;
 pub mod category;
 pub mod debt_transaction_metadata;

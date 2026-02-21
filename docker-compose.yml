@@ -28,6 +28,30 @@ services:
     networks:
       - app-network
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: master-of-coin-worker
+    command: ["/app/worker"]
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-master_of_coin}
+      - JWT_SECRET=${JWT_SECRET:-change_this_to_a_secure_secret_min_32_chars}
+      - RUST_LOG=${RUST_LOG:-info}
+      - WORKER_POLL_INTERVAL_SECS=30
+      # Splitwise OAuth2 Configuration
+      - SPLITWISE_CLIENT_ID=${SPLITWISE_CLIENT_ID}
+      - SPLITWISE_CLIENT_SECRET=${SPLITWISE_CLIENT_SECRET}
+      - SPLITWISE_REDIRECT_URI=${SPLITWISE_REDIRECT_URI}
+      # Encryption key for provider credentials
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
   postgres:
     image: postgres:16-alpine
     container_name: master-of-coin-db

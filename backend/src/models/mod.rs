@@ -1,10 +1,12 @@
 pub mod account;
 pub mod api_key;
+pub mod background_job;
 pub mod budget;
 pub mod budget_range;
 pub mod bulk_transaction;
 pub mod category;
 pub mod debt_transaction_metadata;
+pub mod drift_detection;
 pub mod exchange_rate;
 pub mod import;
 pub mod parser_error;
@@ -88,3 +90,14 @@ pub use import::{DuplicateMatch, ImportSummary, ParseData, ParseResponse, Parsed
 
 // Re-export types from types module for convenience
 pub use crate::types::{AccountType, ApiKeyStatus, BudgetPeriod, ConfidenceLevel, CurrencyCode};
+pub use crate::types::{JobStatus, JobType};
+
+// Re-export background job models
+pub use background_job::{BackgroundJob, NewBackgroundJob};
+
+// Re-export drift detection models
+pub use drift_detection::{
+    DriftDetectionJobResponse, DriftDetectionRequest, DriftReport, DriftSummary, DriftedItem,
+    ExternalSplitInfo, LocalSplitInfo, LocalSplitRow, LocalTransactionGroup, MissingOnExternal,
+    MissingOnLocal, StartJobResponse, UnmappedUser,
+};

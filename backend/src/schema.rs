@@ -16,6 +16,14 @@ pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "currency_code"))]
     pub struct CurrencyCode;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "job_status"))]
+    pub struct JobStatus;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "job_type"))]
+    pub struct JobType;
 }
 
 diesel::table! {
@@ -56,6 +64,26 @@ diesel::table! {
         last_used_at -> Nullable<Timestamptz>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::JobType;
+    use super::sql_types::JobStatus;
+
+    background_jobs (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        job_type -> JobType,
+        status -> JobStatus,
+        previous_job_id -> Nullable<Uuid>,
+        input -> Nullable<Jsonb>,
+        result -> Nullable<Jsonb>,
+        error -> Nullable<Text>,
+        created_at -> Timestamptz,
+        started_at -> Nullable<Timestamptz>,
+        completed_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -217,6 +245,7 @@ diesel::table! {
 
 diesel::joinable!(accounts -> users (user_id));
 diesel::joinable!(api_keys -> users (user_id));
+diesel::joinable!(background_jobs -> users (user_id));
 diesel::joinable!(budget_ranges -> budgets (budget_id));
 diesel::joinable!(budgets -> users (user_id));
 diesel::joinable!(categories -> users (user_id));
@@ -237,6 +266,7 @@ diesel::joinable!(transactions -> users (user_id));
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
     api_keys,
+    background_jobs,
     budget_ranges,
     budgets,
     categories,

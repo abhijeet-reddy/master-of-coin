@@ -14,8 +14,10 @@ mod common;
 
 mod test_api_key_crud;
 mod test_async_bridge;
+mod test_background_jobs;
 mod test_connection;
 mod test_custom_types;
+mod test_drift_classify;
 mod test_encryption;
 mod test_relationships;
 mod test_transactions;

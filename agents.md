@@ -79,6 +79,37 @@ This file serves as an index and navigation guide for AI agents working on the M
 
 ---
 
+### [`.agents/rules/feature-rules.md`](.agents/rules/feature-rules.md)
+
+**When to read:** Starting a new feature, resuming work on an existing feature, or checking feature status
+
+**Read this when you're:**
+
+- Starting work on a new feature (from a GitHub issue or user request)
+- Creating requirements, design, or implementation docs for a feature
+- Resuming work on a partially-implemented feature
+- Checking what phase a feature is in or what tasks remain
+- Setting up the `.agents/features/<feature-name>/` folder structure
+
+**Don't read if:** You're only making a quick one-line fix or documentation-only change that doesn't need tracked requirements/design/implementation.
+
+---
+
+## 📁 Feature Documentation
+
+All feature documentation lives in `.agents/features/`. Each feature gets its own folder with three standardized files:
+
+```
+.agents/features/<feature-name>/
+├── requirements.md      # What to build and why
+├── design.md            # How to build it technically
+└── implementation.md    # Detailed task list for execution
+```
+
+See [`.agents/rules/feature-rules.md`](.agents/rules/feature-rules.md) for the full workflow, templates, and conventions.
+
+---
+
 ## 📋 Testing Guidelines
 
 ### [`.agents/testing/testing-front-end.md`](.agents/testing/testing-front-end.md)
@@ -122,6 +153,12 @@ This file serves as an index and navigation guide for AI agents working on the M
 ## 🔄 Workflow Decision Tree
 
 ```
+Are you starting or working on a feature/task?
+├─ Yes → Read .agents/rules/feature-rules.md
+│        └─ Feature folder exists in .agents/features/?
+│           ├─ No → Create .agents/features/<name>/ with 3 files (requirements, design, implementation)
+│           └─ Yes → Resume from where implementation.md left off
+│
 Are you writing code?
 ├─ Yes → What language?
 │  ├─ React/TypeScript → Read .agents/rules/react-rules.md

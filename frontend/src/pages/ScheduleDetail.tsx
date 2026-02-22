@@ -1,12 +1,23 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Badge, Box, Button, Card, HStack, SimpleGrid, Text, VStack } from '@chakra-ui/react';
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  DataList,
+  HStack,
+  SimpleGrid,
+  Text,
+  VStack,
+} from '@chakra-ui/react';
 import { MdEdit } from 'react-icons/md';
 import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
 import { ScheduleFormModal } from '@/components/schedules';
 import { JobHistoryList } from '@/components/jobs';
 import { useSchedule } from '@/hooks/api/useSchedules';
 import { useDocumentTitle } from '@/hooks/effects';
+import { formatScheduleParameters } from '@/utils/formatters';
 
 /** Format an ISO date string to a human-readable date/time */
 const formatDateTime = (iso: string): string => {
@@ -132,9 +143,14 @@ export const ScheduleDetailPage = () => {
                   <Text fontSize="xs" color="fg.muted" fontWeight="medium">
                     Parameters
                   </Text>
-                  <Text fontSize="sm" fontFamily="mono">
-                    {JSON.stringify(schedule.parameters, null, 2)}
-                  </Text>
+                  <DataList.Root size="sm">
+                    {formatScheduleParameters(schedule.job_type, schedule.parameters).map((p) => (
+                      <DataList.Item key={p.label}>
+                        <DataList.ItemLabel>{p.label}</DataList.ItemLabel>
+                        <DataList.ItemValue>{p.value}</DataList.ItemValue>
+                      </DataList.Item>
+                    ))}
+                  </DataList.Root>
                 </VStack>
               )}
 

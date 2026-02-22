@@ -14,6 +14,7 @@ import { formatDate } from '@/utils/formatters/date';
 import { SyncAction } from '@/types';
 import type { DriftedItem, DriftedSelection } from '@/types';
 import { compareTotals, getChangedSplitDiffs } from '@/utils/driftHelpers';
+import type { SplitDiff } from '@/utils/driftHelpers';
 
 interface DriftedStepViewProps {
   items: DriftedItem[];
@@ -47,7 +48,7 @@ export const DriftedStepView = ({
 
   const handleSelectAll = () => {
     if (isAllSelected) return;
-    onSelectAll(allEntries, SyncAction.PUSH);
+    onSelectAll(allEntries, SyncAction.PULL);
   };
 
   if (items.length === 0) {
@@ -80,7 +81,7 @@ export const DriftedStepView = ({
 
       {items.map((item) => {
         const isSelected = selected.has(item.transaction_id);
-        const currentAction = selected.get(item.transaction_id)?.action ?? SyncAction.PUSH;
+        const currentAction = selected.get(item.transaction_id)?.action ?? SyncAction.PULL;
 
         return (
           <Card.Root key={item.transaction_id}>
@@ -108,6 +109,11 @@ export const DriftedStepView = ({
                   {(() => {
                     const totals = compareTotals(item);
                     const diffs = getChangedSplitDiffs(item);
+                    const isPull = currentAction === SyncAction.PULL;
+                    // Push: local overwrites external → show external (old) → local (new)
+                    // Pull: external overwrites local → show local (old) → external (new)
+                    const fromTotal = isPull ? totals.localTotal : totals.externalTotal;
+                    const toTotal = isPull ? totals.externalTotal : totals.localTotal;
                     return (
                       <>
                         <HStack gap={4} fontSize="sm">
@@ -115,11 +121,11 @@ export const DriftedStepView = ({
                             <Text>
                               Total:{' '}
                               <Text as="span" textDecoration="line-through" color="fg.muted">
-                                {totals.localTotal}
+                                {fromTotal}
                               </Text>
                               {' → '}
                               <Text as="span" fontWeight="medium">
-                                {totals.externalTotal}
+                                {toTotal}
                               </Text>
                             </Text>
                           ) : (
@@ -131,11 +137,15 @@ export const DriftedStepView = ({
                             <Text fontWeight="medium" color="fg.subtle">
                               Splits differ:
                             </Text>
-                            {diffs.map((d) => (
-                              <Text key={d.name} pl={2}>
-                                {d.name}: {d.localOwed ?? '—'} → {d.externalOwed ?? '—'}
-                              </Text>
-                            ))}
+                            {diffs.map((d: SplitDiff) => {
+                              const from = isPull ? (d.localOwed ?? '—') : (d.externalOwed ?? '—');
+                              const to = isPull ? (d.externalOwed ?? '—') : (d.localOwed ?? '—');
+                              return (
+                                <Text key={d.name} pl={2}>
+                                  {d.name}: {from} → {to}
+                                </Text>
+                              );
+                            })}
                           </VStack>
                         )}
                       </>
@@ -154,8 +164,8 @@ export const DriftedStepView = ({
                     <SegmentGroup.Indicator />
                     <SegmentGroup.Items
                       items={[
-                        { label: 'Push', value: SyncAction.PUSH },
                         { label: 'Pull', value: SyncAction.PULL },
+                        { label: 'Push', value: SyncAction.PUSH },
                       ]}
                     />
                   </SegmentGroup.Root>

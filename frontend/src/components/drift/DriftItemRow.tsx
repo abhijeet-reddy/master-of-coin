@@ -15,7 +15,7 @@ interface MissingOnLocalRowProps {
 }
 
 export const DriftedItemRow = ({ item }: DriftedItemRowProps) => (
-  <Card.Root>
+  <Card.Root variant="elevated">
     <Card.Body py={3} px={4}>
       <VStack gap={2} alignItems="stretch">
         <HStack justifyContent="space-between">
@@ -62,7 +62,7 @@ export const DriftedItemRow = ({ item }: DriftedItemRowProps) => (
 );
 
 export const MissingOnExternalRow = ({ item }: MissingOnExternalRowProps) => (
-  <Card.Root>
+  <Card.Root variant="elevated">
     <Card.Body py={3} px={4}>
       <VStack gap={2} alignItems="stretch">
         <HStack justifyContent="space-between">
@@ -90,7 +90,7 @@ export const MissingOnExternalRow = ({ item }: MissingOnExternalRowProps) => (
 );
 
 export const MissingOnLocalRow = ({ item }: MissingOnLocalRowProps) => (
-  <Card.Root>
+  <Card.Root variant="elevated">
     <Card.Body py={3} px={4}>
       <VStack gap={2} alignItems="stretch">
         <HStack justifyContent="space-between">

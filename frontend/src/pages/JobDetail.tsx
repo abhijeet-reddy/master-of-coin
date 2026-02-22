@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Box, Button, HStack, Text, VStack } from '@chakra-ui/react';
-import { MdArrowBack } from 'react-icons/md';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Box, Button, HStack, VStack } from '@chakra-ui/react';
 import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
 import { JobProgressCard, JobStatusBadge } from '@/components/jobs';
 import { DriftReportView } from '@/components/drift';
@@ -147,15 +146,6 @@ export const JobDetailPage = () => {
           </HStack>
         }
       />
-
-      <HStack mb={4}>
-        <RouterLink to="/jobs" style={{ textDecoration: 'none' }}>
-          <Button variant="ghost" size="sm">
-            <MdArrowBack />
-            <Text ml={1}>Back to Jobs</Text>
-          </Button>
-        </RouterLink>
-      </HStack>
 
       {!isValidType ? (
         <ErrorAlert

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, HStack, SimpleGrid, Stat, Table, VStack } from '@chakra-ui/react';
+import { Badge, Button, Card, HStack, SimpleGrid, Stat, Table, VStack } from '@chakra-ui/react';
 import { SyncItemResultRow } from './SyncItemResultRow';
 import { useRetryBulkSync } from '@/hooks/api/useBulkSync';
 import type { BulkSyncReport } from '@/types';
@@ -33,38 +33,54 @@ export const BulkSyncReportView = ({ report, jobId }: BulkSyncReportViewProps) =
     <VStack gap={6} alignItems="stretch">
       {/* Summary stats */}
       <SimpleGrid columns={3} gap={4}>
-        <Stat.Root borderWidth="1px" p="4" rounded="md">
-          <Stat.Label>Total</Stat.Label>
-          <Stat.ValueText>{summary.total}</Stat.ValueText>
-        </Stat.Root>
-        <Stat.Root borderWidth="1px" p="4" rounded="md">
-          <Stat.Label>Succeeded</Stat.Label>
-          <Stat.ValueText color="green.500">{summary.succeeded}</Stat.ValueText>
-        </Stat.Root>
-        <Stat.Root borderWidth="1px" p="4" rounded="md">
-          <Stat.Label>Failed</Stat.Label>
-          <Stat.ValueText color={hasFailedItems ? 'red.500' : 'fg.muted'}>
-            {summary.failed}
-          </Stat.ValueText>
-        </Stat.Root>
+        <Card.Root variant="elevated">
+          <Card.Body p="4">
+            <Stat.Root>
+              <Stat.Label>Total</Stat.Label>
+              <Stat.ValueText>{summary.total}</Stat.ValueText>
+            </Stat.Root>
+          </Card.Body>
+        </Card.Root>
+        <Card.Root variant="elevated">
+          <Card.Body p="4">
+            <Stat.Root>
+              <Stat.Label>Succeeded</Stat.Label>
+              <Stat.ValueText color="green.500">{summary.succeeded}</Stat.ValueText>
+            </Stat.Root>
+          </Card.Body>
+        </Card.Root>
+        <Card.Root variant="elevated">
+          <Card.Body p="4">
+            <Stat.Root>
+              <Stat.Label>Failed</Stat.Label>
+              <Stat.ValueText color={hasFailedItems ? 'red.500' : 'fg.muted'}>
+                {summary.failed}
+              </Stat.ValueText>
+            </Stat.Root>
+          </Card.Body>
+        </Card.Root>
       </SimpleGrid>
 
       {/* Per-item results table */}
-      <Table.Root size="sm" variant="line">
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeader>Action</Table.ColumnHeader>
-            <Table.ColumnHeader>Item</Table.ColumnHeader>
-            <Table.ColumnHeader>Detail</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">Status</Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {items.map((item, idx) => (
-            <SyncItemResultRow key={idx} item={item} />
-          ))}
-        </Table.Body>
-      </Table.Root>
+      <Card.Root variant="elevated">
+        <Card.Body p={0}>
+          <Table.Root size="sm" variant="line">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader>Action</Table.ColumnHeader>
+                <Table.ColumnHeader>Item</Table.ColumnHeader>
+                <Table.ColumnHeader>Detail</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end">Status</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {items.map((item, idx) => (
+                <SyncItemResultRow key={idx} item={item} />
+              ))}
+            </Table.Body>
+          </Table.Root>
+        </Card.Body>
+      </Card.Root>
 
       {/* Retry button */}
       {hasFailedItems && (

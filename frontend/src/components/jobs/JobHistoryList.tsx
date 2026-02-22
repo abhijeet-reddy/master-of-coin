@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, Text } from '@chakra-ui/react';
+import { Card, Table, Text } from '@chakra-ui/react';
 import { JobStatusBadge } from './JobStatusBadge';
 import { JobTypeBadge } from './JobTypeBadge';
 import { EmptyState } from '@/components/common';
@@ -44,44 +44,48 @@ export const JobHistoryList = ({ jobs }: JobHistoryListProps) => {
   }
 
   return (
-    <Table.Root size="sm" interactive>
-      <Table.Header>
-        <Table.Row>
-          <Table.ColumnHeader>Type</Table.ColumnHeader>
-          <Table.ColumnHeader>Status</Table.ColumnHeader>
-          <Table.ColumnHeader>Created</Table.ColumnHeader>
-          <Table.ColumnHeader>Summary</Table.ColumnHeader>
-        </Table.Row>
-      </Table.Header>
-      <Table.Body>
-        {jobs.map((job) => {
-          const routeType = jobTypeToRoute[job.job_type] ?? 'drift-detection';
-          return (
-            <Table.Row
-              key={job.id}
-              cursor="pointer"
-              onClick={() => void navigate(`/jobs/${routeType}/${job.id}`)}
-            >
-              <Table.Cell>
-                <JobTypeBadge jobType={job.job_type} />
-              </Table.Cell>
-              <Table.Cell>
-                <JobStatusBadge status={job.status} />
-              </Table.Cell>
-              <Table.Cell>
-                <Text fontSize="sm" color="fg.muted">
-                  {formatRelativeTime(job.created_at)}
-                </Text>
-              </Table.Cell>
-              <Table.Cell>
-                <Text fontSize="sm" color="fg.muted" truncate>
-                  {extractSummaryText(job)}
-                </Text>
-              </Table.Cell>
+    <Card.Root variant="elevated">
+      <Card.Body p={0}>
+        <Table.Root size="sm" interactive>
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeader>Type</Table.ColumnHeader>
+              <Table.ColumnHeader>Status</Table.ColumnHeader>
+              <Table.ColumnHeader>Created</Table.ColumnHeader>
+              <Table.ColumnHeader>Summary</Table.ColumnHeader>
             </Table.Row>
-          );
-        })}
-      </Table.Body>
-    </Table.Root>
+          </Table.Header>
+          <Table.Body>
+            {jobs.map((job) => {
+              const routeType = jobTypeToRoute[job.job_type] ?? 'drift-detection';
+              return (
+                <Table.Row
+                  key={job.id}
+                  cursor="pointer"
+                  onClick={() => void navigate(`/jobs/${routeType}/${job.id}`)}
+                >
+                  <Table.Cell>
+                    <JobTypeBadge jobType={job.job_type} />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <JobStatusBadge status={job.status} />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Text fontSize="sm" color="fg.muted">
+                      {formatRelativeTime(job.created_at)}
+                    </Text>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Text fontSize="sm" color="fg.muted" truncate>
+                      {extractSummaryText(job)}
+                    </Text>
+                  </Table.Cell>
+                </Table.Row>
+              );
+            })}
+          </Table.Body>
+        </Table.Root>
+      </Card.Body>
+    </Card.Root>
   );
 };

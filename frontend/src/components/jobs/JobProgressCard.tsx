@@ -14,7 +14,7 @@ export const JobProgressCard = ({ status }: JobProgressCardProps) => {
   const message = statusMessages[status] ?? 'Processing...';
 
   return (
-    <Card.Root>
+    <Card.Root variant="elevated">
       <Card.Body>
         <VStack gap={4} py={8}>
           <Spinner size="xl" colorPalette="blue" borderWidth="3px" />

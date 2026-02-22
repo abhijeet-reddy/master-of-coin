@@ -23,20 +23,18 @@ export const PageHeader = ({ title, subtitle, breadcrumbs, actions }: PageHeader
         {breadcrumbs.map((crumb, index) => {
           const isLast = index === breadcrumbs.length - 1;
           return (
-            <span key={index}>
+            <Breadcrumb.Item key={index}>
               {index > 0 && <Breadcrumb.Separator />}
-              <Breadcrumb.Item>
-                {isLast ? (
-                  <Breadcrumb.CurrentLink color="fg.muted" fontWeight="medium">
-                    {crumb.label}
-                  </Breadcrumb.CurrentLink>
-                ) : (
-                  <Breadcrumb.Link href={crumb.href} color="brand.500">
-                    {crumb.label}
-                  </Breadcrumb.Link>
-                )}
-              </Breadcrumb.Item>
-            </span>
+              {isLast ? (
+                <Breadcrumb.CurrentLink color="fg.muted" fontWeight="medium">
+                  {crumb.label}
+                </Breadcrumb.CurrentLink>
+              ) : (
+                <Breadcrumb.Link href={crumb.href} color="brand.500">
+                  {crumb.label}
+                </Breadcrumb.Link>
+              )}
+            </Breadcrumb.Item>
           );
         })}
       </Breadcrumb.List>

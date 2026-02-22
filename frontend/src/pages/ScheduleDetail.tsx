@@ -194,8 +194,8 @@ export const ScheduleDetailPage = () => {
           </Text>
           <JobHistoryList
             jobs={recent_jobs}
-            emptyTitle="No jobs triggered yet"
-            emptyDescription="This schedule will create jobs automatically at the scheduled times."
+            emptyTitle="No runs yet - sit tight! ⏳"
+            emptyDescription="The first job will kick off at the next scheduled time. Grab a coffee or go on a hike while you wait! ☕🥾"
           />
         </VStack>
       </VStack>

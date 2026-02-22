@@ -1681,11 +1681,15 @@ impl SplitSyncService {
 
     /// Sync an external Splitwise expense into the local system.
     ///
-    /// This is the entry point for importing expenses from Splitwise where
-    /// someone else paid. It handles:
-    /// 1. Detecting if the expense was paid by someone other than the current user
-    /// 2. Creating a DEBT account transaction if so
-    /// 3. Idempotency — won't create duplicates if already linked
+    /// This is the entry point for importing expenses from Splitwise. It handles
+    /// both cases:
+    /// - **Paid by others**: Creates a DEBT account transaction (the user owes money)
+    /// - **Paid by user**: Creates a regular transaction on a non-debt account with
+    ///   splits for each participant the user is owed by
+    ///
+    /// Also handles:
+    /// - Idempotency — won't create duplicates if already linked
+    /// - Zero-share filtering — skips participants with no owed amount
     ///
     /// # Arguments
     ///
@@ -1705,20 +1709,6 @@ impl SplitSyncService {
         let payer_info = self.get_payer_info(provider_id)?;
         let current_user_external_id = &payer_info.0;
 
-        // Check if this expense was paid by someone else
-        let payer_external_id = match self
-            .find_external_payer_id(external_expense, current_user_external_id)
-        {
-            Some(id) => id,
-            None => {
-                // Current user paid — not a "paid by others" case
-                return Ok(serde_json::json!({
-                    "status": "not_applicable",
-                    "message": "Expense was paid by the current user, not a 'paid by others' case",
-                }));
-            }
-        };
-
         // Idempotency check: see if we've already linked this external expense
         let existing_records = SplitSyncRecordRepository::find_by_external_expense_id(
             &self.pool,
@@ -1733,55 +1723,84 @@ impl SplitSyncService {
             }));
         }
 
-        // Find the local person who maps to the payer's external user ID
-        let payer_person_id = self
-            .find_person_by_external_id(&payer_external_id, provider_id)
-            .await?
-            .ok_or_else(|| {
-                ApiError::BadRequest(format!(
-                    "No local person is mapped to Splitwise user {}. \
-                     Please configure a person's split provider mapping first.",
-                    payer_external_id
-                ))
-            })?;
+        // Check if this expense was paid by someone else
+        let payer_external_id =
+            self.find_external_payer_id(external_expense, current_user_external_id);
 
-        // Find the current user's owed share from the expense
-        let user_owed_share = external_expense
-            .users
-            .iter()
-            .find(|u| u.external_user_id == *current_user_external_id)
-            .and_then(|u| u.owed_share.parse::<BigDecimal>().ok())
-            .unwrap_or_else(|| BigDecimal::from(0));
+        match payer_external_id {
+            Some(payer_ext_id) => {
+                // Paid by someone else — create a DEBT transaction
+                let payer_person_id = self
+                    .find_person_by_external_id(&payer_ext_id, provider_id)
+                    .await?
+                    .ok_or_else(|| {
+                        ApiError::BadRequest(format!(
+                            "No local person is mapped to Splitwise user {}. \
+                             Please configure a person's split provider mapping first.",
+                            payer_ext_id
+                        ))
+                    })?;
 
-        if user_owed_share == BigDecimal::from(0) {
-            return Ok(serde_json::json!({
-                "status": "not_applicable",
-                "message": "Current user has no share in this expense",
-            }));
+                // Find the current user's owed share from the expense
+                let user_owed_share = external_expense
+                    .users
+                    .iter()
+                    .find(|u| u.external_user_id == *current_user_external_id)
+                    .and_then(|u| u.owed_share.parse::<BigDecimal>().ok())
+                    .unwrap_or_else(|| BigDecimal::from(0));
+
+                if user_owed_share == BigDecimal::from(0) {
+                    return Ok(serde_json::json!({
+                        "status": "not_applicable",
+                        "message": "Current user has no share in this expense",
+                    }));
+                }
+
+                // Create the debt transaction
+                let transaction_id = self
+                    .create_debt_from_external_expense(
+                        user_id,
+                        external_expense,
+                        &payer_ext_id,
+                        payer_person_id,
+                        &user_owed_share,
+                        provider_id,
+                    )
+                    .await?;
+
+                Ok(serde_json::json!({
+                    "status": "imported",
+                    "transaction_id": transaction_id,
+                    "external_expense_id": external_expense.external_expense_id,
+                    "message": format!(
+                        "Created debt transaction for {} (paid by Splitwise user {})",
+                        user_owed_share,
+                        payer_ext_id
+                    ),
+                }))
+            }
+            None => {
+                // Current user paid — create a regular transaction with splits
+                let transaction_id = self
+                    .create_transaction_from_external_expense(
+                        user_id,
+                        external_expense,
+                        current_user_external_id,
+                        provider_id,
+                    )
+                    .await?;
+
+                Ok(serde_json::json!({
+                    "status": "imported",
+                    "transaction_id": transaction_id,
+                    "external_expense_id": external_expense.external_expense_id,
+                    "message": format!(
+                        "Created regular transaction for {} (paid by current user)",
+                        external_expense.cost
+                    ),
+                }))
+            }
         }
-
-        // Create the debt transaction
-        let transaction_id = self
-            .create_debt_from_external_expense(
-                user_id,
-                external_expense,
-                &payer_external_id,
-                payer_person_id,
-                &user_owed_share,
-                provider_id,
-            )
-            .await?;
-
-        Ok(serde_json::json!({
-            "status": "imported",
-            "transaction_id": transaction_id,
-            "external_expense_id": external_expense.external_expense_id,
-            "message": format!(
-                "Created debt transaction for {} (paid by Splitwise user {})",
-                user_owed_share,
-                payer_external_id
-            ),
-        }))
     }
 
     /// Find the payer in an external expense who is NOT the current user.
@@ -1944,6 +1963,145 @@ impl SplitSyncService {
             None,
             0,
         );
+
+        Ok(transaction.id)
+    }
+
+    /// Create a regular (non-debt) transaction from an external expense where the
+    /// current user paid.
+    ///
+    /// This creates:
+    /// 1. A transaction on the user's first non-debt account matching the expense currency
+    /// 2. A `transaction_split` for each participant (excluding the current user)
+    /// 3. A `split_sync_record` linking each split to the external expense
+    ///
+    /// # Returns
+    ///
+    /// The ID of the created transaction.
+    async fn create_transaction_from_external_expense(
+        &self,
+        user_id: Uuid,
+        expense: &ExternalExpenseDetail,
+        current_user_external_id: &str,
+        provider_id: Uuid,
+    ) -> ApiResult<Uuid> {
+        // Parse currency from the expense
+        let currency = CurrencyCode::from_code(&expense.currency_code).ok_or_else(|| {
+            ApiError::BadRequest(format!(
+                "Unsupported currency code: {}",
+                expense.currency_code
+            ))
+        })?;
+
+        // Find the user's first non-debt account matching the expense currency
+        let accounts =
+            repositories::account::list_by_user_excluding_debt(&self.pool, user_id).await?;
+
+        let account = accounts
+            .into_iter()
+            .find(|a| a.currency == currency)
+            .ok_or_else(|| {
+                ApiError::BadRequest(format!(
+                    "No non-debt account found for currency {:?}. \
+                     Please create an account with this currency first.",
+                    currency
+                ))
+            })?;
+
+        // Parse the expense date
+        let expense_date = chrono::DateTime::parse_from_rfc3339(&expense.date)
+            .or_else(|_| {
+                chrono::NaiveDate::parse_from_str(&expense.date, "%Y-%m-%d")
+                    .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().fixed_offset())
+            })
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+
+        // Parse the total cost — expenses are stored as negative amounts
+        let total_cost = expense
+            .cost
+            .parse::<BigDecimal>()
+            .map_err(|_| ApiError::BadRequest(format!("Invalid expense cost: {}", expense.cost)))?;
+        let amount = -total_cost.abs();
+
+        // Create the transaction on the user's regular account
+        let new_transaction = NewTransaction {
+            user_id,
+            account_id: account.id,
+            category_id: None,
+            title: expense.description.clone(),
+            amount: amount.clone(),
+            date: expense_date,
+            notes: Some(format!(
+                "Imported from Splitwise (expense #{})",
+                expense.external_expense_id
+            )),
+        };
+
+        let transaction =
+            repositories::transaction::create_transaction(&self.pool, user_id, new_transaction)
+                .await?;
+
+        tracing::info!(
+            "Created regular transaction {} from Splitwise expense {} for user {} (paid by user)",
+            transaction.id,
+            expense.external_expense_id,
+            user_id,
+        );
+
+        // Create splits for each participant (excluding the current user)
+        // and link each split via a sync record
+        for user in &expense.users {
+            // Skip the current user (the payer) — they don't get a split
+            if user.external_user_id == *current_user_external_id {
+                continue;
+            }
+
+            let owed_share = user
+                .owed_share
+                .parse::<BigDecimal>()
+                .unwrap_or_else(|_| BigDecimal::from(0));
+
+            // Skip participants with zero owed share
+            if owed_share == BigDecimal::from(0) {
+                continue;
+            }
+
+            // Find the local person mapped to this external user
+            let person_id = self
+                .find_person_by_external_id(&user.external_user_id, provider_id)
+                .await?
+                .ok_or_else(|| {
+                    ApiError::BadRequest(format!(
+                        "No local person is mapped to Splitwise user {} ({} {}). \
+                         Please configure a person's split provider mapping first.",
+                        user.external_user_id, user.first_name, user.last_name
+                    ))
+                })?;
+
+            // Split amount is negative (matches the expense sign convention)
+            let split_amount = -owed_share.abs();
+
+            let new_split = NewTransactionSplit {
+                transaction_id: transaction.id,
+                person_id,
+                amount: split_amount,
+            };
+
+            let split =
+                repositories::transaction::create_split(&self.pool, transaction.id, new_split)
+                    .await?;
+
+            // Create sync record linking this split to the external expense
+            self.upsert_sync_record(
+                split.id,
+                provider_id,
+                Some(expense.external_expense_id.clone()),
+                SyncStatus::Synced,
+                None,
+                0,
+            );
+        }
 
         Ok(transaction.id)
     }

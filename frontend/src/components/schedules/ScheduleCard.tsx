@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, Card, HStack, IconButton, Switch, Text, VStack } from '@chakra-ui/react';
-import { MdDelete } from 'react-icons/md';
+import { MdDelete, MdEdit } from 'react-icons/md';
+import { ScheduleFormModal } from './ScheduleFormModal';
 import { useUpdateSchedule } from '@/hooks/api/useSchedules';
 import { formatRelativeTime, formatScheduleNextRun } from '@/utils/formatters/date';
 import type { Schedule } from '@/types';
@@ -19,6 +20,7 @@ const jobTypeConfig: Record<string, { label: string; colorPalette: string }> = {
 export const ScheduleCard = ({ schedule, onDelete }: ScheduleCardProps) => {
   const navigate = useNavigate();
   const updateSchedule = useUpdateSchedule();
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
@@ -30,6 +32,11 @@ export const ScheduleCard = ({ schedule, onDelete }: ScheduleCardProps) => {
     },
     [updateSchedule, schedule.id, schedule.is_active]
   );
+
+  const handleEdit = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditOpen(true);
+  }, []);
 
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
@@ -50,65 +57,83 @@ export const ScheduleCard = ({ schedule, onDelete }: ScheduleCardProps) => {
   );
 
   return (
-    <Card.Root
-      variant="elevated"
-      cursor="pointer"
-      onClick={() => void navigate(`/schedules/${schedule.id}`)}
-      _hover={{ shadow: 'md' }}
-    >
-      <Card.Body p={4}>
-        <VStack gap={3} alignItems="stretch">
-          {/* Row 1: Name + Actions */}
-          <HStack justifyContent="space-between" alignItems="center">
-            <Text fontWeight="semibold" fontSize="sm" truncate>
-              {schedule.name}
-            </Text>
-            <HStack gap={2} flexShrink={0}>
-              <Switch.Root
-                size="sm"
-                checked={schedule.is_active}
-                onCheckedChange={() => undefined}
-                onClick={handleToggle}
-              >
-                <Switch.HiddenInput />
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch.Root>
-              <IconButton
-                aria-label="Delete schedule"
-                size="xs"
-                variant="ghost"
-                colorPalette="red"
-                onClick={handleDelete}
-              >
-                <MdDelete />
-              </IconButton>
+    <>
+      <Card.Root
+        variant="elevated"
+        cursor="pointer"
+        onClick={() => void navigate(`/schedules/${schedule.id}`)}
+        _hover={{ shadow: 'md' }}
+      >
+        <Card.Body p={4}>
+          <VStack gap={3} alignItems="stretch">
+            {/* Row 1: Name + Actions */}
+            <HStack justifyContent="space-between" alignItems="center">
+              <Text fontWeight="semibold" fontSize="sm" truncate>
+                {schedule.name}
+              </Text>
+              <HStack gap={2} flexShrink={0}>
+                <Switch.Root
+                  size="sm"
+                  checked={schedule.is_active}
+                  onCheckedChange={() => undefined}
+                  onClick={handleToggle}
+                >
+                  <Switch.HiddenInput />
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                </Switch.Root>
+                <IconButton
+                  aria-label="Edit schedule"
+                  size="xs"
+                  variant="ghost"
+                  onClick={handleEdit}
+                >
+                  <MdEdit />
+                </IconButton>
+                <IconButton
+                  aria-label="Delete schedule"
+                  size="xs"
+                  variant="ghost"
+                  colorPalette="red"
+                  onClick={handleDelete}
+                >
+                  <MdDelete />
+                </IconButton>
+              </HStack>
             </HStack>
-          </HStack>
 
-          {/* Row 2: Badges + Cron */}
-          <HStack gap={2} flexWrap="wrap">
-            <Badge variant="surface" colorPalette={typeConfig.colorPalette} size="sm">
-              {typeConfig.label}
-            </Badge>
-            <Text fontSize="xs" color="fg.muted">
-              {schedule.cron_description}
-            </Text>
-          </HStack>
-
-          {/* Row 3: Timing info */}
-          <HStack gap={4} fontSize="xs" color="fg.muted">
-            <Text color={nextRun.overdue ? 'fg.error' : undefined}>Next: {nextRun.label}</Text>
-            {schedule.last_run_at && <Text>Last: {formatRelativeTime(schedule.last_run_at)}</Text>}
-            {!schedule.is_active && (
-              <Badge variant="subtle" colorPalette="gray" size="sm">
-                Paused
+            {/* Row 2: Badges + Cron */}
+            <HStack gap={2} flexWrap="wrap">
+              <Badge variant="surface" colorPalette={typeConfig.colorPalette} size="sm">
+                {typeConfig.label}
               </Badge>
-            )}
-          </HStack>
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+              <Text fontSize="xs" color="fg.muted">
+                {schedule.cron_description}
+              </Text>
+            </HStack>
+
+            {/* Row 3: Timing info */}
+            <HStack gap={4} fontSize="xs" color="fg.muted">
+              <Text color={nextRun.overdue ? 'fg.error' : undefined}>Next: {nextRun.label}</Text>
+              {schedule.last_run_at && (
+                <Text>Last: {formatRelativeTime(schedule.last_run_at)}</Text>
+              )}
+              {!schedule.is_active && (
+                <Badge variant="subtle" colorPalette="gray" size="sm">
+                  Paused
+                </Badge>
+              )}
+            </HStack>
+          </VStack>
+        </Card.Body>
+      </Card.Root>
+
+      <ScheduleFormModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        editSchedule={schedule}
+      />
+    </>
   );
 };

@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Badge, Box, Card, HStack, SimpleGrid, Text, VStack } from '@chakra-ui/react';
+import { Badge, Box, Button, Card, HStack, SimpleGrid, Text, VStack } from '@chakra-ui/react';
+import { MdEdit } from 'react-icons/md';
 import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
+import { ScheduleFormModal } from '@/components/schedules';
 import { JobHistoryList } from '@/components/jobs';
 import { useSchedule } from '@/hooks/api/useSchedules';
 import { useDocumentTitle } from '@/hooks/effects';
@@ -25,6 +28,7 @@ const jobTypeLabels: Record<string, string> = {
 export const ScheduleDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useSchedule(id ?? null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   useDocumentTitle(data?.schedule.name ?? 'Schedule Detail');
 
   if (!id) {
@@ -64,10 +68,18 @@ export const ScheduleDetailPage = () => {
 
   const { schedule, recent_jobs, upcoming_runs } = data;
 
+  const editButton = (
+    <Button size="sm" variant="outline" onClick={() => setIsEditOpen(true)}>
+      <MdEdit />
+      Edit
+    </Button>
+  );
+
   return (
     <Box>
       <PageHeader
         breadcrumbs={[{ label: 'Schedules', href: '/schedules' }, { label: schedule.name }]}
+        actions={editButton}
       />
 
       <VStack gap={6} alignItems="stretch">
@@ -171,6 +183,12 @@ export const ScheduleDetailPage = () => {
           />
         </VStack>
       </VStack>
+
+      <ScheduleFormModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        editSchedule={schedule}
+      />
     </Box>
   );
 };

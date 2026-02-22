@@ -35,40 +35,46 @@ export const JobsPage = () => {
     );
   }
 
+  const filterDropdown = (
+    <Box w="220px">
+      <Select.Root
+        collection={jobTypeFilters}
+        value={filter}
+        onValueChange={(e) => setFilter(e.value)}
+        size="sm"
+      >
+        <Select.HiddenSelect />
+        <Select.Control>
+          <Select.Trigger>
+            <Select.ValueText placeholder="Filter by type" />
+          </Select.Trigger>
+          <Select.IndicatorGroup>
+            <Select.Indicator />
+          </Select.IndicatorGroup>
+        </Select.Control>
+        <Portal>
+          <Select.Positioner>
+            <Select.Content>
+              {jobTypeFilters.items.map((item) => (
+                <Select.Item item={item} key={item.value}>
+                  {item.label}
+                  <Select.ItemIndicator />
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Positioner>
+        </Portal>
+      </Select.Root>
+    </Box>
+  );
+
   return (
     <Box>
-      <PageHeader title="Jobs" subtitle="View and manage background jobs" />
-
-      <Box mb={4} maxW="220px">
-        <Select.Root
-          collection={jobTypeFilters}
-          value={filter}
-          onValueChange={(e) => setFilter(e.value)}
-          size="sm"
-        >
-          <Select.HiddenSelect />
-          <Select.Control>
-            <Select.Trigger>
-              <Select.ValueText placeholder="Filter by type" />
-            </Select.Trigger>
-            <Select.IndicatorGroup>
-              <Select.Indicator />
-            </Select.IndicatorGroup>
-          </Select.Control>
-          <Portal>
-            <Select.Positioner>
-              <Select.Content>
-                {jobTypeFilters.items.map((item) => (
-                  <Select.Item item={item} key={item.value}>
-                    {item.label}
-                    <Select.ItemIndicator />
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Positioner>
-          </Portal>
-        </Select.Root>
-      </Box>
+      <PageHeader
+        title="Jobs"
+        subtitle="View and manage background jobs"
+        actions={filterDropdown}
+      />
 
       <JobHistoryList jobs={jobs ?? []} />
     </Box>

@@ -10,6 +10,7 @@ pub mod debt_transaction_metadata;
 pub mod drift_detection;
 pub mod exchange_rate;
 pub mod import;
+pub mod job_summary;
 pub mod parser_error;
 pub mod person;
 pub mod person_split_config;
@@ -108,3 +109,6 @@ pub use bulk_sync::{
     BulkSyncJobResponse, BulkSyncReport, BulkSyncRequest, BulkSyncSummary, StartSyncJobResponse,
     SyncAction, SyncItem, SyncItemResult,
 };
+
+// Re-export job summary models
+pub use job_summary::{BackgroundJobSummary, ListJobsQuery};

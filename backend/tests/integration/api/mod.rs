@@ -31,6 +31,7 @@ mod test_duplicate_detection;
 mod test_exchange_rates;
 mod test_import_api;
 mod test_import_service;
+mod test_jobs;
 mod test_people;
 mod test_scope_enforcement;
 mod test_split_providers;

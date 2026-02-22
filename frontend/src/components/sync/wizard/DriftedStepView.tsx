@@ -1,0 +1,123 @@
+import { useMemo } from 'react';
+import {
+  Box,
+  Card,
+  Checkbox,
+  EmptyState,
+  HStack,
+  SegmentGroup,
+  Text,
+  VStack,
+} from '@chakra-ui/react';
+import { LuArrowRightLeft } from 'react-icons/lu';
+import { formatDate } from '@/utils/formatters/date';
+import { SyncAction } from '@/types';
+import type { DriftedItem } from '@/types';
+
+interface DriftedStepViewProps {
+  items: DriftedItem[];
+  selected: Map<string, SyncAction>;
+  onToggle: (id: string, action: SyncAction) => void;
+  onSelectAll: (ids: string[], action: SyncAction) => void;
+}
+
+/**
+ * Step 1: Drifted items with checkboxes and push/pull SegmentGroup per item.
+ * Each item can be selected with a direction (push local→external, or pull external→local).
+ */
+export const DriftedStepView = ({
+  items,
+  selected,
+  onToggle,
+  onSelectAll,
+}: DriftedStepViewProps) => {
+  const allIds = useMemo(() => items.map((i) => i.transaction_id), [items]);
+  const isAllSelected = items.length > 0 && items.every((i) => selected.has(i.transaction_id));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) return;
+    onSelectAll(allIds, SyncAction.PUSH);
+  };
+
+  if (items.length === 0) {
+    return (
+      <EmptyState.Root>
+        <EmptyState.Content>
+          <EmptyState.Indicator>
+            <LuArrowRightLeft />
+          </EmptyState.Indicator>
+          <EmptyState.Title>No drifted items found</EmptyState.Title>
+          <EmptyState.Description>You can skip this step.</EmptyState.Description>
+        </EmptyState.Content>
+      </EmptyState.Root>
+    );
+  }
+
+  return (
+    <VStack gap={3} alignItems="stretch">
+      <Text fontSize="sm" color="fg.muted">
+        Select items and choose Push or Pull for each:
+      </Text>
+
+      <Checkbox.Root checked={isAllSelected} onCheckedChange={handleSelectAll}>
+        <Checkbox.HiddenInput />
+        <Checkbox.Control />
+        <Checkbox.Label>
+          <Text fontWeight="medium">Select All ({items.length})</Text>
+        </Checkbox.Label>
+      </Checkbox.Root>
+
+      {items.map((item) => {
+        const isSelected = selected.has(item.transaction_id);
+        const currentAction = selected.get(item.transaction_id) ?? SyncAction.PUSH;
+
+        return (
+          <Card.Root key={item.transaction_id}>
+            <Card.Body py={3} px={4}>
+              <HStack gap={3} alignItems="flex-start">
+                <Box pt={1}>
+                  <Checkbox.Root
+                    checked={isSelected}
+                    onCheckedChange={() => onToggle(item.transaction_id, currentAction)}
+                  >
+                    <Checkbox.HiddenInput />
+                    <Checkbox.Control />
+                  </Checkbox.Root>
+                </Box>
+
+                <VStack gap={1} flex={1} alignItems="stretch">
+                  <HStack justifyContent="space-between">
+                    <Text fontWeight="medium">{item.transaction_title}</Text>
+                    <Text fontSize="sm" color="fg.muted">
+                      {formatDate(item.transaction_date)}
+                    </Text>
+                  </HStack>
+                  <HStack gap={4} fontSize="sm">
+                    <Text>Local: {item.local_amount}</Text>
+                    <Text>External: {item.external_cost}</Text>
+                  </HStack>
+                </VStack>
+
+                {isSelected && (
+                  <SegmentGroup.Root
+                    size="xs"
+                    value={currentAction}
+                    onValueChange={(e) => onToggle(item.transaction_id, e.value as SyncAction)}
+                  >
+                    <SegmentGroup.Indicator />
+                    <SegmentGroup.Items
+                      items={[
+                        { label: 'Push', value: SyncAction.PUSH },
+                        { label: 'Pull', value: SyncAction.PULL },
+                      ]}
+                    />
+                  </SegmentGroup.Root>
+                )}
+              </HStack>
+            </Card.Body>
+          </Card.Root>
+        );
+      })}
+    </VStack>
+  );
+};

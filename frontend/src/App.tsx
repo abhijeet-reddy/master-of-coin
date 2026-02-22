@@ -15,6 +15,8 @@ import { Categories } from '@/pages/Categories';
 import { People } from '@/pages/People';
 import Reports from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
+import { JobsPage } from '@/pages/Jobs';
+import { JobDetailPage } from '@/pages/JobDetail';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
@@ -47,6 +49,8 @@ function App() {
               <Route path="categories" element={<Categories />} />
               <Route path="people" element={<People />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="jobs" element={<JobsPage />} />
+              <Route path="jobs/:type/:id" element={<JobDetailPage />} />
               <Route path="settings" element={<Settings />} />
             </Route>
 

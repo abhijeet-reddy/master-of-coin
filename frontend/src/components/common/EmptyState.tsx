@@ -1,4 +1,4 @@
-import { Box, VStack, Text, Button } from '@chakra-ui/react';
+import { Button, EmptyState as ChakraEmptyState, VStack } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 
 interface EmptyStateProps {
@@ -17,29 +17,23 @@ export const EmptyState = ({
   onAction,
 }: EmptyStateProps) => {
   return (
-    <Box display="flex" alignItems="center" justifyContent="center" py={12} px={4}>
-      <VStack gap={4} maxW="md" textAlign="center">
-        {icon && (
-          <Box fontSize="4xl" color="gray.400">
-            {icon}
-          </Box>
+    <ChakraEmptyState.Root>
+      <ChakraEmptyState.Content>
+        {icon && <ChakraEmptyState.Indicator>{icon}</ChakraEmptyState.Indicator>}
+        {description ? (
+          <VStack textAlign="center">
+            <ChakraEmptyState.Title>{title}</ChakraEmptyState.Title>
+            <ChakraEmptyState.Description>{description}</ChakraEmptyState.Description>
+          </VStack>
+        ) : (
+          <ChakraEmptyState.Title>{title}</ChakraEmptyState.Title>
         )}
-        <VStack gap={2}>
-          <Text fontSize="lg" fontWeight="semibold" color="fg">
-            {title}
-          </Text>
-          {description && (
-            <Text fontSize="sm" color="fg.muted">
-              {description}
-            </Text>
-          )}
-        </VStack>
         {actionLabel && onAction && (
-          <Button colorScheme="brand" onClick={onAction} mt={2}>
+          <Button colorPalette="blue" onClick={onAction} mt={2}>
             {actionLabel}
           </Button>
         )}
-      </VStack>
-    </Box>
+      </ChakraEmptyState.Content>
+    </ChakraEmptyState.Root>
   );
 };

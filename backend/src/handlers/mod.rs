@@ -10,6 +10,7 @@ pub mod debt_transactions;
 pub mod drift_detection;
 pub mod exchange_rates;
 pub mod import;
+pub mod jobs;
 pub mod people;
 pub mod split_providers;
 pub mod split_sync;

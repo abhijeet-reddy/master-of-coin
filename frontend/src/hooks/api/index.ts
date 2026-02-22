@@ -53,3 +53,12 @@ export {
   useSyncTransactionSplit,
   useResolveSplitMismatch,
 } from './useSplitSyncStatus';
+
+// Job hooks
+export { useJobs } from './useJobs';
+
+// Drift detection hooks
+export { useStartDriftDetection, useDriftJob, useRetryDriftJob } from './useDriftDetection';
+
+// Bulk sync hooks
+export { useStartBulkSync, useBulkSyncJob, useRetryBulkSync } from './useBulkSync';

@@ -1,0 +1,62 @@
+import { useState } from 'react';
+import { Box, Button, Tabs, VStack } from '@chakra-ui/react';
+import { DriftSummaryCard } from './DriftSummaryCard';
+import { DriftedItemList, MissingOnExternalList, MissingOnLocalList } from './DriftItemList';
+import { SyncWizard } from '@/components/sync/wizard';
+import type { DriftReport } from '@/types';
+
+interface DriftReportViewProps {
+  report: DriftReport;
+}
+
+export const DriftReportView = ({ report }: DriftReportViewProps) => {
+  const [activeTab, setActiveTab] = useState('drifted');
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+
+  const { summary, drifted, missing_on_external, missing_on_local } = report;
+
+  const hasSyncableItems =
+    drifted.length > 0 || missing_on_external.length > 0 || missing_on_local.length > 0;
+
+  return (
+    <VStack gap={6} alignItems="stretch">
+      <DriftSummaryCard summary={summary} />
+
+      <Box>
+        <Button
+          colorPalette="blue"
+          disabled={!hasSyncableItems}
+          onClick={() => setIsWizardOpen(true)}
+        >
+          Sync
+        </Button>
+      </Box>
+
+      <Tabs.Root value={activeTab} onValueChange={(e) => setActiveTab(e.value)} variant="enclosed">
+        <Tabs.List>
+          <Tabs.Trigger value="drifted">Drifted ({drifted.length})</Tabs.Trigger>
+          <Tabs.Trigger value="missing_external">
+            Missing on External ({missing_on_external.length})
+          </Tabs.Trigger>
+          <Tabs.Trigger value="missing_local">
+            Missing on Local ({missing_on_local.length})
+          </Tabs.Trigger>
+        </Tabs.List>
+
+        <Box mt={4}>
+          <Tabs.Content value="drifted">
+            <DriftedItemList items={drifted} />
+          </Tabs.Content>
+          <Tabs.Content value="missing_external">
+            <MissingOnExternalList items={missing_on_external} />
+          </Tabs.Content>
+          <Tabs.Content value="missing_local">
+            <MissingOnLocalList items={missing_on_local} />
+          </Tabs.Content>
+        </Box>
+      </Tabs.Root>
+
+      <SyncWizard isOpen={isWizardOpen} onClose={() => setIsWizardOpen(false)} report={report} />
+    </VStack>
+  );
+};

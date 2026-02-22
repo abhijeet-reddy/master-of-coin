@@ -1,15 +1,4 @@
-import {
-  Box,
-  HStack,
-  VStack,
-  Text,
-  BreadcrumbRoot,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbCurrentLink,
-  BreadcrumbSeparator,
-} from '@chakra-ui/react';
+import { Box, Breadcrumb, HStack, VStack, Text } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 
 interface BreadcrumbItemData {
@@ -29,29 +18,29 @@ export const PageHeader = ({ title, subtitle, breadcrumbs, actions }: PageHeader
   const hasTitle = !!title || !!subtitle;
 
   const breadcrumbElement = hasBreadcrumbs ? (
-    <BreadcrumbRoot fontSize="sm">
-      <BreadcrumbList>
+    <Breadcrumb.Root fontSize="sm">
+      <Breadcrumb.List>
         {breadcrumbs.map((crumb, index) => {
           const isLast = index === breadcrumbs.length - 1;
           return (
-            <>
-              {index > 0 && <BreadcrumbSeparator key={`sep-${index}`} />}
-              <BreadcrumbItem key={index}>
+            <span key={index}>
+              {index > 0 && <Breadcrumb.Separator />}
+              <Breadcrumb.Item>
                 {isLast ? (
-                  <BreadcrumbCurrentLink color="fg.muted" fontWeight="medium">
+                  <Breadcrumb.CurrentLink color="fg.muted" fontWeight="medium">
                     {crumb.label}
-                  </BreadcrumbCurrentLink>
+                  </Breadcrumb.CurrentLink>
                 ) : (
-                  <BreadcrumbLink href={crumb.href} color="brand.500">
+                  <Breadcrumb.Link href={crumb.href} color="brand.500">
                     {crumb.label}
-                  </BreadcrumbLink>
+                  </Breadcrumb.Link>
                 )}
-              </BreadcrumbItem>
-            </>
+              </Breadcrumb.Item>
+            </span>
           );
         })}
-      </BreadcrumbList>
-    </BreadcrumbRoot>
+      </Breadcrumb.List>
+    </Breadcrumb.Root>
   ) : null;
 
   return (

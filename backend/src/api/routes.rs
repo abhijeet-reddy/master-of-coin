@@ -185,6 +185,19 @@ pub fn create_router(state: AppState) -> Router {
                 },
             )),
         )
+        // Jobs listing - all background jobs for current user
+        .route(
+            "/jobs",
+            get(handlers::jobs::list_jobs).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Read,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
         // Drift detection - async job-based
         .route(
             "/drift-detection",

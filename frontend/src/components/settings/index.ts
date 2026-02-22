@@ -8,3 +8,4 @@ export { ScopeSelector } from './ScopeSelector';
 export { SplitIntegrationsList } from './SplitIntegrationsList';
 export { SplitwiseIntegrationCard } from './SplitwiseIntegrationCard';
 export { SplitProIntegrationCard } from './SplitProIntegrationCard';
+export { DriftDetectionModal } from './DriftDetectionModal';

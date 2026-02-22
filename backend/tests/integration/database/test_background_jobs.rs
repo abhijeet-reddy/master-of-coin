@@ -265,6 +265,12 @@ fn test_find_next_pending() {
 fn test_find_next_pending_excludes_types() {
     let pool = setup_pool();
     let mut conn = pool.get().expect("Failed to get connection");
+
+    // Clean up any leftover PENDING jobs from other tests to get a clean slate
+    diesel::delete(background_jobs::table.filter(background_jobs::status.eq(JobStatus::Pending)))
+        .execute(&mut conn)
+        .expect("Failed to clean up pending jobs");
+
     let user = common::create_test_user(&mut conn, "bg_exclude").expect("Failed to create user");
 
     // Create a PENDING DRIFT_DETECTION job

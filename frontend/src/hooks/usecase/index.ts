@@ -11,3 +11,4 @@ export { default as useSplitSyncBadge } from './useSplitSyncBadge';
 export { default as useSplitwiseCallbackStatus } from './useSplitwiseCallbackStatus';
 export { default as useTransactionDetail } from './useTransactionDetail';
 export { default as useSplitSync } from './useSplitSync';
+export { default as useSyncWizard } from './useSyncWizard';

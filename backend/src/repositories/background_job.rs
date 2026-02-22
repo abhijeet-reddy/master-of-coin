@@ -61,6 +61,40 @@ impl BackgroundJobRepository {
         Ok(jobs)
     }
 
+    /// List jobs for a user with optional type filter and pagination.
+    ///
+    /// Returns jobs ordered by `created_at DESC` with `LIMIT` and `OFFSET`
+    /// applied for pagination. If `job_type` is `Some`, only jobs of that
+    /// type are returned.
+    pub fn list_by_user(
+        pool: &DbPool,
+        user_id: Uuid,
+        job_type: Option<JobType>,
+        limit: i64,
+        offset: i64,
+    ) -> ApiResult<Vec<BackgroundJob>> {
+        let mut conn = pool.get().map_err(|e| {
+            tracing::error!("Failed to get DB connection: {}", e);
+            ApiError::Internal
+        })?;
+
+        let mut query = background_jobs::table
+            .filter(background_jobs::user_id.eq(user_id))
+            .order(background_jobs::created_at.desc())
+            .into_boxed();
+
+        if let Some(jt) = job_type {
+            query = query.filter(background_jobs::job_type.eq(jt));
+        }
+
+        let jobs = query
+            .limit(limit)
+            .offset(offset)
+            .load::<BackgroundJob>(&mut conn)?;
+
+        Ok(jobs)
+    }
+
     /// Find all jobs with status = RUNNING (for startup recovery)
     pub fn find_stale_jobs(pool: &DbPool) -> ApiResult<Vec<BackgroundJob>> {
         let mut conn = pool.get().map_err(|e| {

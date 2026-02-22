@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { VStack, Heading, Text, Skeleton, Button } from '@chakra-ui/react';
+import { VStack, HStack, Heading, Text, Skeleton, Button } from '@chakra-ui/react';
 import { MdCompareArrows } from 'react-icons/md';
 import { useSplitIntegrations } from '@/hooks/api/useSplitIntegrations';
 import { ErrorAlert } from '@/components/common';
@@ -19,7 +19,18 @@ export const SplitIntegrationsList = () => {
   return (
     <VStack gap={6} align="stretch">
       <VStack align="start" gap={1}>
-        <Heading size="md">Split Provider Integrations</Heading>
+        <HStack justifyContent="space-between" width="100%">
+          <Heading size="md">Split Provider Integrations</Heading>
+          <Button
+            colorPalette="blue"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDriftModalOpen(true)}
+          >
+            <MdCompareArrows />
+            Run Drift Detection Job
+          </Button>
+        </HStack>
         <Text fontSize="sm" color="fg.muted">
           Connect your expense splitting services to automatically sync split transactions.
         </Text>
@@ -45,12 +56,6 @@ export const SplitIntegrationsList = () => {
           <SplitProIntegrationCard />
         </>
       )}
-
-      {/* Drift Detection button */}
-      <Button colorPalette="blue" variant="outline" onClick={() => setIsDriftModalOpen(true)}>
-        <MdCompareArrows />
-        Run Drift Detection Job
-      </Button>
 
       <DriftDetectionModal isOpen={isDriftModalOpen} onClose={() => setIsDriftModalOpen(false)} />
     </VStack>

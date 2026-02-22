@@ -1541,10 +1541,18 @@ impl SplitSyncService {
                     }
                 }
 
-                // Also update debt metadata with full expense details from Splitwise
+                // Only update debt metadata for DEBT account transactions —
+                // this method overwrites the transaction amount with the user's
+                // owed share, which is wrong for regular (paid-by-user) transactions.
                 if let Some(ref ext) = external_expense {
-                    self.update_debt_metadata_from_expense(transaction_id, ext)
-                        .await;
+                    let account = accounts::table
+                        .find(transaction.account_id)
+                        .first::<Account>(&mut conn)?;
+
+                    if account.account_type == crate::types::AccountType::Debt {
+                        self.update_debt_metadata_from_expense(transaction_id, ext)
+                            .await;
+                    }
                 }
 
                 // Link the sync records

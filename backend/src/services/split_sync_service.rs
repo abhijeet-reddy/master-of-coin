@@ -10,7 +10,8 @@ use crate::DbPool;
 use crate::errors::{ApiError, ApiResult};
 use crate::models::account::Account;
 use crate::models::debt_transaction_metadata::NewDebtTransactionMetadata;
-use crate::models::person_split_config::PersonSplitConfig;
+use crate::models::person::NewPerson;
+use crate::models::person_split_config::{NewPersonSplitConfig, PersonSplitConfig};
 use crate::models::split_provider::SplitProvider as SplitProviderModel;
 use crate::models::split_sync_record::{
     NewSplitSyncRecord, SplitSyncRecord, SyncStatus, UpdateSplitSyncRecord,
@@ -1738,16 +1739,25 @@ impl SplitSyncService {
         match payer_external_id {
             Some(payer_ext_id) => {
                 // Paid by someone else — create a DEBT transaction
+                // Get the payer's name from the expense users list
+                let payer_user = external_expense
+                    .users
+                    .iter()
+                    .find(|u| u.external_user_id == payer_ext_id);
+                let payer_first_name = payer_user
+                    .map(|u| u.first_name.as_str())
+                    .unwrap_or("Unknown");
+                let payer_last_name = payer_user.map(|u| u.last_name.as_str()).unwrap_or("");
+
                 let payer_person_id = self
-                    .find_person_by_external_id(&payer_ext_id, provider_id)
-                    .await?
-                    .ok_or_else(|| {
-                        ApiError::BadRequest(format!(
-                            "No local person is mapped to Splitwise user {}. \
-                             Please configure a person's split provider mapping first.",
-                            payer_ext_id
-                        ))
-                    })?;
+                    .find_or_create_person_by_external_id(
+                        user_id,
+                        &payer_ext_id,
+                        payer_first_name,
+                        payer_last_name,
+                        provider_id,
+                    )
+                    .await?;
 
                 // Find the current user's owed share from the expense
                 let user_owed_share = external_expense
@@ -1849,6 +1859,87 @@ impl SplitSyncService {
         .await?;
 
         Ok(config.map(|c| c.person_id))
+    }
+
+    /// Look up a local person by their external user ID, or auto-create one if not found.
+    ///
+    /// When importing expenses from an external provider, participants may not yet have
+    /// a local Person record. This method:
+    /// 1. Tries `find_person_by_external_id()` first
+    /// 2. If not found, creates a new `Person` with the external user's name
+    /// 3. Creates a `PersonSplitConfig` linking the new person to the external user
+    ///
+    /// # Arguments
+    ///
+    /// * `user_id` - The authenticated user's ID (owner of the person record)
+    /// * `external_user_id` - The external platform user ID
+    /// * `first_name` - The external user's first name
+    /// * `last_name` - The external user's last name
+    /// * `provider_id` - The split provider ID
+    ///
+    /// # Returns
+    ///
+    /// The person_id (existing or newly created).
+    async fn find_or_create_person_by_external_id(
+        &self,
+        user_id: Uuid,
+        external_user_id: &str,
+        first_name: &str,
+        last_name: &str,
+        provider_id: Uuid,
+    ) -> ApiResult<Uuid> {
+        // Try to find an existing person mapped to this external user
+        if let Some(person_id) = self
+            .find_person_by_external_id(external_user_id, provider_id)
+            .await?
+        {
+            return Ok(person_id);
+        }
+
+        // Not found — auto-create a Person and PersonSplitConfig
+        let name = format!("{} {}", first_name, last_name).trim().to_string();
+        let name = if name.is_empty() {
+            format!("Splitwise User {}", external_user_id)
+        } else {
+            name
+        };
+
+        tracing::info!(
+            "Auto-creating person '{}' for external user {} on provider {}",
+            name,
+            external_user_id,
+            provider_id
+        );
+
+        let new_person = NewPerson {
+            user_id,
+            name,
+            email: None,
+            phone: None,
+            notes: Some(format!(
+                "Auto-created from Splitwise (external user ID: {})",
+                external_user_id
+            )),
+        };
+
+        let person = repositories::person::create_person(&self.pool, user_id, new_person).await?;
+
+        // Link the new person to the external user via PersonSplitConfig
+        let new_config = NewPersonSplitConfig {
+            person_id: person.id,
+            split_provider_id: provider_id,
+            external_user_id: external_user_id.to_string(),
+        };
+
+        repositories::person_split_config::upsert_config(&self.pool, new_config).await?;
+
+        tracing::info!(
+            "Created person {} with split config for external user {}",
+            person.id,
+            external_user_id
+        );
+
+        Ok(person.id)
     }
 
     /// Create a DEBT account transaction from an external expense where someone else paid.
@@ -2075,17 +2166,16 @@ impl SplitSyncService {
                 continue;
             }
 
-            // Find the local person mapped to this external user
+            // Find or auto-create the local person mapped to this external user
             let person_id = self
-                .find_person_by_external_id(&user.external_user_id, provider_id)
-                .await?
-                .ok_or_else(|| {
-                    ApiError::BadRequest(format!(
-                        "No local person is mapped to Splitwise user {} ({} {}). \
-                         Please configure a person's split provider mapping first.",
-                        user.external_user_id, user.first_name, user.last_name
-                    ))
-                })?;
+                .find_or_create_person_by_external_id(
+                    user_id,
+                    &user.external_user_id,
+                    &user.first_name,
+                    &user.last_name,
+                    provider_id,
+                )
+                .await?;
 
             // Split amount is negative (matches the expense sign convention)
             let split_amount = -owed_share.abs();

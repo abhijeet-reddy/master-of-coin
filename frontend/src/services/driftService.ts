@@ -11,7 +11,16 @@ import type { DriftDetectionRequest, DriftDetectionJobResponse } from '@/types';
 export async function startDriftDetection(
   request: DriftDetectionRequest
 ): Promise<DriftDetectionJobResponse> {
-  const response = await apiClient.post<DriftDetectionJobResponse>('/drift-detection', request);
+  // Convert date-only strings (YYYY-MM-DD) to ISO 8601 datetime (YYYY-MM-DDTHH:MM:SSZ)
+  // The backend DriftDetectionRequest expects DateTime<Utc>, not a bare date.
+  const payload = {
+    ...request,
+    start_date: request.start_date.includes('T')
+      ? request.start_date
+      : `${request.start_date}T00:00:00Z`,
+    end_date: request.end_date.includes('T') ? request.end_date : `${request.end_date}T23:59:59Z`,
+  };
+  const response = await apiClient.post<DriftDetectionJobResponse>('/drift-detection', payload);
   return response.data;
 }
 

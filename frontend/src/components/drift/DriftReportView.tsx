@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Box, Button, Card, Tabs, VStack } from '@chakra-ui/react';
+import { Box, Card, Tabs, VStack } from '@chakra-ui/react';
 import { DriftSummaryCard } from './DriftSummaryCard';
 import { DriftedItemList, MissingOnExternalList, MissingOnLocalList } from './DriftItemList';
-import { SyncWizard } from '@/components/sync/wizard';
 import type { DriftReport } from '@/types';
 
 interface DriftReportViewProps {
@@ -11,26 +10,12 @@ interface DriftReportViewProps {
 
 export const DriftReportView = ({ report }: DriftReportViewProps) => {
   const [activeTab, setActiveTab] = useState('drifted');
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   const { summary, drifted, missing_on_external, missing_on_local } = report;
-
-  const hasSyncableItems =
-    drifted.length > 0 || missing_on_external.length > 0 || missing_on_local.length > 0;
 
   return (
     <VStack gap={6} alignItems="stretch">
       <DriftSummaryCard summary={summary} />
-
-      <Box>
-        <Button
-          colorPalette="blue"
-          disabled={!hasSyncableItems}
-          onClick={() => setIsWizardOpen(true)}
-        >
-          Sync
-        </Button>
-      </Box>
 
       <Card.Root variant="elevated">
         <Card.Body p={4}>
@@ -63,8 +48,6 @@ export const DriftReportView = ({ report }: DriftReportViewProps) => {
           </Tabs.Root>
         </Card.Body>
       </Card.Root>
-
-      <SyncWizard isOpen={isWizardOpen} onClose={() => setIsWizardOpen(false)} report={report} />
     </VStack>
   );
 };

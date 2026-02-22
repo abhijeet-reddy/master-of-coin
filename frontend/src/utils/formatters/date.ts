@@ -105,3 +105,45 @@ export const formatRelativeTime = (dateString: string): string => {
   if (diffDay < 7) return `${diffDay}d ago`;
   return formatDate(dateString, 'short');
 };
+
+/**
+ * Format a scheduled next-run date for display.
+ *
+ * - Future dates: relative time like "in 2 hours", "in 3 days", or absolute for >7 days
+ * - Past dates: returns { label: "Overdue (...)", overdue: true }
+ * - Null: "Not scheduled"
+ */
+export interface ScheduleNextRunDisplay {
+  label: string;
+  overdue: boolean;
+}
+
+export const formatScheduleNextRun = (dateString: string | null): ScheduleNextRunDisplay => {
+  if (!dateString) {
+    return { label: 'Not scheduled', overdue: false };
+  }
+
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+
+  // Past date — overdue
+  if (diffMs < 0) {
+    return {
+      label: `Overdue (${formatDateTime(dateString)})`,
+      overdue: true,
+    };
+  }
+
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return { label: 'in less than a minute', overdue: false };
+  if (diffMin < 60) return { label: `in ${diffMin} min`, overdue: false };
+  if (diffHr < 24) return { label: `in ${diffHr} hr`, overdue: false };
+  if (diffDay < 7) return { label: `in ${diffDay}d`, overdue: false };
+
+  return { label: formatDateTime(dateString), overdue: false };
+};

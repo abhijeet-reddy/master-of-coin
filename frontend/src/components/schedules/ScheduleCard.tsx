@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, Card, HStack, IconButton, Switch, Text, VStack } from '@chakra-ui/react';
 import { MdDelete } from 'react-icons/md';
 import { useUpdateSchedule } from '@/hooks/api/useSchedules';
-import { formatRelativeTime } from '@/utils/formatters/date';
+import { formatRelativeTime, formatScheduleNextRun } from '@/utils/formatters/date';
 import type { Schedule } from '@/types';
 
 interface ScheduleCardProps {
@@ -43,6 +43,11 @@ export const ScheduleCard = ({ schedule, onDelete }: ScheduleCardProps) => {
     label: schedule.job_type,
     colorPalette: 'gray',
   };
+
+  const nextRun = useMemo(
+    () => formatScheduleNextRun(schedule.next_run_at ?? null),
+    [schedule.next_run_at]
+  );
 
   return (
     <Card.Root
@@ -94,7 +99,7 @@ export const ScheduleCard = ({ schedule, onDelete }: ScheduleCardProps) => {
 
           {/* Row 3: Timing info */}
           <HStack gap={4} fontSize="xs" color="fg.muted">
-            {schedule.next_run_at && <Text>Next: {formatRelativeTime(schedule.next_run_at)}</Text>}
+            <Text color={nextRun.overdue ? 'fg.error' : undefined}>Next: {nextRun.label}</Text>
             {schedule.last_run_at && <Text>Last: {formatRelativeTime(schedule.last_run_at)}</Text>}
             {!schedule.is_active && (
               <Badge variant="subtle" colorPalette="gray" size="sm">

@@ -1,14 +1,14 @@
 import { useCallback, useMemo, useReducer } from 'react';
 import { SyncAction } from '@/types';
-import type { SyncItem } from '@/types';
+import type { DriftedSelection, SyncItem } from '@/types';
 
 /** Wizard steps: 1=Drifted, 2=MissingExternal, 3=MissingLocal, 4=Review */
 type WizardStep = 1 | 2 | 3 | 4;
 
 interface WizardState {
   step: WizardStep;
-  /** Drifted items: transaction_id → push or pull */
-  selectedDrifted: Map<string, SyncAction>;
+  /** Drifted items: transaction_id → action + external expense ID */
+  selectedDrifted: Map<string, DriftedSelection>;
   /** Missing on external: transaction IDs to push */
   selectedMissingExternal: Set<string>;
   /** Missing on local: external expense IDs to pull */
@@ -19,10 +19,14 @@ type WizardAction =
   | { type: 'NEXT_STEP' }
   | { type: 'PREV_STEP' }
   | { type: 'SKIP_STEP' }
-  | { type: 'TOGGLE_DRIFTED'; id: string; action: SyncAction }
+  | { type: 'TOGGLE_DRIFTED'; id: string; action: SyncAction; externalExpenseId: string }
   | { type: 'TOGGLE_MISSING_EXTERNAL'; id: string }
   | { type: 'TOGGLE_MISSING_LOCAL'; id: string }
-  | { type: 'SELECT_ALL_DRIFTED'; ids: string[]; action: SyncAction }
+  | {
+      type: 'SELECT_ALL_DRIFTED';
+      entries: Array<{ id: string; externalExpenseId: string }>;
+      action: SyncAction;
+    }
   | { type: 'SELECT_ALL_MISSING_EXTERNAL'; ids: string[] }
   | { type: 'SELECT_ALL_MISSING_LOCAL'; ids: string[] }
   | { type: 'RESET' };
@@ -44,10 +48,14 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 
     case 'TOGGLE_DRIFTED': {
       const next = new Map(state.selectedDrifted);
-      if (next.has(action.id) && next.get(action.id) === action.action) {
+      const existing = next.get(action.id);
+      if (existing && existing.action === action.action) {
         next.delete(action.id);
       } else {
-        next.set(action.id, action.action);
+        next.set(action.id, {
+          action: action.action,
+          externalExpenseId: action.externalExpenseId,
+        });
       }
       return { ...state, selectedDrifted: next };
     }
@@ -74,8 +82,11 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 
     case 'SELECT_ALL_DRIFTED': {
       const next = new Map(state.selectedDrifted);
-      for (const id of action.ids) {
-        next.set(id, action.action);
+      for (const entry of action.entries) {
+        next.set(entry.id, {
+          action: action.action,
+          externalExpenseId: entry.externalExpenseId,
+        });
       }
       return { ...state, selectedDrifted: next };
     }
@@ -125,9 +136,12 @@ export default function useSyncWizard() {
   const skipStep = useCallback(() => dispatch({ type: 'SKIP_STEP' }), []);
   const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
 
-  const toggleDriftedItem = useCallback((id: string, action: SyncAction) => {
-    dispatch({ type: 'TOGGLE_DRIFTED', id, action });
-  }, []);
+  const toggleDriftedItem = useCallback(
+    (id: string, action: SyncAction, externalExpenseId: string) => {
+      dispatch({ type: 'TOGGLE_DRIFTED', id, action, externalExpenseId });
+    },
+    []
+  );
 
   const toggleMissingExternal = useCallback((id: string) => {
     dispatch({ type: 'TOGGLE_MISSING_EXTERNAL', id });
@@ -137,9 +151,12 @@ export default function useSyncWizard() {
     dispatch({ type: 'TOGGLE_MISSING_LOCAL', id });
   }, []);
 
-  const selectAllDrifted = useCallback((ids: string[], action: SyncAction) => {
-    dispatch({ type: 'SELECT_ALL_DRIFTED', ids, action });
-  }, []);
+  const selectAllDrifted = useCallback(
+    (entries: Array<{ id: string; externalExpenseId: string }>, action: SyncAction) => {
+      dispatch({ type: 'SELECT_ALL_DRIFTED', entries, action });
+    },
+    []
+  );
 
   const selectAllMissingExternal = useCallback((ids: string[]) => {
     dispatch({ type: 'SELECT_ALL_MISSING_EXTERNAL', ids });
@@ -163,11 +180,12 @@ export default function useSyncWizard() {
     const items: SyncItem[] = [];
 
     // Drifted items: user-selected push or pull per item
-    for (const [transactionId, action] of state.selectedDrifted) {
+    // Both transaction_id and external_expense_id are always sent for drifted items
+    for (const [transactionId, selection] of state.selectedDrifted) {
       items.push({
-        action,
-        transaction_id: action === SyncAction.PUSH ? transactionId : undefined,
-        external_expense_id: action === SyncAction.PULL ? transactionId : undefined,
+        action: selection.action,
+        transaction_id: transactionId,
+        external_expense_id: selection.externalExpenseId,
       });
     }
 

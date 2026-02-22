@@ -12,13 +12,16 @@ import {
 import { LuArrowRightLeft } from 'react-icons/lu';
 import { formatDate } from '@/utils/formatters/date';
 import { SyncAction } from '@/types';
-import type { DriftedItem } from '@/types';
+import type { DriftedItem, DriftedSelection } from '@/types';
 
 interface DriftedStepViewProps {
   items: DriftedItem[];
-  selected: Map<string, SyncAction>;
-  onToggle: (id: string, action: SyncAction) => void;
-  onSelectAll: (ids: string[], action: SyncAction) => void;
+  selected: Map<string, DriftedSelection>;
+  onToggle: (id: string, action: SyncAction, externalExpenseId: string) => void;
+  onSelectAll: (
+    entries: Array<{ id: string; externalExpenseId: string }>,
+    action: SyncAction
+  ) => void;
 }
 
 /**
@@ -31,12 +34,19 @@ export const DriftedStepView = ({
   onToggle,
   onSelectAll,
 }: DriftedStepViewProps) => {
-  const allIds = useMemo(() => items.map((i) => i.transaction_id), [items]);
+  const allEntries = useMemo(
+    () =>
+      items.map((i) => ({
+        id: i.transaction_id,
+        externalExpenseId: i.external_expense_id,
+      })),
+    [items]
+  );
   const isAllSelected = items.length > 0 && items.every((i) => selected.has(i.transaction_id));
 
   const handleSelectAll = () => {
     if (isAllSelected) return;
-    onSelectAll(allIds, SyncAction.PUSH);
+    onSelectAll(allEntries, SyncAction.PUSH);
   };
 
   if (items.length === 0) {
@@ -69,7 +79,7 @@ export const DriftedStepView = ({
 
       {items.map((item) => {
         const isSelected = selected.has(item.transaction_id);
-        const currentAction = selected.get(item.transaction_id) ?? SyncAction.PUSH;
+        const currentAction = selected.get(item.transaction_id)?.action ?? SyncAction.PUSH;
 
         return (
           <Card.Root key={item.transaction_id}>
@@ -78,7 +88,9 @@ export const DriftedStepView = ({
                 <Box pt={1}>
                   <Checkbox.Root
                     checked={isSelected}
-                    onCheckedChange={() => onToggle(item.transaction_id, currentAction)}
+                    onCheckedChange={() =>
+                      onToggle(item.transaction_id, currentAction, item.external_expense_id)
+                    }
                   >
                     <Checkbox.HiddenInput />
                     <Checkbox.Control />
@@ -102,7 +114,9 @@ export const DriftedStepView = ({
                   <SegmentGroup.Root
                     size="xs"
                     value={currentAction}
-                    onValueChange={(e) => onToggle(item.transaction_id, e.value as SyncAction)}
+                    onValueChange={(e) =>
+                      onToggle(item.transaction_id, e.value as SyncAction, item.external_expense_id)
+                    }
                   >
                     <SegmentGroup.Indicator />
                     <SegmentGroup.Items

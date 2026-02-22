@@ -8,6 +8,12 @@ export enum SyncAction {
   PULL = 'pull',
 }
 
+/** Selection state for a drifted item: action + the provider's external ID */
+export interface DriftedSelection {
+  action: SyncAction;
+  externalExpenseId: string;
+}
+
 /** A single item to sync */
 export interface SyncItem {
   action: SyncAction;

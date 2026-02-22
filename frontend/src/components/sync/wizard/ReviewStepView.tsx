@@ -11,11 +11,11 @@ import {
 } from '@chakra-ui/react';
 import { LuClipboardList } from 'react-icons/lu';
 import { SyncAction } from '@/types';
-import type { DriftReport, SyncItem } from '@/types';
+import type { DriftedSelection, DriftReport, SyncItem } from '@/types';
 
 interface ReviewStepViewProps {
   report: DriftReport;
-  selectedDrifted: Map<string, SyncAction>;
+  selectedDrifted: Map<string, DriftedSelection>;
   selectedMissingExternal: Set<string>;
   selectedMissingLocal: Set<string>;
   buildSyncItems: () => SyncItem[];

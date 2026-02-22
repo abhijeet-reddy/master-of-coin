@@ -9,6 +9,7 @@ import {
   MdPeople,
   MdAssessment,
   MdWorkHistory,
+  MdSchedule,
   MdSettings,
 } from 'react-icons/md';
 import { useAuth } from '@/contexts/AuthContext';
@@ -143,6 +144,13 @@ export const Sidebar = ({ onClose, isCollapsed = false }: SidebarProps) => {
           icon={MdWorkHistory}
           label="Jobs"
           to="/jobs"
+          onClick={onClose}
+          isCollapsed={isCollapsed}
+        />
+        <NavItem
+          icon={MdSchedule}
+          label="Schedules"
+          to="/schedules"
           onClick={onClose}
           isCollapsed={isCollapsed}
         />

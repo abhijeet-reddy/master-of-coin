@@ -171,6 +171,25 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::JobType;
+
+    schedules (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        name -> Text,
+        job_type -> JobType,
+        cron_expr -> Text,
+        parameters -> Nullable<Jsonb>,
+        is_active -> Bool,
+        next_run_at -> Nullable<Timestamptz>,
+        last_run_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     split_providers (id) {
         id -> Uuid,
         user_id -> Uuid,
@@ -254,6 +273,7 @@ diesel::joinable!(debt_transaction_metadata -> transactions (transaction_id));
 diesel::joinable!(people -> users (user_id));
 diesel::joinable!(person_split_configs -> people (person_id));
 diesel::joinable!(person_split_configs -> split_providers (split_provider_id));
+diesel::joinable!(schedules -> users (user_id));
 diesel::joinable!(split_providers -> users (user_id));
 diesel::joinable!(split_sync_records -> split_providers (split_provider_id));
 diesel::joinable!(split_sync_records -> transaction_splits (transaction_split_id));
@@ -273,6 +293,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     debt_transaction_metadata,
     people,
     person_split_configs,
+    schedules,
     split_providers,
     split_sync_records,
     transaction_splits,

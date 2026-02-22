@@ -8,3 +8,4 @@ export * from './splitIntegration';
 export * from './jobs';
 export * from './drift';
 export * from './sync';
+export * from './schedule';

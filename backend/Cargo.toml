@@ -64,6 +64,7 @@ aes-gcm = "0.10"
 base64 = "0.22"
 async-trait = "0.1"
 urlencoding = "2.1"
+cron = "0.15"
 
 [dev-dependencies]
 serial_test = "3.0"

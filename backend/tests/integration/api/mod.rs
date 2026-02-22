@@ -33,6 +33,7 @@ mod test_import_api;
 mod test_import_service;
 mod test_jobs;
 mod test_people;
+mod test_schedules;
 mod test_scope_enforcement;
 mod test_split_providers;
 mod test_split_sync;

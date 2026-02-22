@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Text } from '@chakra-ui/react';
+import { Badge, Card, HStack, Table, Text } from '@chakra-ui/react';
 import { JobStatusBadge } from './JobStatusBadge';
 import { JobTypeBadge } from './JobTypeBadge';
 import { EmptyState } from '@/components/common';
@@ -9,6 +9,10 @@ import type { BackgroundJobSummary } from '@/types';
 
 interface JobHistoryListProps {
   jobs: BackgroundJobSummary[];
+  /** Override the default empty-state title */
+  emptyTitle?: string;
+  /** Override the default empty-state description */
+  emptyDescription?: string;
 }
 
 const jobTypeToRoute: Record<JobType, string> = {
@@ -34,12 +38,27 @@ function extractSummaryText(job: BackgroundJobSummary): string {
   return '';
 }
 
-export const JobHistoryList = ({ jobs }: JobHistoryListProps) => {
+/**
+ * Extract schedule_id from job summary if present.
+ * Note: schedule_id is stored in the job's `input` JSONB, not `summary`.
+ * This check is best-effort — the backend would need to include schedule_id
+ * in the summary or expose the input field for full support.
+ */
+function extractScheduleId(job: BackgroundJobSummary): string | null {
+  const s = job.summary;
+  if (s && typeof s.schedule_id === 'string') return s.schedule_id;
+  return null;
+}
+
+export const JobHistoryList = ({ jobs, emptyTitle, emptyDescription }: JobHistoryListProps) => {
   const navigate = useNavigate();
 
   if (jobs.length === 0) {
     return (
-      <EmptyState title="No jobs yet" description="Run a drift detection from Settings > Split." />
+      <EmptyState
+        title={emptyTitle ?? 'No jobs yet'}
+        description={emptyDescription ?? 'Run a drift detection from Settings > Split.'}
+      />
     );
   }
 
@@ -65,7 +84,23 @@ export const JobHistoryList = ({ jobs }: JobHistoryListProps) => {
                   onClick={() => void navigate(`/jobs/${routeType}/${job.id}`)}
                 >
                   <Table.Cell>
-                    <JobTypeBadge jobType={job.job_type} />
+                    <HStack gap={2}>
+                      <JobTypeBadge jobType={job.job_type} />
+                      {extractScheduleId(job) && (
+                        <Badge
+                          variant="outline"
+                          colorPalette="teal"
+                          size="sm"
+                          cursor="pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void navigate(`/schedules/${extractScheduleId(job)}`);
+                          }}
+                        >
+                          Scheduled
+                        </Badge>
+                      )}
+                    </HStack>
                   </Table.Cell>
                   <Table.Cell>
                     <JobStatusBadge status={job.status} />

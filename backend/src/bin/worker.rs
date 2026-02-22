@@ -11,6 +11,7 @@
 //! - **One-per-type concurrency**: Multiple job types can run simultaneously, but only one job per type
 //! - **Daily cleanup**: Deletes terminal jobs older than 1 year at 00:00 UTC
 //! - **Job dispatch**: Routes jobs to the appropriate service by `job_type`
+//! - **Schedule checking**: Triggers due schedules by creating background jobs
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -23,13 +24,16 @@ use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
 
 use master_of_coin_backend::DbPool;
+use master_of_coin_backend::models::background_job::NewBackgroundJob;
 use master_of_coin_backend::models::bulk_sync::BulkSyncRequest;
 use master_of_coin_backend::models::drift_detection::DriftDetectionRequest;
 use master_of_coin_backend::repositories::background_job::BackgroundJobRepository;
+use master_of_coin_backend::repositories::schedule::ScheduleRepository;
 use master_of_coin_backend::services::split_provider::{SplitProvider, SplitwiseProvider};
 use master_of_coin_backend::services::split_sync_service::SplitSyncService;
 use master_of_coin_backend::services::{bulk_sync_service, drift_detection_service};
-use master_of_coin_backend::types::JobType;
+use master_of_coin_backend::types::{JobStatus, JobType};
+use master_of_coin_backend::utils::cron::compute_next_run_after;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
@@ -274,8 +278,136 @@ async fn run_poll_loop(
             }
         }
 
+        // Check and trigger due schedules (parallel with job execution)
+        let pool_for_schedules = pool.clone();
+        tokio::spawn(async move {
+            check_and_trigger_schedules(&pool_for_schedules).await;
+        });
+
         // Sleep for the poll interval before checking again
         tokio::time::sleep(std::time::Duration::from_secs(poll_interval_secs)).await;
+    }
+}
+
+/// Check for due schedules and trigger them by creating background jobs.
+///
+/// For each active schedule whose `next_run_at <= NOW()`:
+/// 1. Build the job input from the schedule's `job_type` and `parameters`
+/// 2. Create a `NewBackgroundJob` with the schedule's `job_type` and `user_id`
+/// 3. Compute the next `next_run_at` via `compute_next_run_after(cron_expr, now)`
+/// 4. Call `ScheduleRepository::trigger_schedule()` (transactional: INSERT job + UPDATE schedule)
+async fn check_and_trigger_schedules(pool: &DbPool) {
+    let due_schedules = match ScheduleRepository::find_due_schedules(pool) {
+        Ok(schedules) => schedules,
+        Err(e) => {
+            tracing::error!("Failed to query due schedules: {}", e);
+            return;
+        }
+    };
+
+    if due_schedules.is_empty() {
+        tracing::debug!("No due schedules found");
+        return;
+    }
+
+    tracing::info!("Found {} due schedule(s)", due_schedules.len());
+
+    let now = Utc::now();
+
+    for schedule in due_schedules {
+        // Build job input based on job_type and parameters
+        let job_input = build_job_input(&schedule, now);
+
+        let new_job = NewBackgroundJob {
+            user_id: schedule.user_id,
+            job_type: schedule.job_type,
+            status: JobStatus::Pending,
+            previous_job_id: None,
+            input: Some(job_input),
+        };
+
+        // Compute next_run_at from the cron expression
+        let next_run_at = match compute_next_run_after(&schedule.cron_expr, now) {
+            Ok(next) => next,
+            Err(e) => {
+                tracing::error!(
+                    "Failed to compute next_run_at for schedule {} (cron='{}'): {}",
+                    schedule.id,
+                    schedule.cron_expr,
+                    e
+                );
+                continue;
+            }
+        };
+
+        // Trigger the schedule (transactional: INSERT job + UPDATE schedule)
+        match ScheduleRepository::trigger_schedule(pool, schedule.id, new_job, next_run_at) {
+            Ok(_job) => {
+                tracing::info!(
+                    "Triggered schedule {} ({:?}) for user {}",
+                    schedule.id,
+                    schedule.job_type,
+                    schedule.user_id
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    "Failed to trigger schedule {} ({:?}): {}",
+                    schedule.id,
+                    schedule.job_type,
+                    e
+                );
+            }
+        }
+    }
+}
+
+/// Build the job input JSON based on the schedule's `job_type` and `parameters`.
+///
+/// - For `DRIFT_DETECTION`: computes `start_date = now - lookback_days` and `end_date = now`,
+///   includes `schedule_id`.
+/// - For `BULK_SYNC`: includes `schedule_id` and any parameters from the schedule.
+fn build_job_input(
+    schedule: &master_of_coin_backend::models::schedule::Schedule,
+    now: chrono::DateTime<Utc>,
+) -> serde_json::Value {
+    let schedule_id = schedule.id.to_string();
+
+    match schedule.job_type {
+        JobType::DriftDetection => {
+            // Extract lookback_days from parameters, default to 7
+            let lookback_days = schedule
+                .parameters
+                .as_ref()
+                .and_then(|p| p.get("lookback_days"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(7);
+
+            let start_date = now - Duration::days(lookback_days);
+            let end_date = now;
+
+            serde_json::json!({
+                "schedule_id": schedule_id,
+                "start_date": start_date.to_rfc3339(),
+                "end_date": end_date.to_rfc3339()
+            })
+        }
+        JobType::BulkSync => {
+            // Include schedule_id and merge any parameters from the schedule
+            let mut input = schedule
+                .parameters
+                .clone()
+                .unwrap_or_else(|| serde_json::json!({}));
+
+            if let Some(obj) = input.as_object_mut() {
+                obj.insert(
+                    "schedule_id".to_string(),
+                    serde_json::Value::String(schedule_id),
+                );
+            }
+
+            input
+        }
     }
 }
 

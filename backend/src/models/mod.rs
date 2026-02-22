@@ -14,6 +14,7 @@ pub mod job_summary;
 pub mod parser_error;
 pub mod person;
 pub mod person_split_config;
+pub mod schedule;
 pub mod split_provider;
 pub mod split_sync_record;
 pub mod transaction;
@@ -112,3 +113,9 @@ pub use bulk_sync::{
 
 // Re-export job summary models
 pub use job_summary::{BackgroundJobSummary, ListJobsQuery};
+
+// Re-export schedule models
+pub use schedule::{
+    CreateScheduleRequest, NewSchedule, Schedule, ScheduleDetailResponse, ScheduleResponse,
+    UpdateSchedule, UpdateScheduleRequest,
+};

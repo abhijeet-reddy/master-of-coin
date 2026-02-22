@@ -284,6 +284,75 @@ pub fn create_router(state: AppState) -> Router {
                 },
             )),
         )
+        // Schedules CRUD
+        .route(
+            "/schedules",
+            post(handlers::schedules::create_schedule).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/schedules",
+            get(handlers::schedules::list_schedules).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/schedules/:id",
+            get(handlers::schedules::get_schedule).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Read,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/schedules/:id",
+            put(handlers::schedules::update_schedule).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/schedules/:id",
+            delete(handlers::schedules::delete_schedule).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Bulk create transactions (general purpose)
         .route(
             "/transactions/bulk-create",

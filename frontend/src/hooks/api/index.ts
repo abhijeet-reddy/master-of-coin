@@ -62,3 +62,12 @@ export { useStartDriftDetection, useDriftJob, useRetryDriftJob } from './useDrif
 
 // Bulk sync hooks
 export { useStartBulkSync, useBulkSyncJob, useRetryBulkSync } from './useBulkSync';
+
+// Schedule hooks
+export {
+  useSchedules,
+  useSchedule,
+  useCreateSchedule,
+  useUpdateSchedule,
+  useDeleteSchedule,
+} from './useSchedules';

@@ -1,5 +1,6 @@
 import { Badge, Card, DataList, HStack, Text, VStack } from '@chakra-ui/react';
 import { formatDate } from '@/utils/formatters/date';
+import { buildSplitDiffs, compareTotals } from '@/utils/driftHelpers';
 import type { DriftedItem, MissingOnExternal, MissingOnLocal } from '@/types';
 
 interface DriftedItemRowProps {
@@ -14,52 +15,80 @@ interface MissingOnLocalRowProps {
   item: MissingOnLocal;
 }
 
-export const DriftedItemRow = ({ item }: DriftedItemRowProps) => (
-  <Card.Root variant="elevated">
-    <Card.Body py={3} px={4}>
-      <VStack gap={2} alignItems="stretch">
-        <HStack justifyContent="space-between">
-          <Text fontWeight="medium">{item.transaction_title}</Text>
-          <Text fontSize="sm" color="fg.muted">
-            {formatDate(item.transaction_date)}
-          </Text>
-        </HStack>
-        <DataList.Root orientation="horizontal" size="sm">
-          <DataList.Item>
-            <DataList.ItemLabel>Local</DataList.ItemLabel>
-            <DataList.ItemValue fontWeight="medium">{item.local_amount}</DataList.ItemValue>
-          </DataList.Item>
-          <DataList.Item>
-            <DataList.ItemLabel>External</DataList.ItemLabel>
-            <DataList.ItemValue fontWeight="medium">{item.external_cost}</DataList.ItemValue>
-          </DataList.Item>
-        </DataList.Root>
-        {item.local_splits.length > 0 && (
-          <DataList.Root size="sm">
-            {item.local_splits.map((split) => (
-              <DataList.Item key={split.external_user_id}>
-                <DataList.ItemLabel>Local: {split.person_name}</DataList.ItemLabel>
-                <DataList.ItemValue>owes {split.owed_share}</DataList.ItemValue>
-              </DataList.Item>
-            ))}
-          </DataList.Root>
-        )}
-        {item.external_splits.length > 0 && (
-          <DataList.Root size="sm">
-            {item.external_splits.map((split) => (
-              <DataList.Item key={split.external_user_id}>
-                <DataList.ItemLabel>
-                  Ext: {split.first_name} {split.last_name}
-                </DataList.ItemLabel>
-                <DataList.ItemValue>owes {split.owed_share}</DataList.ItemValue>
-              </DataList.Item>
-            ))}
-          </DataList.Root>
-        )}
-      </VStack>
-    </Card.Body>
-  </Card.Root>
-);
+export const DriftedItemRow = ({ item }: DriftedItemRowProps) => {
+  const splitDiffs = buildSplitDiffs(item);
+  const changedDiffs = splitDiffs.filter((d) => d.isDifferent);
+  const totals = compareTotals(item);
+
+  return (
+    <Card.Root variant="elevated">
+      <Card.Body py={3} px={4}>
+        <VStack gap={2} alignItems="stretch">
+          <HStack justifyContent="space-between">
+            <Text fontWeight="medium">{item.transaction_title}</Text>
+            <HStack gap={2}>
+              <Text fontSize="sm" color="fg.muted">
+                {formatDate(item.transaction_date)}
+              </Text>
+              {totals.isDifferent ? (
+                <Text fontWeight="medium">
+                  Total:{' '}
+                  <Text as="span" textDecoration="line-through" color="fg.muted">
+                    {totals.localTotal}
+                  </Text>
+                  {' → '}
+                  {totals.externalTotal}
+                </Text>
+              ) : (
+                <Text fontWeight="medium">Total: {totals.localTotal}</Text>
+              )}
+            </HStack>
+          </HStack>
+
+          {changedDiffs.length > 0 && (
+            <>
+              <Text fontSize="sm" fontWeight="medium" color="fg.subtle">
+                Splits differ:
+              </Text>
+              <DataList.Root size="sm">
+                {changedDiffs.map((d) => (
+                  <DataList.Item key={d.name}>
+                    <DataList.ItemLabel>{d.name}</DataList.ItemLabel>
+                    <DataList.ItemValue>
+                      <Text as="span" textDecoration="line-through" color="fg.muted">
+                        {d.localOwed ?? '—'}
+                      </Text>
+                      {' → '}
+                      <Text as="span" fontWeight="medium">
+                        {d.externalOwed ?? '—'}
+                      </Text>
+                    </DataList.ItemValue>
+                  </DataList.Item>
+                ))}
+              </DataList.Root>
+            </>
+          )}
+
+          {changedDiffs.length === 0 && splitDiffs.length > 0 && (
+            <>
+              <Text fontSize="sm" fontWeight="medium" color="fg.subtle">
+                Splits (matching):
+              </Text>
+              <DataList.Root size="sm">
+                {splitDiffs.map((d) => (
+                  <DataList.Item key={d.name}>
+                    <DataList.ItemLabel>{d.name}</DataList.ItemLabel>
+                    <DataList.ItemValue>{d.localOwed ?? d.externalOwed}</DataList.ItemValue>
+                  </DataList.Item>
+                ))}
+              </DataList.Root>
+            </>
+          )}
+        </VStack>
+      </Card.Body>
+    </Card.Root>
+  );
+};
 
 export const MissingOnExternalRow = ({ item }: MissingOnExternalRowProps) => (
   <Card.Root variant="elevated">

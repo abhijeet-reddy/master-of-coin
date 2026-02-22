@@ -13,6 +13,7 @@ import { LuArrowRightLeft } from 'react-icons/lu';
 import { formatDate } from '@/utils/formatters/date';
 import { SyncAction } from '@/types';
 import type { DriftedItem, DriftedSelection } from '@/types';
+import { compareTotals, getChangedSplitDiffs } from '@/utils/driftHelpers';
 
 interface DriftedStepViewProps {
   items: DriftedItem[];
@@ -104,10 +105,42 @@ export const DriftedStepView = ({
                       {formatDate(item.transaction_date)}
                     </Text>
                   </HStack>
-                  <HStack gap={4} fontSize="sm">
-                    <Text>Local: {item.local_amount}</Text>
-                    <Text>External: {item.external_cost}</Text>
-                  </HStack>
+                  {(() => {
+                    const totals = compareTotals(item);
+                    const diffs = getChangedSplitDiffs(item);
+                    return (
+                      <>
+                        <HStack gap={4} fontSize="sm">
+                          {totals.isDifferent ? (
+                            <Text>
+                              Total:{' '}
+                              <Text as="span" textDecoration="line-through" color="fg.muted">
+                                {totals.localTotal}
+                              </Text>
+                              {' → '}
+                              <Text as="span" fontWeight="medium">
+                                {totals.externalTotal}
+                              </Text>
+                            </Text>
+                          ) : (
+                            <Text fontWeight="medium">Total: {totals.localTotal}</Text>
+                          )}
+                        </HStack>
+                        {diffs.length > 0 && (
+                          <VStack gap={0.5} alignItems="stretch" fontSize="xs" color="fg.muted">
+                            <Text fontWeight="medium" color="fg.subtle">
+                              Splits differ:
+                            </Text>
+                            {diffs.map((d) => (
+                              <Text key={d.name} pl={2}>
+                                {d.name}: {d.localOwed ?? '—'} → {d.externalOwed ?? '—'}
+                              </Text>
+                            ))}
+                          </VStack>
+                        )}
+                      </>
+                    );
+                  })()}
                 </VStack>
 
                 {isSelected && (

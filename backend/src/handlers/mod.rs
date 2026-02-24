@@ -17,3 +17,4 @@ pub mod split_providers;
 pub mod split_sync;
 pub mod splitwise_integration;
 pub mod transactions;
+pub mod transfers;

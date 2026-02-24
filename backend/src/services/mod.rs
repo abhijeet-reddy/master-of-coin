@@ -15,3 +15,4 @@ pub mod split_provider;
 pub mod split_sync_service;
 pub mod splitwise_oauth;
 pub mod transaction_service;
+pub mod transfer_service;

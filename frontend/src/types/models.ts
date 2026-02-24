@@ -113,8 +113,16 @@ export interface Transaction {
   splits?: TransactionSplit[];
   user_share?: string;
   debt_metadata?: DebtMetadata | null;
+  transfer_info?: TransferInfo;
   created_at: string;
   updated_at: string;
+}
+
+// Transfer metadata attached to transactions that are part of a transfer
+export interface TransferInfo {
+  transfer_id: string;
+  linked_account_id: string;
+  linked_account_name: string;
 }
 
 // Enriched transaction
@@ -138,8 +146,30 @@ export interface EnrichedTransaction {
   notes?: string;
   user_share?: string;
   debt_metadata?: DebtMetadata | null;
+  transfer_info?: TransferInfo;
   created_at: string;
   updated_at: string;
+}
+
+// Transfer request/response types
+export interface CreateTransferRequest {
+  from_account_id: string;
+  to_account_id: string;
+  from_amount: number;
+  to_amount?: number;
+  exchange_rate?: number;
+  title?: string;
+  date: string;
+  notes?: string;
+  category_id?: string;
+}
+
+export interface TransferResponse {
+  id: string;
+  from_transaction: Transaction;
+  to_transaction: Transaction;
+  exchange_rate: string;
+  created_at: string;
 }
 
 export interface CreateTransactionRequest {

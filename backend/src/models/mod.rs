@@ -19,6 +19,7 @@ pub mod split_provider;
 pub mod split_sync_record;
 pub mod transaction;
 pub mod transaction_split;
+pub mod transfer;
 pub mod user;
 
 // Re-export base models
@@ -34,6 +35,7 @@ pub use split_provider::{SplitProvider, UpdateSplitProvider};
 pub use split_sync_record::{SplitSyncRecord, SyncStatus, UpdateSplitSyncRecord};
 pub use transaction::{CreateTransaction, Transaction, UpdateTransaction};
 pub use transaction_split::{CreateTransactionSplit, TransactionSplit, UpdateTransactionSplit};
+pub use transfer::{NewTransfer, Transfer};
 pub use user::{CreateUser, UpdateUser, User};
 
 // Re-export New* structs for insertions
@@ -64,6 +66,7 @@ pub use split_provider::CreateSplitProviderRequest;
 pub use transaction::{
     CreateTransactionRequest, TransactionFilter, TransactionType, UpdateTransactionRequest,
 };
+pub use transfer::CreateTransferRequest;
 pub use user::{AuthResponse, CreateUserRequest, LoginRequest};
 
 // Re-export Response DTOs
@@ -80,6 +83,7 @@ pub use split_provider::{SplitProviderResponse, SplitwiseCredentials};
 pub use split_sync_record::SplitSyncStatusResponse;
 pub use transaction::TransactionResponse;
 pub use transaction_split::TransactionSplitResponse;
+pub use transfer::{TransferInfo, TransferResponse};
 pub use user::UserResponse;
 
 // Re-export API key specific types

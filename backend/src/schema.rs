@@ -247,6 +247,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    transfers (id) {
+        id -> Uuid,
+        from_transaction_id -> Uuid,
+        to_transaction_id -> Uuid,
+        exchange_rate -> Numeric,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Uuid,
         #[max_length = 50]
@@ -298,5 +308,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     split_sync_records,
     transaction_splits,
     transactions,
+    transfers,
     users,
 );

@@ -156,6 +156,19 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        // Transfers (account-to-account)
+        .route(
+            "/transfers",
+            post(handlers::transfers::create).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
         // Debt transactions (paid by others)
         .route(
             "/debt-transactions",

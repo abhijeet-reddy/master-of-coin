@@ -12,3 +12,4 @@ export { default as useSplitwiseCallbackStatus } from './useSplitwiseCallbackSta
 export { default as useTransactionDetail } from './useTransactionDetail';
 export { default as useSplitSync } from './useSplitSync';
 export { default as useSyncWizard } from './useSyncWizard';
+export { default as useTransferForm } from './useTransferForm';

@@ -60,6 +60,7 @@ export default function useEnrichedTransactions(
         splits: transaction.splits,
         user_share: transaction.user_share,
         debt_metadata: transaction.debt_metadata,
+        transfer_info: transaction.transfer_info,
         created_at: transaction.created_at,
         updated_at: transaction.updated_at,
       };

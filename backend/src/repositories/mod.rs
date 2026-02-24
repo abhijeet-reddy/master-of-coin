@@ -11,4 +11,5 @@ pub mod schedule;
 pub mod split_provider;
 pub mod split_sync_record;
 pub mod transaction;
+pub mod transfer;
 pub mod user;

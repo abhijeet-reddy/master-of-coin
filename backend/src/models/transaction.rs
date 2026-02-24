@@ -209,6 +209,9 @@ pub struct TransactionResponse {
     pub splits: Option<Vec<TransactionSplitResponse>>,
     /// Debt metadata — populated for "paid by others" transactions, null otherwise
     pub debt_metadata: Option<super::debt_transaction_metadata::DebtMetadataResponse>,
+    /// Transfer metadata — populated when this transaction is part of an account-to-account transfer
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transfer_info: Option<crate::models::TransferInfo>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -226,6 +229,7 @@ impl From<Transaction> for TransactionResponse {
             notes: transaction.notes,
             splits: None,        // Populated separately when needed
             debt_metadata: None, // Populated separately from LEFT JOIN
+            transfer_info: None, // Populated separately from transfers table
             created_at: transaction.created_at,
             updated_at: transaction.updated_at,
         }
@@ -271,6 +275,7 @@ impl From<crate::repositories::transaction::TransactionWithDebtInfo> for Transac
             notes: info.transaction.notes,
             splits: None, // Populated separately when needed
             debt_metadata,
+            transfer_info: None, // Populated separately from transfers table
             created_at: info.transaction.created_at,
             updated_at: info.transaction.updated_at,
         }

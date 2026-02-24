@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { Box, Button, Card, HStack, VStack, Text, Badge, Icon, Separator } from '@chakra-ui/react';
 import {
   FiShoppingCart,
@@ -11,11 +12,17 @@ import {
   FiFileText,
   FiClock,
   FiRefreshCw,
+  FiRepeat,
+  FiCopy,
+  FiCheck,
+  FiArrowRight,
+  FiArrowLeft,
 } from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction, Person } from '@/types';
 import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters';
 import { SplitSyncStatus } from '@/components/transactions/SplitSyncStatus';
+import { toaster } from '@/components/ui/toaster';
 
 interface TransactionDetailCardProps {
   transaction: EnrichedTransaction;
@@ -41,11 +48,20 @@ export const TransactionDetailCard = ({
   onSync,
   isSyncing,
 }: TransactionDetailCardProps) => {
+  const [copied, setCopied] = useState(false);
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
 
   const personMap = new Map(people.map((p) => [p.id, p]));
+
+  const handleCopyTransferId = useCallback((transferId: string) => {
+    void navigator.clipboard.writeText(transferId).then(() => {
+      setCopied(true);
+      toaster.create({ title: 'Transfer ID copied', type: 'info' });
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, []);
 
   return (
     <VStack gap={6} align="stretch">
@@ -214,6 +230,61 @@ export const TransactionDetailCard = ({
             <Text fontSize="sm" color="fg.muted" whiteSpace="pre-wrap">
               {transaction.notes}
             </Text>
+          </Card.Body>
+        </Card.Root>
+      )}
+
+      {/* Transfer Details Card — shown only for transfer transactions */}
+      {transaction.transfer_info && (
+        <Card.Root>
+          <Card.Header>
+            <HStack gap={2}>
+              <Badge colorPalette="teal" fontSize="sm">
+                <HStack gap={1}>
+                  <Icon as={FiRepeat} boxSize={3} />
+                  <Text>Transfer</Text>
+                </HStack>
+              </Badge>
+              <Text fontSize="lg" fontWeight="semibold" color="fg">
+                Transfer Details
+              </Text>
+            </HStack>
+          </Card.Header>
+          <Card.Body>
+            <VStack gap={3} align="stretch">
+              {/* Transfer ID (copiable) */}
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="fg.muted">
+                  Transfer ID
+                </Text>
+                <HStack
+                  gap={1}
+                  cursor="pointer"
+                  onClick={() => handleCopyTransferId(transaction.transfer_info!.transfer_id)}
+                  _hover={{ color: 'blue.500' }}
+                  color="fg.muted"
+                  title="Click to copy"
+                >
+                  <Text fontSize="xs" fontFamily="mono">
+                    {transaction.transfer_info.transfer_id}
+                  </Text>
+                  <Icon as={copied ? FiCheck : FiCopy} boxSize={3} />
+                </HStack>
+              </HStack>
+
+              <Separator />
+
+              {/* Direction + Linked Account (combined) */}
+              <HStack justify="space-between">
+                <HStack gap={2} color="fg.muted">
+                  <Icon as={isExpense ? FiArrowRight : FiArrowLeft} />
+                  <Text fontSize="sm">{isExpense ? 'Transferred to' : 'Received from'}</Text>
+                </HStack>
+                <Badge colorPalette="gray" fontSize="sm">
+                  {transaction.transfer_info.linked_account_name} ({transaction.account.currency})
+                </Badge>
+              </HStack>
+            </VStack>
           </Card.Body>
         </Card.Root>
       )}

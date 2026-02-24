@@ -128,7 +128,7 @@ pub async fn create_transaction(
     Ok(response)
 }
 
-/// Get a transaction by ID with splits and debt metadata.
+/// Get a transaction by ID with splits, debt metadata, and transfer info.
 pub async fn get_transaction(
     pool: &DbPool,
     transaction_id: Uuid,
@@ -162,6 +162,14 @@ pub async fn get_transaction(
     } else {
         Some(splits)
     };
+
+    // Fetch transfer info if this transaction is part of a transfer
+    let transfer_map =
+        repositories::transfer::find_transfer_info_for_transactions(pool, &[transaction_id])
+            .await?;
+    if let Some(info) = transfer_map.into_values().next() {
+        response.transfer_info = Some(info);
+    }
 
     Ok(response)
 }
@@ -221,6 +229,18 @@ pub async fn list_transactions(
         };
 
         responses.push(response);
+    }
+
+    // Batch-fetch transfer info for all transactions in the result set
+    let transaction_ids: Vec<Uuid> = responses.iter().map(|r| r.id).collect();
+    let transfer_map =
+        repositories::transfer::find_transfer_info_for_transactions(pool, &transaction_ids).await?;
+
+    // Populate transfer_info on each response that has a match
+    for response in &mut responses {
+        if let Some(info) = transfer_map.get(&response.id) {
+            response.transfer_info = Some(info.clone());
+        }
     }
 
     Ok(responses)
@@ -410,6 +430,9 @@ pub async fn update_transaction(
 }
 
 /// Delete a transaction
+///
+/// If the transaction is part of a transfer, both linked transactions and the
+/// transfer record are deleted atomically.
 pub async fn delete_transaction(
     pool: &DbPool,
     transaction_id: Uuid,
@@ -425,6 +448,22 @@ pub async fn delete_transaction(
             result.transaction.user_id
         );
         return Err(ApiError::Forbidden("Access denied".to_string()));
+    }
+
+    // Check if the transaction is part of a transfer
+    if let Some(transfer) =
+        repositories::transfer::find_transfer_by_transaction_id(pool, transaction_id).await?
+    {
+        // Delete both transactions and the transfer link atomically
+        repositories::transfer::delete_transfer_and_transactions(pool, &transfer).await?;
+
+        tracing::info!(
+            "Deleted transfer {} and both transactions for user {}",
+            transfer.id,
+            user_id
+        );
+
+        return Ok(());
     }
 
     // Delete splits first

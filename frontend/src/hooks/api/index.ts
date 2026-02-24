@@ -2,6 +2,7 @@
 export { default as useTransactions } from './useTransactions';
 export { default as useTransaction } from './useTransaction';
 export { default as useCreateTransaction } from './useCreateTransaction';
+export { default as useCreateTransfer } from './useCreateTransfer';
 export { default as useUpdateTransaction } from './useUpdateTransaction';
 export { default as useDeleteTransaction } from './useDeleteTransaction';
 

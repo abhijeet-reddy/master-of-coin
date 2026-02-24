@@ -1,5 +1,13 @@
 import { Badge, Box, HStack, Icon, IconButton, Text, VStack } from '@chakra-ui/react';
-import { FiShoppingCart, FiHome, FiCoffee, FiTrendingUp, FiUsers, FiTrash2 } from 'react-icons/fi';
+import {
+  FiShoppingCart,
+  FiHome,
+  FiCoffee,
+  FiTrendingUp,
+  FiUsers,
+  FiTrash2,
+  FiRepeat,
+} from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { AccountType } from '@/types';
@@ -110,6 +118,20 @@ export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: Trans
               {transaction.account.type !== AccountType.DEBT && (
                 <Badge colorScheme="gray" fontSize="xs">
                   {transaction.account.name}
+                </Badge>
+              )}
+
+              {/* Transfer badge */}
+              {transaction.transfer_info && (
+                <Badge colorPalette="teal" fontSize="xs">
+                  <HStack gap={1}>
+                    <Icon as={FiRepeat} boxSize={3} />
+                    <Text>
+                      {isExpense
+                        ? `→ ${transaction.transfer_info.linked_account_name}`
+                        : `← ${transaction.transfer_info.linked_account_name}`}
+                    </Text>
+                  </HStack>
                 </Badge>
               )}
 

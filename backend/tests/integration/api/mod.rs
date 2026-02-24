@@ -39,3 +39,4 @@ mod test_split_providers;
 mod test_split_sync;
 mod test_splitwise_debt_sync;
 mod test_transactions;
+mod test_transfers;

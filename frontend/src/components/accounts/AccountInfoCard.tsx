@@ -1,4 +1,4 @@
-import { Badge, Card, HStack, IconButton, Text, VStack } from '@chakra-ui/react';
+import { Badge, Box, Button, Card, HStack, IconButton, Text, VStack } from '@chakra-ui/react';
 import {
   FaMoneyCheckAlt,
   FaPiggyBank,
@@ -12,14 +12,13 @@ import { formatCurrency } from '@/utils/formatters';
 import { AccountType } from '@/types';
 import type { Account } from '@/types';
 
-interface AccountCardProps {
+interface AccountInfoCardProps {
   account: Account;
-  onClick?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-// Map account types to icons
+/** Map account types to icons */
 const getAccountIcon = (type: AccountType) => {
   switch (type) {
     case AccountType.CHECKING:
@@ -37,7 +36,7 @@ const getAccountIcon = (type: AccountType) => {
   }
 };
 
-// Format account type for display
+/** Format account type for display */
 const formatAccountType = (type: AccountType): string => {
   if (!type) return 'Unknown';
   return type
@@ -46,7 +45,7 @@ const formatAccountType = (type: AccountType): string => {
     .join(' ');
 };
 
-// Get color scheme based on account type
+/** Get color scheme based on account type */
 const getColorScheme = (type: AccountType): string => {
   switch (type) {
     case AccountType.CHECKING:
@@ -64,28 +63,29 @@ const getColorScheme = (type: AccountType): string => {
   }
 };
 
-export const AccountCard = ({ account, onClick, onEdit, onDelete }: AccountCardProps) => {
+export const AccountInfoCard = ({ account, onEdit, onDelete }: AccountInfoCardProps) => {
   const Icon = getAccountIcon(account.account_type);
   const colorScheme = getColorScheme(account.account_type);
   const balance = account.balance;
 
   return (
-    <Card.Root
-      cursor={onClick ? 'pointer' : undefined}
-      onClick={onClick}
-      _hover={onClick ? { shadow: 'md', borderColor: 'blue.200' } : undefined}
-      transition="all 0.2s"
-    >
-      <Card.Body>
-        <VStack align="stretch" gap={3}>
-          {/* Header with icon and actions */}
-          <HStack justify="space-between">
-            <HStack gap={3}>
-              <Text fontSize="2xl" color={`${colorScheme}.500`}>
+    <Card.Root variant="elevated" mb={6}>
+      <Card.Body p={6}>
+        <VStack align="stretch" gap={4}>
+          {/* Header with icon, name, and actions */}
+          <HStack justify="space-between" align="flex-start">
+            <HStack gap={4}>
+              <Box
+                p={3}
+                borderRadius="lg"
+                bg={`${colorScheme}.50`}
+                color={`${colorScheme}.500`}
+                fontSize="2xl"
+              >
                 <Icon />
-              </Text>
-              <VStack align="start" gap={0}>
-                <Text fontSize="lg" fontWeight="semibold">
+              </Box>
+              <VStack align="start" gap={1}>
+                <Text fontSize="xl" fontWeight="bold">
                   {account.name}
                 </Text>
                 <Badge colorScheme={colorScheme} size="sm">
@@ -94,26 +94,18 @@ export const AccountCard = ({ account, onClick, onEdit, onDelete }: AccountCardP
               </VStack>
             </HStack>
             <HStack gap={1}>
-              <IconButton
-                aria-label="Edit account"
-                size="sm"
-                variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-              >
-                <FaEdit />
-              </IconButton>
+              <Button size="sm" variant="outline" onClick={onEdit}>
+                <HStack gap={1}>
+                  <FaEdit />
+                  <Text display={{ base: 'none', md: 'block' }}>Edit</Text>
+                </HStack>
+              </Button>
               <IconButton
                 aria-label="Delete account"
                 size="sm"
                 variant="ghost"
                 colorScheme="red"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
+                onClick={onDelete}
               >
                 <FaTrash />
               </IconButton>
@@ -121,20 +113,23 @@ export const AccountCard = ({ account, onClick, onEdit, onDelete }: AccountCardP
           </HStack>
 
           {/* Balance */}
-          <VStack align="start" gap={0}>
-            <Text fontSize="sm" color="fg.muted">
-              Balance
+          <Box>
+            <Text fontSize="sm" color="fg.muted" mb={1}>
+              Current Balance
             </Text>
-            <Text fontSize="2xl" fontWeight="bold" color={balance >= 0 ? 'green.600' : 'red.600'}>
+            <Text fontSize="3xl" fontWeight="bold" color={balance >= 0 ? 'green.600' : 'red.600'}>
               {formatCurrency(balance, account.currency)}
             </Text>
-          </VStack>
+          </Box>
 
-          {/* Notes preview */}
+          {/* Notes */}
           {account.notes && (
-            <Text fontSize="sm" color="fg.muted" lineClamp={2}>
-              {account.notes}
-            </Text>
+            <Box>
+              <Text fontSize="sm" color="fg.muted" mb={1}>
+                Notes
+              </Text>
+              <Text fontSize="sm">{account.notes}</Text>
+            </Box>
           )}
         </VStack>
       </Card.Body>

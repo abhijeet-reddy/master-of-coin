@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios';
-import type { Account, ApiResponse } from '@/types';
+import type { Account } from '@/types';
 
 /**
  * Get all accounts for the current user
@@ -13,8 +13,8 @@ export async function getAccounts(): Promise<Account[]> {
  * Get a single account by ID
  */
 export async function getAccount(id: string): Promise<Account> {
-  const response = await apiClient.get<ApiResponse<Account>>(`/accounts/${id}`);
-  return response.data.data;
+  const response = await apiClient.get<Account>(`/accounts/${id}`);
+  return response.data;
 }
 
 /**
@@ -27,8 +27,8 @@ export async function createAccount(data: {
   initial_balance?: number;
   notes?: string;
 }): Promise<Account> {
-  const response = await apiClient.post<ApiResponse<Account>>('/accounts', data);
-  return response.data.data;
+  const response = await apiClient.post<Account>('/accounts', data);
+  return response.data;
 }
 
 /**
@@ -43,8 +43,8 @@ export async function updateAccount(
     notes: string;
   }>
 ): Promise<Account> {
-  const response = await apiClient.put<ApiResponse<Account>>(`/accounts/${id}`, data);
-  return response.data.data;
+  const response = await apiClient.put<Account>(`/accounts/${id}`, data);
+  return response.data;
 }
 
 /**

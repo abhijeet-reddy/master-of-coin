@@ -10,6 +10,7 @@ import Dashboard from '@/pages/Dashboard';
 import { TransactionsPage } from '@/pages/Transactions';
 import { TransactionDetailPage } from '@/pages/TransactionDetail';
 import { Accounts } from '@/pages/Accounts';
+import { AccountDetailPage } from '@/pages/AccountDetail';
 import { Budgets } from '@/pages/Budgets';
 import { Categories } from '@/pages/Categories';
 import { People } from '@/pages/People';
@@ -47,6 +48,7 @@ function App() {
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="transactions/:id" element={<TransactionDetailPage />} />
               <Route path="accounts" element={<Accounts />} />
+              <Route path="accounts/:id" element={<AccountDetailPage />} />
               <Route path="budgets" element={<Budgets />} />
               <Route path="categories" element={<Categories />} />
               <Route path="people" element={<People />} />

@@ -29,6 +29,7 @@ export interface QueryParams {
   end_date?: string;
   category?: string;
   account?: string;
+  account_id?: string;
   limit?: number;
   offset?: number;
   sort?: string;

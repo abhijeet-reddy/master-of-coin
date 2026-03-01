@@ -6,11 +6,18 @@ import type { Account } from '@/types';
 interface AccountListProps {
   accounts: Account[];
   isLoading?: boolean;
+  onAccountClick?: (account: Account) => void;
   onEdit: (account: Account) => void;
   onDelete: (account: Account) => void;
 }
 
-export const AccountList = ({ accounts, isLoading, onEdit, onDelete }: AccountListProps) => {
+export const AccountList = ({
+  accounts,
+  isLoading,
+  onAccountClick,
+  onEdit,
+  onDelete,
+}: AccountListProps) => {
   // Loading skeleton
   if (isLoading) {
     return (
@@ -39,6 +46,7 @@ export const AccountList = ({ accounts, isLoading, onEdit, onDelete }: AccountLi
         <AccountCard
           key={account.id}
           account={account}
+          onClick={onAccountClick ? () => onAccountClick(account) : undefined}
           onEdit={() => onEdit(account)}
           onDelete={() => onDelete(account)}
         />

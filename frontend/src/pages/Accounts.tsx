@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Button } from '@chakra-ui/react';
 import { PageHeader, ConfirmDialog, ErrorAlert } from '@/components/common';
 import { TotalBalanceCard, AccountList, AccountFormModal } from '@/components/accounts';
@@ -9,6 +10,7 @@ import type { Account } from '@/types';
 
 export const Accounts = () => {
   useDocumentTitle('Accounts');
+  const navigate = useNavigate();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | undefined>(undefined);
@@ -60,6 +62,9 @@ export const Accounts = () => {
       <AccountList
         accounts={accounts}
         isLoading={isLoading}
+        onAccountClick={(account) => {
+          void navigate(`/accounts/${account.id}`);
+        }}
         onEdit={(account) => {
           setSelectedAccount(account);
           setIsFormOpen(true);

@@ -14,3 +14,5 @@ export { default as useSplitSync } from './useSplitSync';
 export { default as useSyncWizard } from './useSyncWizard';
 export { default as useTransferForm } from './useTransferForm';
 export { default as useAccountDetail } from './useAccountDetail';
+export { default as useCategoryDetail } from './useCategoryDetail';
+export { default as useBudgetDetail } from './useBudgetDetail';

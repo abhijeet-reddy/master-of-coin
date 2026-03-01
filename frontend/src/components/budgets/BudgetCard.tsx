@@ -6,6 +6,7 @@ import type { EnrichedBudgetStatus, BudgetStatusType } from '@/types';
 
 interface BudgetCardProps {
   budget: EnrichedBudgetStatus;
+  onClick?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -42,7 +43,7 @@ const getProgressColor = (percentage: number): string => {
   return 'green';
 };
 
-export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
+export const BudgetCard = ({ budget, onClick, onEdit, onDelete }: BudgetCardProps) => {
   const StatusIcon = getStatusIcon(budget.status);
   const statusColor = getStatusColor(budget.status);
   const progressColor = getProgressColor(budget.percentage);
@@ -60,6 +61,8 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
       borderLeftColor={`${statusColor}.500`}
       _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
       transition="all 0.2s"
+      cursor={onClick ? 'pointer' : undefined}
+      onClick={onClick}
     >
       <Card.Body p={5}>
         <VStack align="stretch" gap={4}>
@@ -153,7 +156,10 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
               size="sm"
               variant="outline"
               colorScheme="blue"
-              onClick={onEdit}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
               flex="1"
               disabled
               title="Budget editing is temporarily disabled - backend doesn't support updating budget ranges"
@@ -168,7 +174,10 @@ export const BudgetCard = ({ budget, onEdit, onDelete }: BudgetCardProps) => {
               size="sm"
               variant="outline"
               colorScheme="red"
-              onClick={onDelete}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
               flex="1"
               aria-label={`Delete budget ${budget.budget_name}`}
             >

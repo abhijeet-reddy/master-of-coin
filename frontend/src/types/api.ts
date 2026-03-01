@@ -28,6 +28,7 @@ export interface QueryParams {
   start_date?: string;
   end_date?: string;
   category?: string;
+  category_id?: string;
   account?: string;
   account_id?: string;
   limit?: number;

@@ -6,11 +6,18 @@ import type { EnrichedBudgetStatus } from '@/types';
 interface BudgetListProps {
   budgets: EnrichedBudgetStatus[];
   isLoading?: boolean;
+  onBudgetClick?: (budget: EnrichedBudgetStatus) => void;
   onEdit: (budget: EnrichedBudgetStatus) => void;
   onDelete: (budget: EnrichedBudgetStatus) => void;
 }
 
-export const BudgetList = ({ budgets, isLoading, onEdit, onDelete }: BudgetListProps) => {
+export const BudgetList = ({
+  budgets,
+  isLoading,
+  onBudgetClick,
+  onEdit,
+  onDelete,
+}: BudgetListProps) => {
   // Loading state
   if (isLoading) {
     return (
@@ -47,6 +54,7 @@ export const BudgetList = ({ budgets, isLoading, onEdit, onDelete }: BudgetListP
         <BudgetCard
           key={budget.budget_id}
           budget={budget}
+          onClick={onBudgetClick ? () => onBudgetClick(budget) : undefined}
           onEdit={() => onEdit(budget)}
           onDelete={() => onDelete(budget)}
         />

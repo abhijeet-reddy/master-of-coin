@@ -6,11 +6,18 @@ import type { Category } from '@/types';
 interface CategoryListProps {
   categories: Category[];
   isLoading: boolean;
+  onCategoryClick?: (category: Category) => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
 }
 
-export const CategoryList = ({ categories, isLoading, onEdit, onDelete }: CategoryListProps) => {
+export const CategoryList = ({
+  categories,
+  isLoading,
+  onCategoryClick,
+  onEdit,
+  onDelete,
+}: CategoryListProps) => {
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -27,7 +34,13 @@ export const CategoryList = ({ categories, isLoading, onEdit, onDelete }: Catego
   return (
     <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
       {categories.map((category) => (
-        <CategoryCard key={category.id} category={category} onEdit={onEdit} onDelete={onDelete} />
+        <CategoryCard
+          key={category.id}
+          category={category}
+          onClick={onCategoryClick ? () => onCategoryClick(category) : undefined}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       ))}
     </SimpleGrid>
   );

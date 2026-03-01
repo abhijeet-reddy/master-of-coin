@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Button } from '@chakra-ui/react';
 import { PageHeader, ConfirmDialog, ErrorAlert } from '@/components/common';
 import { OverallProgressCard, BudgetList, BudgetFormModal } from '@/components/budgets';
@@ -11,6 +12,7 @@ import type { EnrichedBudgetStatus } from '@/types';
 
 export const Budgets = () => {
   useDocumentTitle('Budgets');
+  const navigate = useNavigate();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<EnrichedBudgetStatus | undefined>(undefined);
@@ -85,6 +87,9 @@ export const Budgets = () => {
       <BudgetList
         budgets={enrichedBudgets}
         isLoading={isLoading}
+        onBudgetClick={(budget) => {
+          void navigate(`/budgets/${budget.budget_id}`);
+        }}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />

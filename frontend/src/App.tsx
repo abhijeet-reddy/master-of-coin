@@ -12,7 +12,9 @@ import { TransactionDetailPage } from '@/pages/TransactionDetail';
 import { Accounts } from '@/pages/Accounts';
 import { AccountDetailPage } from '@/pages/AccountDetail';
 import { Budgets } from '@/pages/Budgets';
+import { BudgetDetailPage } from '@/pages/BudgetDetail';
 import { Categories } from '@/pages/Categories';
+import { CategoryDetailPage } from '@/pages/CategoryDetail';
 import { People } from '@/pages/People';
 import Reports from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
@@ -50,7 +52,9 @@ function App() {
               <Route path="accounts" element={<Accounts />} />
               <Route path="accounts/:id" element={<AccountDetailPage />} />
               <Route path="budgets" element={<Budgets />} />
+              <Route path="budgets/:id" element={<BudgetDetailPage />} />
               <Route path="categories" element={<Categories />} />
+              <Route path="categories/:id" element={<CategoryDetailPage />} />
               <Route path="people" element={<People />} />
               <Route path="reports" element={<Reports />} />
               <Route path="jobs" element={<JobsPage />} />

@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios';
-import type { Category, ApiResponse } from '@/types';
+import type { Category } from '@/types';
 
 /**
  * Get all categories for the current user
@@ -13,8 +13,8 @@ export async function getCategories(): Promise<Category[]> {
  * Get a single category by ID
  */
 export async function getCategory(id: string): Promise<Category> {
-  const response = await apiClient.get<ApiResponse<Category>>(`/categories/${id}`);
-  return response.data.data;
+  const response = await apiClient.get<Category>(`/categories/${id}`);
+  return response.data;
 }
 
 /**
@@ -26,8 +26,8 @@ export async function createCategory(data: {
   color: string;
   parent_category_id?: string;
 }): Promise<Category> {
-  const response = await apiClient.post<ApiResponse<Category>>('/categories', data);
-  return response.data.data;
+  const response = await apiClient.post<Category>('/categories', data);
+  return response.data;
 }
 
 /**
@@ -42,8 +42,8 @@ export async function updateCategory(
     parent_category_id: string;
   }>
 ): Promise<Category> {
-  const response = await apiClient.put<ApiResponse<Category>>(`/categories/${id}`, data);
-  return response.data.data;
+  const response = await apiClient.put<Category>(`/categories/${id}`, data);
+  return response.data;
 }
 
 /**

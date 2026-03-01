@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Button } from '@chakra-ui/react';
 import { PageHeader, ConfirmDialog, ErrorAlert } from '@/components/common';
 import { CategoryList, CategoryFormModal } from '@/components/categories';
@@ -9,6 +10,7 @@ import type { Category } from '@/types';
 
 export const Categories = () => {
   useDocumentTitle('Categories');
+  const navigate = useNavigate();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | undefined>(undefined);
@@ -57,6 +59,9 @@ export const Categories = () => {
       <CategoryList
         categories={categories}
         isLoading={isLoading}
+        onCategoryClick={(category) => {
+          void navigate(`/categories/${category.id}`);
+        }}
         onEdit={(category) => {
           setSelectedCategory(category);
           setIsFormOpen(true);

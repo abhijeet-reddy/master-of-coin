@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios';
-import type { Budget, CreateBudgetRequest, ApiResponse } from '@/types';
+import type { Budget, CreateBudgetRequest } from '@/types';
 
 /**
  * Get all budgets with optional active filter
@@ -13,8 +13,8 @@ export async function getBudgets(params?: { active?: boolean }): Promise<Budget[
  * Get a single budget by ID
  */
 export async function getBudget(id: string): Promise<Budget> {
-  const response = await apiClient.get<ApiResponse<Budget>>(`/budgets/${id}`);
-  return response.data.data;
+  const response = await apiClient.get<Budget>(`/budgets/${id}`);
+  return response.data;
 }
 
 /**
@@ -50,8 +50,8 @@ export async function updateBudget(
   id: string,
   data: Partial<CreateBudgetRequest>
 ): Promise<Budget> {
-  const response = await apiClient.put<ApiResponse<Budget>>(`/budgets/${id}`, data);
-  return response.data.data;
+  const response = await apiClient.put<Budget>(`/budgets/${id}`, data);
+  return response.data;
 }
 
 /**

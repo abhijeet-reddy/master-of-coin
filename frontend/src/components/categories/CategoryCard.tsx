@@ -4,13 +4,19 @@ import type { Category } from '@/types';
 
 interface CategoryCardProps {
   category: Category;
+  onClick?: () => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
 }
 
-export const CategoryCard = ({ category, onEdit, onDelete }: CategoryCardProps) => {
+export const CategoryCard = ({ category, onClick, onEdit, onDelete }: CategoryCardProps) => {
   return (
-    <Card.Root>
+    <Card.Root
+      cursor={onClick ? 'pointer' : undefined}
+      onClick={onClick}
+      _hover={onClick ? { shadow: 'md', borderColor: 'blue.200' } : undefined}
+      transition="all 0.2s"
+    >
       <Card.Body>
         <HStack justify="space-between" align="start">
           <HStack gap={3} flex={1}>
@@ -40,7 +46,10 @@ export const CategoryCard = ({ category, onEdit, onDelete }: CategoryCardProps) 
               aria-label="Edit category"
               variant="ghost"
               size="sm"
-              onClick={() => onEdit(category)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(category);
+              }}
             >
               <LuPencil />
             </IconButton>
@@ -49,7 +58,10 @@ export const CategoryCard = ({ category, onEdit, onDelete }: CategoryCardProps) 
               variant="ghost"
               colorPalette="red"
               size="sm"
-              onClick={() => onDelete(category)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(category);
+              }}
             >
               <LuTrash2 />
             </IconButton>

@@ -31,6 +31,7 @@ export { default as useSettleDebt } from './useSettleDebt';
 
 // Category hooks
 export { default as useCategories } from './useCategories';
+export { default as useCategory } from './useCategory';
 export { default as useCreateCategory } from './useCreateCategory';
 export { default as useUpdateCategory } from './useUpdateCategory';
 export { default as useDeleteCategory } from './useDeleteCategory';

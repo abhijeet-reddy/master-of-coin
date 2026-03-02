@@ -53,7 +53,9 @@ export const SplitIntegrationsList = () => {
           <SplitwiseIntegrationCard
             provider={providers.find((p) => p.provider_type === 'splitwise')}
           />
-          <SplitProIntegrationCard />
+          <SplitProIntegrationCard
+            provider={providers.find((p) => p.provider_type === 'splitpro')}
+          />
         </>
       )}
 

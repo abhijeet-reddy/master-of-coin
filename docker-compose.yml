@@ -19,6 +19,9 @@ services:
       - SPLITWISE_REDIRECT_URI=${SPLITWISE_REDIRECT_URI}
       # Encryption key for provider credentials
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      # SplitPro Integration
+      - SPLITPRO_DATABASE_URL=${SPLITPRO_DATABASE_URL}
+      - SPLITPRO_BASE_URL=${SPLITPRO_BASE_URL}
     ports:
       - "13153:13153"
     depends_on:
@@ -27,6 +30,7 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+      - valyria
 
   worker:
     build:
@@ -45,12 +49,16 @@ services:
       - SPLITWISE_REDIRECT_URI=${SPLITWISE_REDIRECT_URI}
       # Encryption key for provider credentials
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      # SplitPro Integration
+      - SPLITPRO_DATABASE_URL=${SPLITPRO_DATABASE_URL}
+      - SPLITPRO_BASE_URL=${SPLITPRO_BASE_URL}
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - app-network
+      - valyria
 
   postgres:
     image: postgres:16-alpine
@@ -89,3 +97,5 @@ services:
 networks:
   app-network:
     driver: bridge
+  valyria:
+    external: true

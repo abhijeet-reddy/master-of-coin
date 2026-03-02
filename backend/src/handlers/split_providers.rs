@@ -105,15 +105,16 @@ pub async fn get_provider_friends(
         ApiError::InternalWithMessage(format!("Failed to decrypt credentials: {}", e))
     })?;
 
-    // Get access token
-    let access_token = credentials
-        .get("access_token")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ApiError::InternalWithMessage("Missing access_token".to_string()))?;
-
     // Fetch friends based on provider type
     match provider.provider_type.as_str() {
-        "splitwise" => fetch_splitwise_friends(access_token).await,
+        "splitwise" => {
+            let access_token = credentials
+                .get("access_token")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| ApiError::InternalWithMessage("Missing access_token".to_string()))?;
+            fetch_splitwise_friends(access_token).await
+        }
+        "splitpro" => fetch_splitpro_friends(&credentials).await,
         _ => Err(ApiError::BadRequest(format!(
             "Provider type '{}' not supported",
             provider.provider_type
@@ -178,6 +179,101 @@ async fn fetch_splitwise_friends(
         .collect();
 
     tracing::info!("Found {} Splitwise friends", friends.len());
+
+    Ok(Json(friends))
+}
+
+/// Fetch friends from SplitPro via tRPC
+async fn fetch_splitpro_friends(
+    credentials: &serde_json::Value,
+) -> Result<Json<Vec<SplitwiseFriendResponse>>, ApiError> {
+    let base_url = credentials
+        .get("base_url")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ApiError::InternalWithMessage("Missing base_url".to_string()))?;
+
+    let session_token = credentials
+        .get("session_token")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ApiError::InternalWithMessage("Missing session_token".to_string()))?;
+
+    let input = serde_json::json!({});
+    let encoded_input = crate::services::split_provider::superjson::encode_query_input(&input, &[]);
+    let url = format!(
+        "{}/api/trpc/user.getFriends?input={}",
+        base_url, encoded_input
+    );
+
+    let http_client = reqwest::Client::new();
+    let response = http_client
+        .get(&url)
+        .header(
+            "Cookie",
+            format!("next-auth.session-token={}", session_token),
+        )
+        .send()
+        .await
+        .map_err(|e| ApiError::External(format!("SplitPro API error: {}", e)))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(ApiError::External(format!(
+            "SplitPro API error: HTTP {}: {}",
+            status, body
+        )));
+    }
+
+    let body = response
+        .text()
+        .await
+        .map_err(|e| ApiError::External(format!("Failed to read response: {}", e)))?;
+
+    let json_response: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| ApiError::External(format!("Invalid JSON response: {}", e)))?;
+
+    let data = crate::services::split_provider::superjson::decode_response(&json_response)
+        .ok_or_else(|| ApiError::External("Failed to decode SplitPro response".to_string()))?;
+
+    let friends_array = data
+        .as_array()
+        .ok_or_else(|| ApiError::External("Expected array of friends".to_string()))?;
+
+    let friends: Vec<SplitwiseFriendResponse> = friends_array
+        .iter()
+        .filter_map(|friend| {
+            let id = friend.get("id")?.as_i64()?;
+            let name = friend
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let email = friend
+                .get("email")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            // SplitPro uses a single "name" field, split into first/last for compatibility
+            let parts: Vec<&str> = name.splitn(2, ' ').collect();
+            let first_name = parts.first().unwrap_or(&"").to_string();
+            let last_name = if parts.len() > 1 {
+                parts[1].to_string()
+            } else {
+                String::new()
+            };
+
+            Some(SplitwiseFriendResponse {
+                id,
+                first_name: first_name.clone(),
+                last_name: last_name.clone(),
+                email,
+                full_name: name,
+            })
+        })
+        .collect();
+
+    tracing::info!("Found {} SplitPro friends", friends.len());
 
     Ok(Json(friends))
 }

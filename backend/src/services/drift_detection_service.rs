@@ -292,12 +292,16 @@ async fn fetch_all_external_expenses(
         })?;
 
         // Extract current user's external ID from credentials
+        // Supports both Splitwise (splitwise_user_id) and SplitPro (splitpro_user_id)
         if current_user_external_id.is_none() {
-            current_user_external_id = credentials.get("splitwise_user_id").and_then(|v| {
-                v.as_i64()
-                    .map(|id| id.to_string())
-                    .or_else(|| v.as_str().map(|s| s.to_string()))
-            });
+            current_user_external_id = credentials
+                .get("splitwise_user_id")
+                .or_else(|| credentials.get("splitpro_user_id"))
+                .and_then(|v| {
+                    v.as_i64()
+                        .map(|id| id.to_string())
+                        .or_else(|| v.as_str().map(|s| s.to_string()))
+                });
         }
 
         let current_ext_id = current_user_external_id.clone().unwrap_or_default();

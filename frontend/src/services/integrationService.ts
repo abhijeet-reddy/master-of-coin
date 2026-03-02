@@ -1,7 +1,13 @@
 /** Split provider integration API service */
 
 import apiClient from '@/lib/axios';
-import type { SplitProvider, AuthUrlResponse, SplitwiseFriend } from '@/types';
+import type {
+  SplitProvider,
+  AuthUrlResponse,
+  SplitwiseFriend,
+  ConnectSplitProRequest,
+  ConnectSplitProResponse,
+} from '@/types';
 
 /**
  * Get Splitwise OAuth authorization URL
@@ -39,6 +45,21 @@ export async function disconnectProvider(id: string): Promise<void> {
 export async function getProviderFriends(providerId: string): Promise<SplitwiseFriend[]> {
   const response = await apiClient.get<SplitwiseFriend[]>(
     `/integrations/providers/${providerId}/friends`
+  );
+  return response.data;
+}
+
+/**
+ * Connect a SplitPro instance as a split provider
+ * @param request - SplitPro connection details (base URL, session token, user ID)
+ * @returns The created/updated provider configuration
+ */
+export async function connectSplitPro(
+  request: ConnectSplitProRequest
+): Promise<ConnectSplitProResponse> {
+  const response = await apiClient.post<ConnectSplitProResponse>(
+    '/integrations/splitpro/connect',
+    request
   );
   return response.data;
 }

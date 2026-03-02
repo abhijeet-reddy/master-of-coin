@@ -14,7 +14,7 @@ interface SplitProviderConfigProps {
  */
 export const SplitProviderConfig = ({ personId }: SplitProviderConfigProps) => {
   const {
-    splitwiseProvider,
+    providers,
     friends,
     existingConfig,
     hasConfig,
@@ -29,6 +29,8 @@ export const SplitProviderConfig = ({ personId }: SplitProviderConfigProps) => {
     handleSave,
     handleClear,
   } = useSplitProviderConfig(personId);
+
+  const activeProviders = providers.filter((p) => p.is_active);
 
   if (isLoadingConfig) {
     return (
@@ -91,13 +93,17 @@ export const SplitProviderConfig = ({ personId }: SplitProviderConfigProps) => {
               }}
             >
               <option value="">None</option>
-              {splitwiseProvider && <option value={splitwiseProvider.id}>Splitwise</option>}
+              {activeProviders.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.provider_type === 'splitwise' ? 'Splitwise' : 'SplitPro'}
+                </option>
+              ))}
             </select>
           </Field>
 
-          {/* Friend selection (Splitwise) */}
+          {/* Friend selection */}
           {selectedProviderId && (
-            <Field label="Splitwise Friend">
+            <Field label="Friend">
               {isLoadingFriends ? (
                 <VStack align="stretch" gap={2}>
                   <Skeleton height="40px" borderRadius="md" />

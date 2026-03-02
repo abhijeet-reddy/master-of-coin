@@ -1,6 +1,9 @@
+pub mod splitpro;
 pub mod splitwise;
+pub mod superjson;
 pub mod types;
 
+pub use splitpro::SplitProProvider;
 pub use splitwise::SplitwiseProvider;
 pub use types::{
     CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, ExternalExpenseResult,

@@ -6,6 +6,7 @@ export { default as useBudgetStatus } from './useBudgetStatus';
 export { default as useChartData } from './useChartData';
 export { default as useApiKeyForm } from './useApiKeyForm';
 export { default as useSplitwiseConnection } from './useSplitwiseConnection';
+export { default as useSplitProConnection } from './useSplitProConnection';
 export { default as useSplitProviderConfig } from './useSplitProviderConfig';
 export { default as useSplitSyncBadge } from './useSplitSyncBadge';
 export { default as useSplitwiseCallbackStatus } from './useSplitwiseCallbackStatus';

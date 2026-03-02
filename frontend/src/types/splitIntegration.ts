@@ -39,6 +39,19 @@ export interface PersonSplitConfig {
   updated_at: string;
 }
 
+/** Request to connect a SplitPro instance */
+export interface ConnectSplitProRequest {
+  email: string;
+}
+
+/** Response from connecting SplitPro */
+export interface ConnectSplitProResponse {
+  id: string;
+  provider_type: string;
+  is_active: boolean;
+  message: string;
+}
+
 /** Request to set a person's split provider configuration */
 export interface SetPersonSplitConfigRequest {
   split_provider_id: string;

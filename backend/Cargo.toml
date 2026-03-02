@@ -65,6 +65,8 @@ base64 = "0.22"
 async-trait = "0.1"
 urlencoding = "2.1"
 cron = "0.15"
+tokio-postgres = "0.7"
+hex = "0.4"
 
 [dev-dependencies]
 serial_test = "3.0"

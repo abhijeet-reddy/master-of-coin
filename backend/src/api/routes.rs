@@ -666,6 +666,15 @@ pub fn create_router(state: AppState) -> Router {
             "/integrations/splitwise/sync-external-expense",
             post(handlers::split_sync::sync_external_expense),
         )
+        // SplitPro integration routes (no scope check - always accessible)
+        .route(
+            "/integrations/splitpro/connect",
+            post(handlers::splitpro_integration::connect_splitpro),
+        )
+        .route(
+            "/integrations/splitpro/friends",
+            get(handlers::splitpro_integration::list_splitpro_friends),
+        )
         // Provider management routes (no scope check - always accessible)
         .route(
             "/integrations/providers",

@@ -24,8 +24,8 @@ use crate::schema::{
     accounts, person_split_configs, split_providers, transaction_splits, transactions,
 };
 use crate::services::split_provider::{
-    CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, SplitProvider, SplitwiseProvider,
-    UpdateExternalExpense,
+    CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, SplitProProvider, SplitProvider,
+    SplitwiseProvider, UpdateExternalExpense,
 };
 use crate::types::CurrencyCode;
 use crate::utils::encryption;
@@ -49,9 +49,9 @@ impl SplitSyncService {
         let splitwise = Arc::new(SplitwiseProvider::new());
         providers.insert("splitwise".to_string(), splitwise);
 
-        // Future providers can be added here
-        // let splitpro = Arc::new(SplitProProvider::new());
-        // providers.insert("splitpro".to_string(), splitpro);
+        // Register SplitPro provider
+        let splitpro = Arc::new(SplitProProvider::new());
+        providers.insert("splitpro".to_string(), splitpro);
 
         Self {
             pool,
@@ -274,18 +274,11 @@ impl SplitSyncService {
 
         // Get the payer's external user ID from the provider credentials
         // (the authenticated user who paid the full amount)
-        let payer_external_id = credentials
-            .get("splitwise_user_id")
-            .and_then(|v| {
-                v.as_i64()
-                    .map(|id| id.to_string())
-                    .or_else(|| v.as_str().map(|s| s.to_string()))
-            })
-            .ok_or_else(|| {
-                ApiError::InternalWithMessage(
-                    "Missing splitwise_user_id in provider credentials".to_string(),
-                )
-            })?;
+        let payer_external_id = extract_external_user_id(&credentials).ok_or_else(|| {
+            ApiError::InternalWithMessage(
+                "Missing external user ID in provider credentials".to_string(),
+            )
+        })?;
 
         // Fetch account to get currency code and type
         let account = accounts::table
@@ -449,18 +442,11 @@ impl SplitSyncService {
         })?;
 
         // Get the payer's external user ID from the provider credentials
-        let payer_external_id = credentials
-            .get("splitwise_user_id")
-            .and_then(|v| {
-                v.as_i64()
-                    .map(|id| id.to_string())
-                    .or_else(|| v.as_str().map(|s| s.to_string()))
-            })
-            .ok_or_else(|| {
-                ApiError::InternalWithMessage(
-                    "Missing splitwise_user_id in provider credentials".to_string(),
-                )
-            })?;
+        let payer_external_id = extract_external_user_id(&credentials).ok_or_else(|| {
+            ApiError::InternalWithMessage(
+                "Missing external user ID in provider credentials".to_string(),
+            )
+        })?;
 
         // Fetch account to detect DEBT type
         let account = accounts::table
@@ -1669,14 +1655,8 @@ impl SplitSyncService {
             ApiError::InternalWithMessage(format!("Failed to decrypt credentials: {}", e))
         })?;
 
-        let external_id = credentials
-            .get("splitwise_user_id")
-            .and_then(|v| {
-                v.as_i64()
-                    .map(|id| id.to_string())
-                    .or_else(|| v.as_str().map(|s| s.to_string()))
-            })
-            .unwrap_or_else(|| "unknown".to_string());
+        let external_id =
+            extract_external_user_id(&credentials).unwrap_or_else(|| "unknown".to_string());
 
         // Try to get the user's name from credentials, fall back to "You"
         let name = credentials
@@ -2622,4 +2602,18 @@ impl SplitSyncService {
             None
         }
     }
+}
+
+/// Extract the external user ID from provider credentials.
+/// Supports both Splitwise (`splitwise_user_id`) and SplitPro (`splitpro_user_id`).
+fn extract_external_user_id(credentials: &serde_json::Value) -> Option<String> {
+    // Try splitwise_user_id first, then splitpro_user_id
+    credentials
+        .get("splitwise_user_id")
+        .or_else(|| credentials.get("splitpro_user_id"))
+        .and_then(|v| {
+            v.as_i64()
+                .map(|id| id.to_string())
+                .or_else(|| v.as_str().map(|s| s.to_string()))
+        })
 }

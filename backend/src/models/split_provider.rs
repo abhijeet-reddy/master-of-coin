@@ -75,3 +75,14 @@ pub struct SplitwiseCredentials {
     pub token_expires_at: DateTime<Utc>,
     pub splitwise_user_id: i64,
 }
+
+// SplitPro-specific credential structure
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SplitProCredentials {
+    /// Base URL of the SplitPro instance, e.g. "http://splitkeep:3002"
+    pub base_url: String,
+    /// NextAuth session token for authentication
+    pub session_token: String,
+    /// SplitPro user ID for the authenticated user
+    pub splitpro_user_id: i64,
+}

@@ -59,6 +59,26 @@ const distributeRemainder = (baseAmounts: number[], remainderCents: number): num
  * calculateEqualSplits(100, 2) // ["33.33", "33.34"] (user keeps 33.33)
  * calculateEqualSplits(10, 3)  // ["2.50", "2.50", "2.50"] (user keeps 2.50)
  */
+/**
+ * Calculate the user's share of a split transaction.
+ *
+ * The user's share is the total transaction amount minus the sum of all
+ * other people's split amounts. Splits only store other people's shares;
+ * the user's portion is implicit.
+ *
+ * @param totalAmount - The absolute transaction amount (e.g. 43.00)
+ * @param splitAmounts - Array of split amount strings for other people
+ * @returns The user's share as a non-negative number
+ *
+ * @example
+ * calculateUserShare(43, ["21.50"]) // 21.50
+ * calculateUserShare(100, ["33.33", "33.34"]) // 33.33
+ */
+export const calculateUserShare = (totalAmount: number, splitAmounts: string[]): number => {
+  const splitsTotal = splitAmounts.reduce((sum, amt) => sum + Math.abs(parseFloat(amt) || 0), 0);
+  return Math.max(Math.abs(totalAmount) - splitsTotal, 0);
+};
+
 export const calculateEqualSplits = (totalAmount: number, splitCount: number): string[] => {
   if (totalAmount <= 0 || splitCount <= 0) {
     return Array.from<string>({ length: splitCount }).fill('0');

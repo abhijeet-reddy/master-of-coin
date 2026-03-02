@@ -21,6 +21,7 @@ import {
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction, Person } from '@/types';
 import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters';
+import { calculateUserShare } from '@/utils/splitCalculation';
 import { SplitSyncStatus } from '@/components/transactions/SplitSyncStatus';
 import { toaster } from '@/components/ui/toaster';
 
@@ -54,6 +55,14 @@ export const TransactionDetailCard = ({
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
 
   const personMap = new Map(people.map((p) => [p.id, p]));
+
+  // Derived: user's share of a split transaction (total minus other people's splits)
+  const userShare = transaction.splits?.length
+    ? calculateUserShare(
+        amount,
+        transaction.splits.map((s) => s.amount)
+      )
+    : Math.abs(amount);
 
   const handleCopyTransferId = useCallback((transferId: string) => {
     void navigator.clipboard.writeText(transferId).then(() => {
@@ -94,15 +103,13 @@ export const TransactionDetailCard = ({
                 {isExpense ? '-' : '+'}
                 {formatCurrency(Math.abs(amount), transaction.account.currency)}
               </Text>
-              {transaction.user_share && (
-                <Text fontSize="sm" color="fg.muted" mt={1}>
-                  Your share:{' '}
-                  {formatCurrency(
-                    Math.abs(parseFloat(transaction.user_share)),
-                    transaction.account.currency
-                  )}
-                </Text>
-              )}
+              {transaction.splits &&
+                transaction.splits.length > 0 &&
+                !transaction.debt_metadata && (
+                  <Text fontSize="sm" color="fg.muted" mt={1}>
+                    Your share: {formatCurrency(userShare, transaction.account.currency)}
+                  </Text>
+                )}
             </Box>
           </VStack>
         </Card.Body>
@@ -463,10 +470,7 @@ export const TransactionDetailCard = ({
                   You
                 </Text>
                 <Text fontSize="sm" fontWeight="bold" color="blue.600">
-                  {formatCurrency(
-                    Math.abs(parseFloat(transaction.user_share || transaction.amount)),
-                    transaction.account.currency
-                  )}
+                  {formatCurrency(userShare, transaction.account.currency)}
                 </Text>
               </HStack>
 

@@ -711,6 +711,11 @@ pub fn create_router(state: AppState) -> Router {
         .nest("/api/v1", auth_routes.merge(protected_routes))
         .with_state(state.clone());
 
+    // Health check route (no auth, outside /api/v1 prefix — used by Docker/load balancers)
+    let health_route = Router::new()
+        .route("/health", get(handlers::health::check))
+        .with_state(state.clone());
+
     // Static file serving for frontend with SPA fallback
     // ServeDir will serve files if they exist, otherwise fall back to index.html for SPA routing
     let static_dir = PathBuf::from("/app/static");
@@ -720,7 +725,10 @@ pub fn create_router(state: AppState) -> Router {
         .append_index_html_on_directories(true)
         .not_found_service(ServeFile::new(&index_file));
 
-    // Combine API routes with static file serving
-    // API routes take precedence, then ServeDir handles everything else (including SPA fallback)
-    Router::new().merge(api_routes).fallback_service(serve_dir)
+    // Combine API routes, health check, and static file serving
+    // API routes and health check take precedence, then ServeDir handles everything else (including SPA fallback)
+    Router::new()
+        .merge(api_routes)
+        .merge(health_route)
+        .fallback_service(serve_dir)
 }

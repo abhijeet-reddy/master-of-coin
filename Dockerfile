@@ -115,10 +115,9 @@ USER appuser
 # Note: The application uses SERVER_PORT env var (default: 13153)
 EXPOSE 13153
 
-# Health check to ensure the application is running
-# Uses a simple TCP check since we don't have a dedicated health endpoint
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:13153/ || exit 1
+# Health check to ensure the application is running and can reach the database
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:13153/health || exit 1
 
 # Set environment variables with sensible defaults
 ENV RUST_LOG=info \

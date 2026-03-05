@@ -42,6 +42,29 @@ services:
     networks:
       - app-network
 
+  worker:
+    image: ghcr.io/abhijeet-reddy/master-of-coin:latest
+    container_name: master-of-coin-worker
+    command: ["/app/worker"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13154/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-master_of_coin}
+      - JWT_SECRET=${JWT_SECRET:-change_this_to_a_secure_secret_min_32_chars}
+      - RUST_LOG=${RUST_LOG:-info}
+      - WORKER_POLL_INTERVAL_SECS=30
+      - WORKER_HEALTH_PORT=13154
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
   postgres:
     image: postgres:16-alpine
     container_name: master-of-coin-db

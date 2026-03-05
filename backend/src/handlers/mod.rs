@@ -9,6 +9,7 @@ pub mod dashboard;
 pub mod debt_transactions;
 pub mod drift_detection;
 pub mod exchange_rates;
+pub mod health;
 pub mod import;
 pub mod jobs;
 pub mod people;

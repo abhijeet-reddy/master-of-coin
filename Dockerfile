@@ -18,12 +18,10 @@ RUN npm ci --only=production
 # Copy frontend source code
 COPY frontend/ ./
 
-# Create .env file with build-time environment variables
-# Vite will embed VITE_* variables during build
-RUN echo "VITE_API_URL=/api/v1" > .env
-
-# Build frontend static files (outputs to dist/)
-RUN npm run build
+# Create .env file with build-time variables and build frontend static files
+# Vite embeds VITE_* variables during build (outputs to dist/)
+RUN echo "VITE_API_URL=/api/v1" > .env \
+    && npm run build
 
 # ============================================================================
 # Stage 2: Rust Chef - Prepare dependency recipe
@@ -33,7 +31,7 @@ FROM rust:slim-bookworm AS chef
 WORKDIR /app
 
 # Install build dependencies for Rust and PostgreSQL
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev \
     libpq-dev \
@@ -43,9 +41,6 @@ RUN apt-get update && apt-get install -y \
 # Install cargo-chef via cargo-binstall (pre-compiled binary, much faster than cargo install)
 RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash \
     && cargo binstall cargo-chef --no-confirm
-
-# Use sparse registry protocol for faster crate index downloads
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # ============================================================================
 # Stage 3: Rust Planner - Analyze dependencies
@@ -75,11 +70,9 @@ COPY backend/src ./src
 COPY backend/migrations ./migrations
 COPY backend/Cargo.toml backend/Cargo.lock ./
 
-# Build both binaries (API server + worker)
-RUN cargo build --release --locked --bin master-of-coin-backend --bin worker
-
-# Strip debug symbols to reduce binary size
-RUN strip /app/target/release/master-of-coin-backend /app/target/release/worker
+# Build both binaries (API server + worker) and strip debug symbols
+RUN cargo build --release --locked --bin master-of-coin-backend --bin worker \
+    && strip /app/target/release/master-of-coin-backend /app/target/release/worker
 
 # ============================================================================
 # Stage 5: Runtime - Minimal production image
@@ -88,8 +81,8 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install only runtime dependencies
-RUN apt-get update && apt-get install -y \
+# Install only runtime dependencies (--no-install-recommends avoids unnecessary packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
     libssl3 \
@@ -98,15 +91,10 @@ RUN apt-get update && apt-get install -y \
     && groupadd -g 1000 appuser \
     && useradd -m -u 1000 -g appuser appuser
 
-# Copy compiled binaries from rust-builder stage
-COPY --from=rust-builder /app/target/release/master-of-coin-backend /app/backend
-COPY --from=rust-builder /app/target/release/worker /app/worker
-
-# Copy frontend static files from frontend-builder stage
-COPY --from=frontend-builder /frontend/dist /app/static
-
-# Set ownership to non-root user
-RUN chown -R appuser:appuser /app
+# Copy compiled binaries and static files with correct ownership (avoids extra chown layer)
+COPY --from=rust-builder --chown=appuser:appuser /app/target/release/master-of-coin-backend /app/backend
+COPY --from=rust-builder --chown=appuser:appuser /app/target/release/worker /app/worker
+COPY --from=frontend-builder --chown=appuser:appuser /frontend/dist /app/static
 
 # Switch to non-root user
 USER appuser

@@ -55,6 +55,9 @@ Dockerfile
 .gitlab-ci.yml
 .travis.yml
 
+# Agent rules and feature docs (not needed in image)
+.agents/
+
 # Temporary files
 tmp/
 temp/

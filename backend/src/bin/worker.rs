@@ -12,10 +12,13 @@
 //! - **Daily cleanup**: Deletes terminal jobs older than 1 year at 00:00 UTC
 //! - **Job dispatch**: Routes jobs to the appropriate service by `job_type`
 //! - **Schedule checking**: Triggers due schedules by creating background jobs
+//! - **Health endpoint**: Lightweight HTTP server on `WORKER_HEALTH_PORT` (default 13154) for container health checks
 
 use std::collections::{HashMap, HashSet};
+use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::{Router, extract::State, routing::get};
 use chrono::{Duration, Utc};
 use diesel::PgConnection;
 use diesel::r2d2::{self, ConnectionManager};
@@ -39,6 +42,9 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 /// Default poll interval in seconds
 const DEFAULT_POLL_INTERVAL_SECS: u64 = 30;
+
+/// Default health check server port
+const DEFAULT_HEALTH_PORT: u16 = 13154;
 
 #[tokio::main]
 async fn main() {
@@ -102,8 +108,68 @@ async fn main() {
     // 9. Startup cleanup: delete terminal jobs older than 1 year
     run_cleanup(&pool);
 
-    // 10. Start the poll loop
-    run_poll_loop(pool, providers, sync_service, poll_interval_secs).await;
+    // 10. Start health check server and poll loop concurrently
+    let health_pool = pool.clone();
+    tokio::select! {
+        _ = run_health_server(health_pool) => {
+            tracing::error!("Health check server exited unexpectedly");
+        }
+        _ = run_poll_loop(pool, providers, sync_service, poll_interval_secs) => {
+            tracing::error!("Poll loop exited unexpectedly");
+        }
+    }
+}
+
+/// Lightweight HTTP health check server for container health monitoring.
+///
+/// Exposes `GET /health` which verifies the worker process is alive and can
+/// reach the database. Listens on `WORKER_HEALTH_PORT` (default: 13154).
+async fn run_health_server(pool: DbPool) {
+    let health_port: u16 = std::env::var("WORKER_HEALTH_PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(DEFAULT_HEALTH_PORT);
+
+    let app = Router::new()
+        .route("/health", get(health_handler))
+        .with_state(pool);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], health_port));
+    tracing::info!("🩺 Health check server listening on {}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind health check port");
+
+    if let Err(e) = axum::serve(listener, app).await {
+        tracing::error!("Health check server error: {}", e);
+    }
+}
+
+/// Health check handler — verifies the worker can obtain a DB connection.
+///
+/// Returns 200 OK with `{"status": "healthy"}` if the DB pool is reachable,
+/// or 503 Service Unavailable with `{"status": "unhealthy", "error": "..."}` otherwise.
+async fn health_handler(
+    State(pool): State<DbPool>,
+) -> (axum::http::StatusCode, axum::Json<serde_json::Value>) {
+    match pool.get() {
+        Ok(_conn) => (
+            axum::http::StatusCode::OK,
+            axum::Json(serde_json::json!({
+                "status": "healthy",
+                "service": "worker"
+            })),
+        ),
+        Err(e) => (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(serde_json::json!({
+                "status": "unhealthy",
+                "service": "worker",
+                "error": e.to_string()
+            })),
+        ),
+    }
 }
 
 /// Initialize split providers — same pattern as `SplitSyncService::new()`

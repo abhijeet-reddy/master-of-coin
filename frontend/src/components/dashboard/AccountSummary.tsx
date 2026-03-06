@@ -21,7 +21,6 @@ const getAccountIcon = (type: AccountType) => {
     case 'LOAN':
       return FiHome;
     case 'CASH':
-    case 'OTHER':
     default:
       return FiShoppingBag;
   }
@@ -41,7 +40,6 @@ const getAccountColor = (type: AccountType): string => {
       return 'red.500';
     case 'CASH':
       return 'yellow.500';
-    case 'OTHER':
     default:
       return 'gray.500';
   }

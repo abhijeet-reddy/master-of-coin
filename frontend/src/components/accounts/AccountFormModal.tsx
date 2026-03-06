@@ -173,7 +173,6 @@ export const AccountFormModal = ({
                   <option value="INVESTMENT">Investment</option>
                   <option value="CASH">Cash</option>
                   <option value="LOAN">Loan</option>
-                  <option value="OTHER">Other</option>
                 </select>
               </Field>
 

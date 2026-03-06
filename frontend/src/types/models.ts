@@ -10,7 +10,6 @@ export enum AccountType {
   INVESTMENT = 'INVESTMENT',
   LOAN = 'LOAN',
   CASH = 'CASH',
-  OTHER = 'OTHER',
   DEBT = 'DEBT',
 }
 

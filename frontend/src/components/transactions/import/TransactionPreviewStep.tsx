@@ -1,16 +1,4 @@
-import {
-  Box,
-  Button,
-  HStack,
-  VStack,
-  Text,
-  Input,
-  IconButton,
-  Badge,
-  Table,
-  Checkbox,
-} from '@chakra-ui/react';
-import { FiTrash2 } from 'react-icons/fi';
+import { Box, Button, HStack, VStack, Text, Input, Badge, Table, Checkbox } from '@chakra-ui/react';
 import type { ParsedTransaction, Category } from '@/types';
 import { useTransactionPreview } from '@/hooks/usecase/useTransactionPreview';
 import {
@@ -50,7 +38,6 @@ export const TransactionPreviewStep = ({
     toggleTransaction,
     toggleAll,
     updateTransaction,
-    deleteTransaction,
     isAllSelected,
     selectedCount,
     getTransactionData,
@@ -140,7 +127,6 @@ export const TransactionPreviewStep = ({
               <Table.ColumnHeader>Amount</Table.ColumnHeader>
               <Table.ColumnHeader>Category</Table.ColumnHeader>
               <Table.ColumnHeader>Duplicate</Table.ColumnHeader>
-              <Table.ColumnHeader>Actions</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -234,18 +220,6 @@ export const TransactionPreviewStep = ({
                       )}
                       {!transaction.is_valid && <Badge colorScheme="red">Invalid</Badge>}
                     </HStack>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <IconButton
-                      aria-label="Delete transaction"
-                      size="sm"
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={() => deleteTransaction(transaction.temp_id)}
-                      disabled={isProcessing}
-                    >
-                      <FiTrash2 />
-                    </IconButton>
                   </Table.Cell>
                 </Table.Row>
               );

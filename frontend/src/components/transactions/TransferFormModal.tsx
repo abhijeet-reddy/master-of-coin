@@ -215,7 +215,7 @@ export const TransferFormModal = ({
                     <option value="">Select category (optional)</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
-                        {category.name}
+                        {category.icon} {category.name}
                       </option>
                     ))}
                   </select>

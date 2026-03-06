@@ -243,7 +243,9 @@ export const TransactionFilters = ({
                   <Checkbox.HiddenInput />
                   <Checkbox.Control />
                   <Checkbox.Label>
-                    <Text fontSize="sm">{category.name}</Text>
+                    <Text fontSize="sm">
+                      {category.icon} {category.name}
+                    </Text>
                   </Checkbox.Label>
                 </Checkbox.Root>
               ))}

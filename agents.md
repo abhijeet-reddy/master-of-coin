@@ -95,6 +95,23 @@ This file serves as an index and navigation guide for AI agents working on the M
 
 ---
 
+### [`.agents/rules/e2e-testing-rules.md`](.agents/rules/e2e-testing-rules.md)
+
+**When to read:** Writing or running Playwright E2E tests for frontend verification
+
+**Read this when you're:**
+
+- Writing new E2E tests for UI features
+- Running Playwright tests to verify UI changes
+- Taking screenshots for visual verification
+- Adding a new page to the smoke test suite
+- Debugging failing E2E tests
+- Need to understand available test helpers and fixtures
+
+**Don't read if:** You're only working on backend code, documentation, or Git operations without UI impact.
+
+---
+
 ## 📁 Feature Documentation
 
 All feature documentation lives in `.agents/features/`. Each feature gets its own folder with three standardized files:

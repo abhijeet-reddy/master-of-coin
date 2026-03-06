@@ -1,0 +1,27 @@
+{
+  "name": "master-of-coin-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test tests/smoke/",
+    "test:auth": "playwright test tests/auth/",
+    "test:dashboard": "playwright test tests/dashboard/",
+    "test:accounts": "playwright test tests/accounts/",
+    "test:transactions": "playwright test tests/transactions/",
+    "test:budgets": "playwright test tests/budgets/",
+    "test:categories": "playwright test tests/categories/",
+    "test:people": "playwright test tests/people/",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "screenshot": "playwright test tests/smoke/smoke.spec.ts --grep screenshot",
+    "update-snapshots": "playwright test --update-snapshots"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^24.8.1",
+    "typescript": "~5.9.3"
+  }
+}

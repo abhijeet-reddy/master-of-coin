@@ -35,3 +35,11 @@ npm-debug.log*
 
 # Memory Bank
 memory-bank/
+
+# E2E Testing (Playwright)
+/e2e/node_modules/
+/e2e/auth/storage-state.json
+/e2e/screenshots/actual/
+/e2e/screenshots/diff/
+/e2e/test-results/
+/e2e/playwright-report/

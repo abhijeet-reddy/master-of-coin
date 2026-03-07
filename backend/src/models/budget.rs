@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
+use crate::models::budget_range::BudgetRangeResponse;
 use crate::schema::budgets;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
@@ -60,6 +61,12 @@ pub struct BudgetResponse {
     pub user_id: Uuid,
     pub name: String,
     pub filters: JsonValue,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_range: Option<BudgetRangeResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_spending: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub percentage_used: Option<f64>,
 }
 
 impl From<Budget> for BudgetResponse {
@@ -69,6 +76,9 @@ impl From<Budget> for BudgetResponse {
             user_id: budget.user_id,
             name: budget.name,
             filters: budget.filters,
+            active_range: None,
+            current_spending: None,
+            percentage_used: None,
         }
     }
 }

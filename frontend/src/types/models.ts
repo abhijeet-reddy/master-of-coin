@@ -250,7 +250,7 @@ export interface Budget {
   filters: BudgetFilters;
   active_range?: BudgetRange;
   current_spending?: string;
-  percentage?: number;
+  percentage_used?: number;
   status?: BudgetStatus;
   created_at: string;
   updated_at: string;

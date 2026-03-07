@@ -34,6 +34,13 @@ export default function useBudgetDetail(id: string) {
     if (budget.filters?.category_id) {
       params.category_id = budget.filters.category_id;
     }
+    // Scope transactions to the active budget period
+    if (budget.active_range?.start_date) {
+      params.start_date = budget.active_range.start_date;
+    }
+    if (budget.active_range?.end_date) {
+      params.end_date = budget.active_range.end_date;
+    }
     return params;
   }, [budget]);
 

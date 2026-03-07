@@ -20,7 +20,7 @@ interface BudgetInfoCardProps {
 }
 
 const getStatusFromBudget = (budget: Budget): BudgetStatusType => {
-  const percentage = budget.percentage ?? 0;
+  const percentage = budget.percentage_used ?? 0;
   if (percentage >= 100) return 'EXCEEDED';
   if (percentage >= 80) return 'WARNING';
   return 'OK';
@@ -62,7 +62,7 @@ export const BudgetInfoCard = ({ budget, onDelete }: BudgetInfoCardProps) => {
   const status = getStatusFromBudget(budget);
   const StatusIcon = getStatusIcon(status);
   const statusColor = getStatusColor(status);
-  const percentage = budget.percentage ?? 0;
+  const percentage = budget.percentage_used ?? 0;
   const progressColor = getProgressColor(percentage);
   const isOverBudget = percentage > 100;
 

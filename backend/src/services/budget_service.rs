@@ -73,7 +73,76 @@ pub async fn get_budget(
         ));
     }
 
-    Ok(budget.into())
+    // Try to find the active range for today and compute spending
+    let today = Utc::now().date_naive();
+    let range = repositories::budget::get_active_range(pool, budget_id, today).await?;
+
+    let mut response: BudgetResponse = budget.into();
+
+    if let Some(range) = range {
+        // Build a TransactionFilter scoped to the active range dates
+        // Reuses the same date conversion pattern from calculate_budget_status()
+        let mut filter = TransactionFilter {
+            account_id: None,
+            category_id: None,
+            start_date: Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()),
+            end_date: range
+                .end_date
+                .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc()),
+            min_amount: None,
+            max_amount: None,
+            search: None,
+            limit: None,
+            offset: None,
+        };
+
+        // Apply budget category/account filters from JSON
+        if let Some(account_id) = response.filters.get("account_id").and_then(|v| v.as_str()) {
+            if let Ok(uuid) = Uuid::parse_str(account_id) {
+                filter.account_id = Some(uuid);
+            }
+        }
+        if let Some(category_id) = response.filters.get("category_id").and_then(|v| v.as_str()) {
+            if let Ok(uuid) = Uuid::parse_str(category_id) {
+                filter.category_id = Some(uuid);
+            }
+        }
+
+        // Query transactions and sum expenses with currency conversion
+        let transactions =
+            repositories::transaction::list_transactions(pool, user_id, filter).await?;
+
+        let exchange_service = ExchangeRateService::new()?;
+        let mut current_spending = BigDecimal::from(0);
+
+        for result in transactions
+            .iter()
+            .filter(|r| r.transaction.amount < BigDecimal::from(0))
+        {
+            let transaction = &result.transaction;
+            let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
+            let amount_abs = transaction.amount.abs();
+            let converted_amount = exchange_service
+                .convert_to_primary_currency(&amount_abs, account.currency)
+                .await?;
+            current_spending += converted_amount;
+        }
+
+        let spending_abs = current_spending;
+
+        let percentage_used = if range.limit_amount > BigDecimal::from(0) {
+            let ratio = &spending_abs / &range.limit_amount;
+            ratio.to_string().parse::<f64>().unwrap_or(0.0) * 100.0
+        } else {
+            0.0
+        };
+
+        response.active_range = Some(range.into());
+        response.current_spending = Some(spending_abs.to_string());
+        response.percentage_used = Some(percentage_used);
+    }
+
+    Ok(response)
 }
 
 /// List all budgets for a user

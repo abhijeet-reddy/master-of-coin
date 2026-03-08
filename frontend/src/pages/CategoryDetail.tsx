@@ -7,6 +7,7 @@ import { CategoryInfoCard, CategoryFormModal } from '@/components/categories';
 import { TransactionList, TransactionFilters } from '@/components/transactions';
 import { useCategoryDetail } from '@/hooks/usecase';
 import { useDocumentTitle } from '@/hooks';
+import { NavigationSourceType } from '@/types';
 
 export const CategoryDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -118,6 +119,9 @@ export const CategoryDetailPage = () => {
         }}
         hasMore={hasNextPage}
         isFetchingMore={isFetchingNextPage}
+        navigationState={{
+          from: { type: NavigationSourceType.CATEGORY, id: category.id, name: category.name },
+        }}
       />
 
       <CategoryFormModal

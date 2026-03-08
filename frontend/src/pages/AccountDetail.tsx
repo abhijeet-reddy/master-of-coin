@@ -7,6 +7,7 @@ import { AccountInfoCard, AccountFormModal } from '@/components/accounts';
 import { TransactionList, TransactionFilters } from '@/components/transactions';
 import { useAccountDetail } from '@/hooks/usecase';
 import { useDocumentTitle } from '@/hooks';
+import { NavigationSourceType } from '@/types';
 
 export const AccountDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -123,6 +124,9 @@ export const AccountDetailPage = () => {
         }}
         hasMore={hasNextPage}
         isFetchingMore={isFetchingNextPage}
+        navigationState={{
+          from: { type: NavigationSourceType.ACCOUNT, id: account.id, name: account.name },
+        }}
       />
 
       {/* Edit Account Modal */}

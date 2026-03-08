@@ -11,7 +11,7 @@ import {
 import { FaEuroSign } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { AccountType } from '@/types';
-import type { EnrichedTransaction } from '@/types';
+import type { EnrichedTransaction, TransactionNavigationState } from '@/types';
 import { formatCurrency, formatTime } from '@/utils/formatters';
 import { SplitSyncStatus } from './SplitSyncStatus';
 
@@ -21,6 +21,8 @@ interface TransactionRowProps {
   /** Called on Shift+Click to open the edit modal inline */
   onEdit?: (transaction: EnrichedTransaction) => void;
   onDelete?: (transaction: EnrichedTransaction) => void;
+  /** Navigation context passed to the transaction detail page for breadcrumbs */
+  navigationState?: TransactionNavigationState;
 }
 
 // Map category icons to react-icons
@@ -36,7 +38,13 @@ const getCategoryIcon = (iconName?: string) => {
   return iconMap[iconName?.toLowerCase() || 'other'] || FaEuroSign;
 };
 
-export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: TransactionRowProps) => {
+export const TransactionRow = ({
+  transaction,
+  onClick,
+  onEdit,
+  onDelete,
+  navigationState,
+}: TransactionRowProps) => {
   const navigate = useNavigate();
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
@@ -54,7 +62,7 @@ export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: Trans
     if (onClick) {
       onClick();
     } else {
-      void navigate(`/transactions/${transaction.id}`);
+      void navigate(`/transactions/${transaction.id}`, { state: navigationState });
     }
   };
 
@@ -69,7 +77,7 @@ export const TransactionRow = ({ transaction, onClick, onEdit, onDelete }: Trans
       if (onClick) {
         onClick();
       } else {
-        void navigate(`/transactions/${transaction.id}`);
+        void navigate(`/transactions/${transaction.id}`, { state: navigationState });
       }
     }
   };

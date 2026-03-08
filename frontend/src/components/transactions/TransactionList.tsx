@@ -3,7 +3,7 @@ import { Box, Heading, Skeleton, Stack, Text, VStack, Spinner, Center } from '@c
 import { TransactionRow } from './TransactionRow';
 import { EmptyState } from '@/components/common/EmptyState';
 import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
-import type { EnrichedTransaction } from '@/types';
+import type { EnrichedTransaction, TransactionNavigationState } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 
 interface TransactionListProps {
@@ -15,6 +15,8 @@ interface TransactionListProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   isFetchingMore?: boolean;
+  /** Navigation context forwarded to each TransactionRow for breadcrumbs */
+  navigationState?: TransactionNavigationState;
 }
 
 interface GroupedTransactions {
@@ -30,6 +32,7 @@ export const TransactionList = ({
   onLoadMore,
   hasMore,
   isFetchingMore,
+  navigationState,
 }: TransactionListProps) => {
   const { convertAmount, isLoading: isExchangeRatesLoading } =
     useTransactionCurrencyConverter(transactions);
@@ -149,6 +152,7 @@ export const TransactionList = ({
                   onClick={onTransactionClick ? () => onTransactionClick(transaction) : undefined}
                   onEdit={onTransactionEdit}
                   onDelete={onTransactionDelete}
+                  navigationState={navigationState}
                 />
               ))}
             </Stack>

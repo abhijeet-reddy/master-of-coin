@@ -7,6 +7,7 @@ import { BudgetInfoCard } from '@/components/budgets';
 import { TransactionList, TransactionFilters } from '@/components/transactions';
 import { useBudgetDetail } from '@/hooks/usecase';
 import { useDocumentTitle } from '@/hooks';
+import { NavigationSourceType } from '@/types';
 
 export const BudgetDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -112,6 +113,9 @@ export const BudgetDetailPage = () => {
         }}
         hasMore={hasNextPage}
         isFetchingMore={isFetchingNextPage}
+        navigationState={{
+          from: { type: NavigationSourceType.BUDGET, id: budget.id, name: budget.name },
+        }}
       />
 
       <ConfirmDialog

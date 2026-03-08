@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Box, useDisclosure } from '@chakra-ui/react';
 import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
 import {
@@ -19,13 +19,71 @@ import {
 import { useTransactionDetail, useSplitSync } from '@/hooks/usecase';
 import { updateDebtExpenseDetails } from '@/services/transactionService';
 import { useQueryClient } from '@tanstack/react-query';
-import type { CreateTransactionRequest, UpdateExpenseDetailsRequest } from '@/types';
+import { NavigationSourceType } from '@/types';
+import type {
+  CreateTransactionRequest,
+  UpdateExpenseDetailsRequest,
+  TransactionNavigationState,
+} from '@/types';
+
+/** Build breadcrumbs based on the navigation source. */
+const buildBreadcrumbs = (
+  navState: TransactionNavigationState | null,
+  transactionLabel: string
+) => {
+  if (navState?.from) {
+    switch (navState.from.type) {
+      case NavigationSourceType.ACCOUNT:
+        return [
+          { label: 'Accounts', href: '/accounts' },
+          { label: navState.from.name || 'Account', href: `/accounts/${navState.from.id}` },
+          { label: transactionLabel },
+        ];
+      case NavigationSourceType.CATEGORY:
+        return [
+          { label: 'Categories', href: '/categories' },
+          { label: navState.from.name || 'Category', href: `/categories/${navState.from.id}` },
+          { label: transactionLabel },
+        ];
+      case NavigationSourceType.BUDGET:
+        return [
+          { label: 'Budgets', href: '/budgets' },
+          { label: navState.from.name || 'Budget', href: `/budgets/${navState.from.id}` },
+          { label: transactionLabel },
+        ];
+      default:
+        break;
+    }
+  }
+
+  return [{ label: 'Transactions', href: '/transactions' }, { label: transactionLabel }];
+};
+
+/** Determine the redirect path after deleting a transaction. */
+const getDeleteRedirect = (navState: TransactionNavigationState | null): string => {
+  if (navState?.from) {
+    switch (navState.from.type) {
+      case NavigationSourceType.ACCOUNT:
+        return `/accounts/${navState.from.id}`;
+      case NavigationSourceType.CATEGORY:
+        return `/categories/${navState.from.id}`;
+      case NavigationSourceType.BUDGET:
+        return `/budgets/${navState.from.id}`;
+      default:
+        break;
+    }
+  }
+  return '/transactions';
+};
 
 export const TransactionDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const queryClient = useQueryClient();
+
+  const navState = (location.state as TransactionNavigationState) ?? null;
 
   const { transaction, people, isLoading, error } = useTransactionDetail(id || '');
 
@@ -58,7 +116,7 @@ export const TransactionDetailPage = () => {
     deleteMutation.mutate(id, {
       onSuccess: () => {
         setShowDeleteDialog(false);
-        void navigate('/transactions', { replace: true });
+        void navigate(getDeleteRedirect(navState), { replace: true });
       },
     });
   };
@@ -86,10 +144,7 @@ export const TransactionDetailPage = () => {
   if (error) {
     return (
       <Box>
-        <PageHeader
-          title="Transaction"
-          breadcrumbs={[{ label: 'Transactions', href: '/transactions' }, { label: 'Details' }]}
-        />
+        <PageHeader title="Transaction" breadcrumbs={buildBreadcrumbs(navState, 'Details')} />
         <ErrorAlert title="Failed to load transaction" error={error} />
       </Box>
     );
@@ -100,7 +155,7 @@ export const TransactionDetailPage = () => {
       <Box>
         <PageHeader
           title="Transaction Not Found"
-          breadcrumbs={[{ label: 'Transactions', href: '/transactions' }, { label: 'Not Found' }]}
+          breadcrumbs={buildBreadcrumbs(navState, 'Not Found')}
         />
         <ErrorAlert
           title="Transaction not found"
@@ -116,7 +171,7 @@ export const TransactionDetailPage = () => {
   return (
     <Box maxW="2xl" mx="auto">
       <PageHeader
-        breadcrumbs={[{ label: 'Transactions', href: '/transactions' }, { label: 'Details' }]}
+        breadcrumbs={buildBreadcrumbs(navState, transaction.title)}
         actions={
           <TransactionActions
             onEdit={handleEdit}

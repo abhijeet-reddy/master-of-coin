@@ -71,6 +71,18 @@ impl SplitProProvider {
         format!("{}/api/trpc/{}", base_url, procedure)
     }
 
+    /// Build the Cookie header value for NextAuth session authentication.
+    ///
+    /// NextAuth uses `__Secure-next-auth.session-token` when `NEXTAUTH_URL` is HTTPS,
+    /// and `next-auth.session-token` when it's HTTP. Since we don't know SplitPro's
+    /// `NEXTAUTH_URL` configuration, we send both cookie names so it works either way.
+    fn build_session_cookie(session_token: &str) -> String {
+        format!(
+            "next-auth.session-token={}; __Secure-next-auth.session-token={}",
+            session_token, session_token
+        )
+    }
+
     /// Make a tRPC mutation request (POST)
     async fn make_mutation_request(
         &self,
@@ -85,10 +97,7 @@ impl SplitProProvider {
             .http_client
             .post(&url)
             .header("Content-Type", "application/json")
-            .header(
-                "Cookie",
-                format!("next-auth.session-token={}", session_token),
-            )
+            .header("Cookie", Self::build_session_cookie(session_token))
             .json(&body)
             .send()
             .await
@@ -145,10 +154,7 @@ impl SplitProProvider {
         let response = self
             .http_client
             .get(&url)
-            .header(
-                "Cookie",
-                format!("next-auth.session-token={}", session_token),
-            )
+            .header("Cookie", Self::build_session_cookie(session_token))
             .send()
             .await
             .map_err(|e| SplitProviderError::NetworkError(e.to_string()))?;

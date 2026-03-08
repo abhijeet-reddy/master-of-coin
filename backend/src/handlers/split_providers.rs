@@ -204,13 +204,15 @@ async fn fetch_splitpro_friends(
         base_url, encoded_input
     );
 
+    // Send both cookie names to handle NextAuth HTTPS (__Secure- prefix) and HTTP configurations
+    let cookie_header = format!(
+        "next-auth.session-token={}; __Secure-next-auth.session-token={}",
+        session_token, session_token
+    );
     let http_client = reqwest::Client::new();
     let response = http_client
         .get(&url)
-        .header(
-            "Cookie",
-            format!("next-auth.session-token={}", session_token),
-        )
+        .header("Cookie", &cookie_header)
         .send()
         .await
         .map_err(|e| ApiError::External(format!("SplitPro API error: {}", e)))?;

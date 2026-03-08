@@ -34,9 +34,9 @@ export function LoginPage() {
       if (err instanceof Error) {
         try {
           const apiError = JSON.parse(err.message) as ApiError;
-          errorMessage = apiError.message;
+          errorMessage = apiError.message || apiError.error || errorMessage;
         } catch {
-          errorMessage = err.message;
+          errorMessage = err.message || errorMessage;
         }
       }
       setError(errorMessage);

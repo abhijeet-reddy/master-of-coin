@@ -1,5 +1,7 @@
-use chrono::NaiveDate;
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, NaiveDate, Utc};
 use diesel::prelude::*;
+use diesel::sql_types::{Nullable, Numeric, Timestamptz, Uuid as DieselUuid};
 use uuid::Uuid;
 
 use crate::{
@@ -10,7 +12,19 @@ use crate::{
         budget_range::{BudgetRange, NewBudgetRange},
     },
     schema::{budget_ranges, budgets},
+    types::CurrencyCode,
 };
+
+/// Result of budget spending aggregation grouped by currency.
+/// Used by `calculate_spending_by_currency` to return split-adjusted
+/// spending totals that the service layer converts to the primary currency.
+#[derive(Debug, QueryableByName)]
+pub struct CurrencySpending {
+    #[diesel(sql_type = crate::schema::sql_types::CurrencyCode)]
+    pub currency: CurrencyCode,
+    #[diesel(sql_type = Numeric)]
+    pub total_user_spending: BigDecimal,
+}
 
 /// Create a new budget
 pub async fn create_budget(
@@ -244,6 +258,74 @@ pub async fn list_ranges_for_budget(
                 tracing::error!("Failed to list ranges for budget {}: {}", budget_id, e);
                 ApiError::from(e)
             })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Calculate budget spending grouped by currency, accounting for transaction splits.
+///
+/// Executes a single SQL query that:
+/// 1. JOINs transactions with accounts (to get currency)
+/// 2. Uses a correlated subquery on transaction_splits to compute positive split totals
+/// 3. Computes user's share: ABS(amount) - COALESCE(positive_splits, 0)
+/// 4. Groups by currency and sums the user's shares
+///
+/// Only positive splits (regular splits where friends owe the user) are subtracted.
+/// Negative splits (debt transaction tracking) are ignored — the transaction amount
+/// already represents the user's share for debt transactions.
+pub async fn calculate_spending_by_currency(
+    pool: &DbPool,
+    user_id: Uuid,
+    category_id: Option<Uuid>,
+    account_id: Option<Uuid>,
+    start_date: Option<DateTime<Utc>>,
+    end_date: Option<DateTime<Utc>>,
+) -> Result<Vec<CurrencySpending>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::sql_query(
+            "SELECT \
+                a.currency, \
+                SUM( \
+                    ABS(t.amount) - COALESCE( \
+                        (SELECT SUM(ts.amount) \
+                         FROM transaction_splits ts \
+                         WHERE ts.transaction_id = t.id AND ts.amount > 0), \
+                        0 \
+                    ) \
+                ) AS total_user_spending \
+            FROM transactions t \
+            JOIN accounts a ON a.id = t.account_id \
+            WHERE t.user_id = $1 \
+              AND t.amount < 0 \
+              AND ($2::uuid IS NULL OR t.category_id = $2) \
+              AND ($3::timestamptz IS NULL OR t.date >= $3) \
+              AND ($4::timestamptz IS NULL OR t.date <= $4) \
+              AND ($5::uuid IS NULL OR t.account_id = $5) \
+            GROUP BY a.currency",
+        )
+        .bind::<DieselUuid, _>(user_id)
+        .bind::<Nullable<DieselUuid>, _>(category_id)
+        .bind::<Nullable<Timestamptz>, _>(start_date)
+        .bind::<Nullable<Timestamptz>, _>(end_date)
+        .bind::<Nullable<DieselUuid>, _>(account_id)
+        .load::<CurrencySpending>(&mut conn)
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to calculate budget spending for user {}: {}",
+                user_id,
+                e
+            );
+            ApiError::from(e)
+        })
     })
     .await
     .map_err(|e| {

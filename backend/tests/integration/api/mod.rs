@@ -18,6 +18,7 @@ mod common;
 mod test_accounts;
 mod test_api_keys;
 mod test_auth;
+mod test_budget_spending;
 mod test_budgets;
 mod test_bulk_sync;
 mod test_categories;

@@ -9,7 +9,7 @@ use crate::{
     errors::ApiError,
     models::{
         BudgetRangeResponse, BudgetResponse, CreateBudgetRangeRequest, CreateBudgetRequest,
-        NewBudget, NewBudgetRange, TransactionFilter, UpdateBudgetRequest,
+        NewBudget, NewBudgetRange, UpdateBudgetRequest,
     },
     repositories,
     services::exchange_rate_service::ExchangeRateService,
@@ -80,52 +80,43 @@ pub async fn get_budget(
     let mut response: BudgetResponse = budget.into();
 
     if let Some(range) = range {
-        // Build a TransactionFilter scoped to the active range dates
-        // Reuses the same date conversion pattern from calculate_budget_status()
-        let mut filter = TransactionFilter {
-            account_id: None,
-            category_id: None,
-            start_date: Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()),
-            end_date: range
-                .end_date
-                .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc()),
-            min_amount: None,
-            max_amount: None,
-            search: None,
-            limit: None,
-            offset: None,
-        };
+        // Extract budget filters from JSON
+        let category_id = response
+            .filters
+            .get("category_id")
+            .and_then(|v| v.as_str())
+            .and_then(|s| Uuid::parse_str(s).ok());
+        let account_id = response
+            .filters
+            .get("account_id")
+            .and_then(|v| v.as_str())
+            .and_then(|s| Uuid::parse_str(s).ok());
 
-        // Apply budget category/account filters from JSON
-        if let Some(account_id) = response.filters.get("account_id").and_then(|v| v.as_str()) {
-            if let Ok(uuid) = Uuid::parse_str(account_id) {
-                filter.account_id = Some(uuid);
-            }
-        }
-        if let Some(category_id) = response.filters.get("category_id").and_then(|v| v.as_str()) {
-            if let Ok(uuid) = Uuid::parse_str(category_id) {
-                filter.category_id = Some(uuid);
-            }
-        }
+        let start_date = Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc());
+        let end_date = range
+            .end_date
+            .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc());
 
-        // Query transactions and sum expenses with currency conversion
-        let transactions =
-            repositories::transaction::list_transactions(pool, user_id, filter).await?;
+        // Single query: compute split-adjusted spending grouped by currency
+        let spending_by_currency = repositories::budget::calculate_spending_by_currency(
+            pool,
+            user_id,
+            category_id,
+            account_id,
+            start_date,
+            end_date,
+        )
+        .await?;
 
+        // Convert each currency total to primary currency and sum
         let exchange_service = ExchangeRateService::new()?;
         let mut current_spending = BigDecimal::from(0);
 
-        for result in transactions
-            .iter()
-            .filter(|r| r.transaction.amount < BigDecimal::from(0))
-        {
-            let transaction = &result.transaction;
-            let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
-            let amount_abs = transaction.amount.abs();
-            let converted_amount = exchange_service
-                .convert_to_primary_currency(&amount_abs, account.currency)
+        for row in &spending_by_currency {
+            let converted = exchange_service
+                .convert_to_primary_currency(&row.total_user_spending, row.currency)
                 .await?;
-            current_spending += converted_amount;
+            current_spending += converted;
         }
 
         let spending_abs = current_spending;
@@ -304,60 +295,46 @@ pub async fn calculate_budget_status(
         }
     };
 
-    // Parse budget filters to create transaction filter
-    let mut filter = TransactionFilter {
-        account_id: None,
-        category_id: None,
-        start_date: Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()), // Start of day (00:00:00)
-        end_date: range
-            .end_date
-            .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc()), // End of day (23:59:59) if set
-        min_amount: None,
-        max_amount: None,
-        search: None,
-        limit: None,
-        offset: None,
-    };
+    // Extract budget filters from JSON
+    let category_id = budget
+        .filters
+        .get("category_id")
+        .and_then(|v| v.as_str())
+        .and_then(|s| Uuid::parse_str(s).ok());
+    let account_id = budget
+        .filters
+        .get("account_id")
+        .and_then(|v| v.as_str())
+        .and_then(|s| Uuid::parse_str(s).ok());
 
-    // Apply budget filters from JSON
-    if let Some(account_id) = budget.filters.get("account_id").and_then(|v| v.as_str()) {
-        if let Ok(uuid) = Uuid::parse_str(account_id) {
-            filter.account_id = Some(uuid);
-        }
-    }
-    if let Some(category_id) = budget.filters.get("category_id").and_then(|v| v.as_str()) {
-        if let Ok(uuid) = Uuid::parse_str(category_id) {
-            filter.category_id = Some(uuid);
-        }
-    }
+    let start_date = Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc());
+    let end_date = range
+        .end_date
+        .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc());
 
-    // Get transactions matching the filter
-    let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
+    // Single query: compute split-adjusted spending grouped by currency
+    let spending_by_currency = repositories::budget::calculate_spending_by_currency(
+        pool,
+        user_id,
+        category_id,
+        account_id,
+        start_date,
+        end_date,
+    )
+    .await?;
 
-    // Initialize exchange rate service for currency conversion
+    // Convert each currency total to primary currency and sum
     let exchange_service = ExchangeRateService::new()?;
-
-    // Sum spending (only negative amounts for expenses), converting to primary currency
     let mut current_spending = BigDecimal::from(0);
 
-    for result in transactions
-        .iter()
-        .filter(|r| r.transaction.amount < BigDecimal::from(0))
-    {
-        let transaction = &result.transaction;
-        // Get the account to find its currency
-        let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
-
-        // Convert transaction amount to primary currency
-        let amount_abs = transaction.amount.abs();
-        let converted_amount = exchange_service
-            .convert_to_primary_currency(&amount_abs, account.currency)
+    for row in &spending_by_currency {
+        let converted = exchange_service
+            .convert_to_primary_currency(&row.total_user_spending, row.currency)
             .await?;
-
-        current_spending += converted_amount;
+        current_spending += converted;
     }
 
-    // current_spending is already positive (we used abs() above)
+    // current_spending is already positive (computed from ABS in SQL)
     let spending_abs = current_spending;
 
     // Calculate percentage

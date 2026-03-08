@@ -25,13 +25,13 @@ export const Budgets = () => {
   });
 
   const { data: budgets = [], isLoading: budgetsLoading, error: budgetsError } = useBudgets();
-  const { data: dashboardData } = useDashboardSummary();
+  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardSummary();
   const deleteMutation = useDeleteBudget();
 
   // Get enriched budget statuses with spending data
   const enrichedBudgets = useEnrichedBudgetStatuses(dashboardData?.budget_statuses);
 
-  const isLoading = budgetsLoading;
+  const isLoading = budgetsLoading || dashboardLoading;
   const error = budgetsError;
 
   // Query error state

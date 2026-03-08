@@ -34,12 +34,14 @@ export default function useBudgetDetail(id: string) {
     if (budget.filters?.category_id) {
       params.category_id = budget.filters.category_id;
     }
-    // Scope transactions to the active budget period
+    // Scope transactions to the active budget period.
+    // The backend expects RFC3339 DateTime format (e.g. "2026-03-01T00:00:00Z"),
+    // but active_range dates are NaiveDate strings (e.g. "2026-03-01").
     if (budget.active_range?.start_date) {
-      params.start_date = budget.active_range.start_date;
+      params.start_date = `${budget.active_range.start_date}T00:00:00Z`;
     }
     if (budget.active_range?.end_date) {
-      params.end_date = budget.active_range.end_date;
+      params.end_date = `${budget.active_range.end_date}T23:59:59Z`;
     }
     return params;
   }, [budget]);

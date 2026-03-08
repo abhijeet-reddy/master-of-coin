@@ -131,6 +131,17 @@ impl SplitProProvider {
             encoded_input
         );
 
+        tracing::debug!(
+            "SplitPro query request: {} with cookie: next-auth.session-token={}...{}",
+            url,
+            &session_token[..std::cmp::min(8, session_token.len())],
+            if session_token.len() > 8 {
+                "(truncated)"
+            } else {
+                ""
+            }
+        );
+
         let response = self
             .http_client
             .get(&url)
@@ -148,7 +159,20 @@ impl SplitProProvider {
             .await
             .unwrap_or_else(|_| "Failed to read response body".to_string());
 
+        tracing::debug!(
+            "SplitPro query response for {}: status={}, body={}",
+            procedure,
+            status,
+            &body_text[..std::cmp::min(500, body_text.len())]
+        );
+
         if !status.is_success() {
+            tracing::warn!(
+                "SplitPro query {} failed: HTTP {} - {}",
+                procedure,
+                status,
+                &body_text[..std::cmp::min(200, body_text.len())]
+            );
             return Err(Self::map_http_error(status, &body_text));
         }
 
@@ -688,11 +712,29 @@ impl SplitProvider for SplitProProvider {
         let base_url = Self::get_base_url(credentials)?;
         let session_token = Self::get_session_token(credentials)?;
 
+        tracing::info!(
+            "Validating SplitPro credentials: base_url={}, session_token_prefix={}",
+            base_url,
+            &session_token[..std::cmp::min(12, session_token.len())]
+        );
+
         let input = json!({});
 
         let result = self
             .make_query_request(&base_url, &session_token, "user.me", &input, &[])
             .await;
+
+        match &result {
+            Ok(response) => {
+                tracing::info!("SplitPro validate_credentials succeeded: {:?}", response);
+            }
+            Err(SplitProviderError::AuthenticationFailed(msg)) => {
+                tracing::warn!("SplitPro validate_credentials auth failed: {}", msg);
+            }
+            Err(e) => {
+                tracing::error!("SplitPro validate_credentials error: {:?}", e);
+            }
+        }
 
         match result {
             Ok(_) => Ok(true),

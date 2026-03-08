@@ -55,13 +55,18 @@ pub async fn connect_splitpro(
     })?;
 
     // Connect to SplitPro's database directly
+    tracing::info!(
+        "Connecting to SplitPro database for email: {}",
+        &request.email
+    );
     let (splitpro_user_id, session_token) =
         create_splitpro_session(&splitpro_db_url, &request.email).await?;
 
     tracing::info!(
-        "Created SplitPro session for user {} (SplitPro user {})",
+        "Created SplitPro session for user {} (SplitPro user {}), token_prefix={}",
         user_id,
-        splitpro_user_id
+        splitpro_user_id,
+        &session_token[..std::cmp::min(12, session_token.len())]
     );
 
     // Build credentials JSON
@@ -70,6 +75,13 @@ pub async fn connect_splitpro(
         "session_token": session_token,
         "splitpro_user_id": splitpro_user_id,
     });
+
+    tracing::info!(
+        "Validating SplitPro credentials: base_url={}, splitpro_user_id={}, token_prefix={}",
+        base_url,
+        splitpro_user_id,
+        &session_token[..std::cmp::min(12, session_token.len())]
+    );
 
     // Validate credentials by calling user.me on the SplitPro instance
     let provider = SplitProProvider::new();
@@ -81,6 +93,11 @@ pub async fn connect_splitpro(
             tracing::error!("Failed to validate SplitPro credentials: {}", e);
             ApiError::External(format!("Failed to connect to SplitPro: {}", e))
         })?;
+
+    tracing::info!(
+        "SplitPro credential validation result: is_valid={}",
+        is_valid
+    );
 
     if !is_valid {
         return Err(ApiError::BadRequest(

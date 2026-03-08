@@ -59,12 +59,9 @@ test.describe("Accounts Page", () => {
     // Open modal
     await authenticatedPage.click("text=Add Account");
 
-    // Verify modal is open
+    // Verify modal is open — use role-based locator to avoid strict mode violations
     await expect(
-      authenticatedPage
-        .locator("text=Add Account")
-        .nth(1)
-        .or(authenticatedPage.locator('[role="dialog"]')),
+      authenticatedPage.locator('[role="dialog"]').first(),
     ).toBeVisible();
     await expect(authenticatedPage.locator('input[name="name"]')).toBeVisible();
 
@@ -119,19 +116,14 @@ test.describe("Accounts Page", () => {
     await authenticatedPage.goto("/accounts");
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // Click on the first account in the list to view details
-    const firstAccount = authenticatedPage
-      .locator('[data-testid="account-card"]')
-      .first()
-      .or(
-        authenticatedPage
-          .locator("text=Checking")
-          .first()
-          .or(authenticatedPage.locator("text=Savings").first()),
-      );
+    // Click on the first individual account card (not the Total Balance card).
+    // Account cards are Card.Root elements with "Balance" text but not "Total Balance".
+    const accountCards = authenticatedPage
+      .locator('[class*="chakra-card"]')
+      .filter({ hasText: /^(?!.*Total Balance).*Balance/ });
 
-    if (await firstAccount.isVisible()) {
-      await firstAccount.click();
+    if ((await accountCards.count()) > 0) {
+      await accountCards.first().click();
       await authenticatedPage.waitForLoadState("networkidle");
 
       // Should be on account detail page

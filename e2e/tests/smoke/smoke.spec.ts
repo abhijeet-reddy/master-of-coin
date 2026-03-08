@@ -92,23 +92,30 @@ test.describe("Smoke Tests — Navigation", () => {
     await authenticatedPage.goto("/dashboard");
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // Test each sidebar link
+    // The sidebar uses NavLink (renders <a> tags) from react-router-dom.
+    // When collapsed, text labels are hidden but links still exist with href.
+    // Use href-based locators to click sidebar links reliably.
     const sidebarLinks = [
-      { label: "Transactions", expectedUrl: "/transactions" },
-      { label: "Accounts", expectedUrl: "/accounts" },
-      { label: "Budgets", expectedUrl: "/budgets" },
-      { label: "Categories", expectedUrl: "/categories" },
-      { label: "People", expectedUrl: "/people" },
-      { label: "Reports", expectedUrl: "/reports" },
-      { label: "Dashboard", expectedUrl: "/" },
+      { href: "/transactions", expectedUrl: "/transactions" },
+      { href: "/accounts", expectedUrl: "/accounts" },
+      { href: "/budgets", expectedUrl: "/budgets" },
+      { href: "/categories", expectedUrl: "/categories" },
+      { href: "/people", expectedUrl: "/people" },
+      { href: "/reports", expectedUrl: "/reports" },
+      { href: "/", expectedUrl: "/" },
     ];
 
-    for (const { label, expectedUrl } of sidebarLinks) {
-      // Click the sidebar link
-      await authenticatedPage.click(`nav >> text=${label}`);
+    for (const { href, expectedUrl } of sidebarLinks) {
+      // Click the sidebar link by href — use exact match for "/" to avoid
+      // matching all links that start with "/"
+      const linkLocator =
+        href === "/"
+          ? authenticatedPage.locator(`a[href="/"]`)
+          : authenticatedPage.locator(`a[href="${href}"]`);
+      await linkLocator.first().click();
       await authenticatedPage.waitForLoadState("networkidle");
 
-      // Verify URL changed
+      // Verify URL changed (dashboard redirects "/" to "/dashboard")
       expect(authenticatedPage.url()).toContain(expectedUrl);
     }
   });

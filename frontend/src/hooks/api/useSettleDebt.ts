@@ -25,6 +25,7 @@ export default function useSettleDebt() {
       void queryClient.invalidateQueries({ queryKey: ['people'] });
       void queryClient.invalidateQueries({ queryKey: ['transactions'] });
       void queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      void queryClient.invalidateQueries({ queryKey: ['budgets'] });
     },
   });
 }

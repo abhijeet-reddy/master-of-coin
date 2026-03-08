@@ -16,6 +16,7 @@ export default function useDeleteTransaction() {
       void queryClient.invalidateQueries({ queryKey: ['transactions'] });
       void queryClient.invalidateQueries({ queryKey: ['transactions', id] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['budgets'] });
     },
   });
 }

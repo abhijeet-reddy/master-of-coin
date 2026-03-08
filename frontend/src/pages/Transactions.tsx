@@ -19,12 +19,13 @@ import {
   useCategories,
   usePeople,
   useCreateTransaction,
+  useCreateDebtTransaction,
   useUpdateTransaction,
   useDeleteTransaction,
   useDocumentTitle,
 } from '@/hooks';
 import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
-import { createDebtTransaction, updateDebtExpenseDetails } from '@/services/transactionService';
+import { updateDebtExpenseDetails } from '@/services/transactionService';
 import { useQueryClient } from '@tanstack/react-query';
 import type {
   EnrichedTransaction,
@@ -201,9 +202,9 @@ export const TransactionsPage = () => {
   };
 
   const queryClient = useQueryClient();
+  const debtMutation = useCreateDebtTransaction();
   const handleDebtSubmit = async (data: CreateDebtTransactionRequest) => {
-    await createDebtTransaction(data);
-    await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    await debtMutation.mutateAsync(data);
   };
 
   const handleDebtMetadataSubmit = async (

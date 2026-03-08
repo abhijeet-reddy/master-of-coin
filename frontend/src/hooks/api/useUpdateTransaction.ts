@@ -19,6 +19,7 @@ export default function useUpdateTransaction() {
       void queryClient.invalidateQueries({ queryKey: ['transactions', variables.id] });
       void queryClient.invalidateQueries({ queryKey: ['accounts'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['budgets'] });
     },
   });
 }

@@ -1879,3 +1879,108 @@ async fn test_full_transaction_crud_flow() {
         "All transactions should be deleted"
     );
 }
+
+// ============================================================================
+// Splits on Income Validation Tests
+// ============================================================================
+
+/// Test that creating an income transaction with splits is rejected.
+///
+/// Verifies that:
+/// - Status code is 422 (validation error)
+/// - Splits are not allowed on income transactions (positive amount)
+#[tokio::test]
+async fn test_create_income_transaction_with_splits_rejected() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("incomesplit_{}", timestamp),
+        &format!("incomesplit_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Income Split Test User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person = create_test_person(&server, &auth.token, "Person 1").await;
+
+    // Attempt to create an income transaction (positive amount) with splits
+    let request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Salary with splits",
+        "amount": 3000.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [
+            { "person_id": person.id, "amount": 1000.00 }
+        ]
+    });
+
+    let response =
+        post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
+    assert_status(&response, 422);
+}
+
+/// Test that updating a transaction to income while it has splits is rejected.
+///
+/// Verifies that:
+/// - Updating an expense transaction's amount to positive (income) while providing splits
+///   returns a validation error
+#[tokio::test]
+async fn test_update_to_income_with_splits_rejected() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("updateincome_{}", timestamp),
+        &format!("updateincome_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Update Income Test User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person = create_test_person(&server, &auth.token, "Person 1").await;
+
+    // Create an expense transaction with splits (valid)
+    let create_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Dinner",
+        "amount": -100.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [
+            { "person_id": person.id, "amount": 50.00 }
+        ]
+    });
+
+    let create_response =
+        post_authenticated(&server, "/api/v1/transactions", &auth.token, &create_request).await;
+    assert_status(&create_response, 201);
+    let transaction: TransactionResponse = extract_json(create_response);
+
+    // Attempt to update amount to positive (income) while keeping splits
+    let update_request = json!({
+        "amount": 100.00,
+        "splits": [
+            { "person_id": person.id, "amount": 50.00 }
+        ]
+    });
+
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+
+    // Should be rejected — splits not allowed on income
+    assert_status(&update_response, 422);
+}
+

@@ -291,6 +291,23 @@ pub async fn update_transaction(
         }
     }
 
+    // Reject splits on income transactions (positive amount)
+    if request.splits.is_some() {
+        let effective_amount = request.amount.unwrap_or_else(|| {
+            result
+                .transaction
+                .amount
+                .to_string()
+                .parse::<f64>()
+                .unwrap_or(0.0)
+        });
+        if effective_amount > 0.0 {
+            return Err(ApiError::Validation(
+                "Splits are not allowed on income transactions".to_string(),
+            ));
+        }
+    }
+
     // Convert amount if provided
     let amount = if let Some(amt) = request.amount {
         Some(BigDecimal::from_str(&amt.to_string()).map_err(|e| {

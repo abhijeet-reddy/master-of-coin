@@ -17,6 +17,7 @@ import { Field } from '@/components/ui/field';
 import { ErrorAlert } from '@/components/common';
 import { SplitPaymentForm } from './SplitPaymentForm';
 import { DebtExpenseParticipantsForm } from './DebtExpenseParticipantsForm';
+import { useTransactionSplitState } from '@/hooks/usecase';
 import { CurrencyCode } from '@/types';
 import type {
   Account,
@@ -24,7 +25,6 @@ import type {
   Person,
   PayerMode,
   Transaction,
-  TransactionSplitRequest,
   ExpenseParticipantInput,
   CreateTransactionRequest,
   CreateDebtTransactionRequest,
@@ -106,8 +106,6 @@ export const TransactionFormModal = ({
   onSubmitDebt,
   onSubmitDebtMetadata,
 }: TransactionFormModalProps) => {
-  const [isSplitEnabled, setIsSplitEnabled] = useState(false);
-  const [splits, setSplits] = useState<TransactionSplitRequest[]>([]);
   const [expenseParticipants, setExpenseParticipants] = useState<ExpenseParticipantInput[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -138,6 +136,22 @@ export const TransactionFormModal = ({
 
   const amount = watch('amount');
   const payerMode = watch('payer_mode') as PayerMode;
+  const transactionType = watch('transaction_type');
+
+  // Split state managed by custom hook (income-aware)
+  const {
+    isSplitEnabled,
+    splits,
+    canSplit,
+    toggleSplit,
+    setSplits,
+    clearSplits,
+    initFromTransaction,
+  } = useTransactionSplitState({
+    transactionType,
+    payerMode,
+    isDebtTransaction: !!transaction?.debt_metadata,
+  });
 
   // Whether we're editing a debt transaction with expense participants
   const isDebtWithParticipants =
@@ -163,10 +177,7 @@ export const TransactionFormModal = ({
           time: transactionDate.toTimeString().slice(0, 5),
           notes: transaction.notes || '',
         });
-        setIsSplitEnabled(
-          !isDebtTransaction && !!transaction.splits && transaction.splits.length > 0
-        );
-        setSplits(isDebtTransaction ? [] : transaction.splits || []);
+        initFromTransaction(transaction.splits || [], isDebtTransaction);
 
         // Initialize expense participants from debt_metadata
         if (
@@ -199,12 +210,11 @@ export const TransactionFormModal = ({
           time: new Date().toTimeString().slice(0, 5),
           notes: '',
         });
-        setIsSplitEnabled(false);
-        setSplits([]);
+        clearSplits();
         setExpenseParticipants([]);
       }
     }
-  }, [isOpen, transaction, reset]);
+  }, [isOpen, transaction, reset, initFromTransaction, clearSplits]);
 
   // Track which participant index is the current user.
   // Identified at form open by matching owed_share to the transaction amount.
@@ -305,19 +315,11 @@ export const TransactionFormModal = ({
     }
   };
 
-  const handleSplitToggle = () => {
-    setIsSplitEnabled(!isSplitEnabled);
-    if (isSplitEnabled) {
-      setSplits([]);
-    }
-  };
-
   const handlePayerModeChange = (mode: PayerMode) => {
     setValue('payer_mode', mode);
     if (mode === 'other') {
       setValue('account_id', '');
-      setIsSplitEnabled(false);
-      setSplits([]);
+      clearSplits();
     } else {
       setValue('payer_person_id', '');
       setExpenseParticipants([]);
@@ -552,14 +554,14 @@ export const TransactionFormModal = ({
                 </Box>
               )}
 
-              {/* Split Payment Toggle (only when "I paid") */}
-              {payerMode === 'self' && (
+              {/* Split Payment Toggle (only for expenses when "I paid") */}
+              {canSplit && (
                 <Box>
                   <Button
                     size="sm"
                     variant={isSplitEnabled ? 'solid' : 'outline'}
                     colorScheme={isSplitEnabled ? 'blue' : 'gray'}
-                    onClick={handleSplitToggle}
+                    onClick={toggleSplit}
                     type="button"
                   >
                     {isSplitEnabled ? 'Disable' : 'Enable'} Split Payment
@@ -568,7 +570,7 @@ export const TransactionFormModal = ({
               )}
 
               {/* Split Payment Form */}
-              {isSplitEnabled && payerMode === 'self' && (
+              {isSplitEnabled && canSplit && (
                 <Box p={4} bg="bg.muted" borderRadius="md">
                   <SplitPaymentForm
                     totalAmount={parseFloat(amount) || 0}

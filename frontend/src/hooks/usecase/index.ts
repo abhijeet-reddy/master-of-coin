@@ -17,3 +17,4 @@ export { default as useTransferForm } from './useTransferForm';
 export { default as useAccountDetail } from './useAccountDetail';
 export { default as useCategoryDetail } from './useCategoryDetail';
 export { default as useBudgetDetail } from './useBudgetDetail';
+export { default as useTransactionSplitState } from './useTransactionSplitState';

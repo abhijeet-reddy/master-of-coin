@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useCreateTransfer } from '@/hooks/api';
 import { toaster } from '@/components/ui/toaster';
 import { AccountType } from '@/types';
-import type { Account, CreateTransferRequest } from '@/types';
+import type { Account, Category, CreateTransferRequest } from '@/types';
 
 // Validation schema
 const transferSchema = z.object({
@@ -48,6 +48,7 @@ const DEFAULT_VALUES: TransferFormData = {
 interface UseTransferFormOptions {
   open: boolean;
   accounts: Account[];
+  categories?: Category[];
   onSuccess?: () => void;
   onClose: () => void;
 }
@@ -59,6 +60,7 @@ interface UseTransferFormOptions {
 export default function useTransferForm({
   open,
   accounts,
+  categories,
   onSuccess,
   onClose,
 }: UseTransferFormOptions) {
@@ -104,8 +106,14 @@ export default function useTransferForm({
     if (open) {
       reset(DEFAULT_VALUES);
       mutationResetRef.current();
+
+      // Auto-select the "Transfer" category if available
+      const transferCategory = categories?.find((c) => c.name.toLowerCase() === 'transfer');
+      if (transferCategory) {
+        setValue('category_id', transferCategory.id);
+      }
     }
-  }, [open, reset]);
+  }, [open, reset, categories, setValue]);
 
   // Clear to_account if it matches from_account
   useEffect(() => {

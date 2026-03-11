@@ -41,7 +41,7 @@ export const TransferFormModal = ({
     toAccount,
     isCrossCurrency,
     titlePlaceholder,
-  } = useTransferForm({ open, accounts, onSuccess, onClose });
+  } = useTransferForm({ open, accounts, categories, onSuccess, onClose });
 
   const {
     register,

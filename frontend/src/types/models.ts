@@ -11,6 +11,7 @@ export enum AccountType {
   LOAN = 'LOAN',
   CASH = 'CASH',
   DEBT = 'DEBT',
+  GIFT_CARD = 'GIFT_CARD',
 }
 
 export interface Account {

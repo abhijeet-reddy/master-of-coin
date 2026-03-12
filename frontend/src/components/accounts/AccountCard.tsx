@@ -5,6 +5,7 @@ import {
   FaCreditCard,
   FaChartLine,
   FaWallet,
+  FaGift,
   FaEdit,
   FaTrash,
 } from 'react-icons/fa';
@@ -32,6 +33,8 @@ const getAccountIcon = (type: AccountType) => {
       return FaChartLine;
     case AccountType.CASH:
       return FaWallet;
+    case AccountType.GIFT_CARD:
+      return FaGift;
     default:
       return FaWallet;
   }
@@ -59,6 +62,8 @@ const getColorScheme = (type: AccountType): string => {
       return 'orange';
     case AccountType.CASH:
       return 'gray';
+    case AccountType.GIFT_CARD:
+      return 'pink';
     default:
       return 'gray';
   }

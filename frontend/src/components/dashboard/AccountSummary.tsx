@@ -1,6 +1,6 @@
 import { Box, Card, HStack, VStack, Text, Icon, Badge } from '@chakra-ui/react';
 import { FiCreditCard, FiTrendingUp, FiHome, FiShoppingBag } from 'react-icons/fi';
-import { FaEuroSign } from 'react-icons/fa';
+import { FaEuroSign, FaGift } from 'react-icons/fa';
 import type { Account, AccountType } from '@/types/models';
 import { EmptyState } from '@/components/common';
 import { formatCurrency } from '../../utils/formatters/currency';
@@ -20,6 +20,8 @@ const getAccountIcon = (type: AccountType) => {
       return FiTrendingUp;
     case 'LOAN':
       return FiHome;
+    case 'GIFT_CARD':
+      return FaGift;
     case 'CASH':
     default:
       return FiShoppingBag;
@@ -38,6 +40,8 @@ const getAccountColor = (type: AccountType): string => {
       return 'orange.500';
     case 'LOAN':
       return 'red.500';
+    case 'GIFT_CARD':
+      return 'pink.500';
     case 'CASH':
       return 'yellow.500';
     default:

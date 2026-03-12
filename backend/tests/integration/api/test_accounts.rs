@@ -270,6 +270,7 @@ async fn test_create_account_all_types() {
         ("CREDIT_CARD", AccountType::CreditCard),
         ("INVESTMENT", AccountType::Investment),
         ("CASH", AccountType::Cash),
+        ("GIFT_CARD", AccountType::GiftCard),
     ];
 
     for (type_str, expected_type) in account_types {
@@ -294,7 +295,7 @@ async fn test_create_account_all_types() {
     let list_response = get_authenticated(&server, "/api/v1/accounts", &auth.token).await;
     assert_status(&list_response, 200);
     let accounts: Vec<AccountResponse> = extract_json(list_response);
-    assert_eq!(accounts.len(), 5, "Should have created 5 accounts");
+    assert_eq!(accounts.len(), 6, "Should have created 6 accounts");
 }
 
 /// Test that creating account with missing required fields fails.

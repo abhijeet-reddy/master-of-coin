@@ -24,6 +24,7 @@ pub enum AccountType {
     Investment,
     Cash,
     Debt,
+    GiftCard,
 }
 
 impl ToSql<crate::schema::sql_types::AccountType, Pg> for AccountType {
@@ -35,6 +36,7 @@ impl ToSql<crate::schema::sql_types::AccountType, Pg> for AccountType {
             AccountType::Investment => out.write_all(b"INVESTMENT")?,
             AccountType::Cash => out.write_all(b"CASH")?,
             AccountType::Debt => out.write_all(b"DEBT")?,
+            AccountType::GiftCard => out.write_all(b"GIFT_CARD")?,
         }
         Ok(serialize::IsNull::No)
     }
@@ -49,6 +51,7 @@ impl FromSql<crate::schema::sql_types::AccountType, Pg> for AccountType {
             b"INVESTMENT" => Ok(AccountType::Investment),
             b"CASH" => Ok(AccountType::Cash),
             b"DEBT" => Ok(AccountType::Debt),
+            b"GIFT_CARD" => Ok(AccountType::GiftCard),
             _ => Err("Unrecognized enum variant for AccountType".into()),
         }
     }

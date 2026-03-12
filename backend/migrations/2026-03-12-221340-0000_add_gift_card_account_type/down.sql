@@ -1,0 +1,3 @@
+-- PostgreSQL does not support removing values from an enum type.
+-- To reverse this migration, you would need to recreate the enum without GIFT_CARD
+-- and update all references. This is intentionally left as a no-op.

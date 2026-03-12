@@ -19,6 +19,14 @@ import useCreateCategory from '@/hooks/api/useCreateCategory';
 import useUpdateCategory from '@/hooks/api/useUpdateCategory';
 import type { Category } from '@/types';
 
+/** Generate a random hex color code (e.g., #A3F29C) */
+const getRandomColor = (): string => {
+  const hex = Math.floor(Math.random() * 0xffffff)
+    .toString(16)
+    .padStart(6, '0');
+  return `#${hex.toUpperCase()}`;
+};
+
 // Validation schema
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
@@ -57,7 +65,7 @@ export const CategoryFormModal = ({
     defaultValues: {
       name: '',
       icon: '📁',
-      color: '#3B82F6',
+      color: getRandomColor(),
     },
   });
 
@@ -74,7 +82,7 @@ export const CategoryFormModal = ({
         reset({
           name: '',
           icon: '📁',
-          color: '#3B82F6',
+          color: getRandomColor(),
         });
       }
     }

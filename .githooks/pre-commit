@@ -1,0 +1,67 @@
+#!/bin/sh
+#
+# Pre-commit hook: runs cargo test and/or e2e tests based on staged files.
+# To bypass this hook, use: git commit --no-verify
+
+# Redirect output to stderr
+exec 1>&2
+
+# Detect which areas have staged changes
+BACKEND_CHANGED=$(git diff --cached --name-only | grep '^backend/' || true)
+FRONTEND_CHANGED=$(git diff --cached --name-only | grep '^frontend/' || true)
+E2E_CHANGED=$(git diff --cached --name-only | grep '^e2e/' || true)
+
+# --- Backend tests ---
+if [ -n "$BACKEND_CHANGED" ]; then
+    echo "🔧 Backend files changed — running cargo test..."
+    cd backend && cargo test --quiet
+    TEST_EXIT=$?
+    cd ..
+    if [ $TEST_EXIT -ne 0 ]; then
+        echo ""
+        echo "❌ cargo test failed. Commit aborted."
+        echo "   Fix the failing tests or use 'git commit --no-verify' to skip."
+        exit 1
+    fi
+    echo "✅ All backend tests passed."
+fi
+
+# --- E2E tests (triggered by backend, frontend, or e2e changes) ---
+if [ -n "$BACKEND_CHANGED" ] || [ -n "$FRONTEND_CHANGED" ] || [ -n "$E2E_CHANGED" ]; then
+    echo "🌐 Backend/Frontend/E2E files changed — running e2e tests..."
+
+    # Check if Docker stack is running, start it if not
+    if ! curl -sf http://localhost:13153 > /dev/null 2>&1; then
+        echo "🐳 Docker stack not running — starting it..."
+        docker-compose down > /dev/null 2>&1
+        docker-compose build --quiet
+        docker-compose up -d
+
+        # Wait for the stack to be ready (up to 120 seconds)
+        echo "⏳ Waiting for Docker stack to be ready..."
+        RETRIES=0
+        MAX_RETRIES=60
+        while ! curl -sf http://localhost:13153 > /dev/null 2>&1; do
+            RETRIES=$((RETRIES + 1))
+            if [ $RETRIES -ge $MAX_RETRIES ]; then
+                echo ""
+                echo "❌ Docker stack failed to start within 120 seconds. Commit aborted."
+                echo "   Check docker-compose logs for errors."
+                exit 1
+            fi
+            sleep 2
+        done
+        echo "🐳 Docker stack is ready."
+    fi
+
+    cd e2e && npx playwright test
+    E2E_EXIT=$?
+    cd ..
+    if [ $E2E_EXIT -ne 0 ]; then
+        echo ""
+        echo "❌ E2E tests failed. Commit aborted."
+        echo "   Fix the failing tests or use 'git commit --no-verify' to skip."
+        exit 1
+    fi
+    echo "✅ All e2e tests passed."
+fi

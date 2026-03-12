@@ -55,7 +55,13 @@ We are committed to providing a welcoming and inclusive environment for all cont
     cargo install diesel_cli --no-default-features --features postgres
    ```
 
-4. Start development services:
+4. Enable git hooks (runs cargo test + e2e tests on commit):
+
+   ```bash
+   git config core.hooksPath .githooks
+   ```
+
+5. Start development services:
    ```bash
    docker-compose up -d
    ```
@@ -271,14 +277,12 @@ in split transactions, leading to incorrect balances.
    ```
 
 3. **Create a pull request** with:
-
    - Clear title following commit convention
    - Description of changes
    - Screenshots for UI changes
    - Reference to related issues
 
 4. **Code review**:
-
    - Address reviewer feedback
    - Keep discussions professional and constructive
    - Make requested changes in new commits

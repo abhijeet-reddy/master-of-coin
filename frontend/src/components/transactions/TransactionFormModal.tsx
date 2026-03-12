@@ -89,6 +89,7 @@ interface TransactionFormModalProps {
   people: Person[];
   onSubmit: (data: CreateTransactionRequest) => Promise<void>;
   onSubmitDebt?: (data: CreateDebtTransactionRequest) => Promise<void>;
+  defaultAccountId?: string;
   onSubmitDebtMetadata?: (
     transactionId: string,
     data: UpdateExpenseDetailsRequest
@@ -104,6 +105,7 @@ export const TransactionFormModal = ({
   people,
   onSubmit,
   onSubmitDebt,
+  defaultAccountId,
   onSubmitDebtMetadata,
 }: TransactionFormModalProps) => {
   const [expenseParticipants, setExpenseParticipants] = useState<ExpenseParticipantInput[]>([]);
@@ -124,7 +126,7 @@ export const TransactionFormModal = ({
       amount: '',
       transaction_type: 'expense',
       payer_mode: 'self',
-      account_id: '',
+      account_id: defaultAccountId || '',
       payer_person_id: '',
       payer_currency: CurrencyCode.EUR,
       category_id: '',
@@ -202,7 +204,7 @@ export const TransactionFormModal = ({
           amount: '',
           transaction_type: 'expense',
           payer_mode: 'self',
-          account_id: '',
+          account_id: defaultAccountId || '',
           payer_person_id: '',
           payer_currency: CurrencyCode.EUR,
           category_id: '',

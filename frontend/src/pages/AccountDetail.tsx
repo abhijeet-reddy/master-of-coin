@@ -1,13 +1,24 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, HStack, IconButton } from '@chakra-ui/react';
-import { FiFilter } from 'react-icons/fi';
+import { Box, Button, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
+import { FiFilter, FiPlus } from 'react-icons/fi';
 import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
 import { AccountInfoCard, AccountFormModal } from '@/components/accounts';
-import { TransactionList, TransactionFilters } from '@/components/transactions';
+import {
+  TransactionList,
+  TransactionFilters,
+  TransactionFormModal,
+} from '@/components/transactions';
 import { useAccountDetail } from '@/hooks/usecase';
-import { useDocumentTitle } from '@/hooks';
+import {
+  useDocumentTitle,
+  useAccounts,
+  usePeople,
+  useCreateTransaction,
+  useCreateDebtTransaction,
+} from '@/hooks';
 import { NavigationSourceType } from '@/types';
+import type { CreateTransactionRequest, CreateDebtTransactionRequest } from '@/types';
 
 export const AccountDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +44,14 @@ export const AccountDetailPage = () => {
     deleteMutation,
   } = useAccountDetail(id ?? '');
 
+  // Data for the Add Transaction modal
+  const { data: accountsData } = useAccounts();
+  const { data: peopleData } = usePeople();
+  const { open: isAddTxnOpen, onOpen: onAddTxnOpen, onClose: onAddTxnClose } = useDisclosure();
+
+  const createMutation = useCreateTransaction();
+  const debtMutation = useCreateDebtTransaction();
+
   useDocumentTitle(account ? `${account.name} — Account` : 'Account');
 
   const handleConfirmDelete = () => {
@@ -43,6 +62,16 @@ export const AccountDetailPage = () => {
         void navigate('/accounts', { replace: true });
       },
     });
+  };
+
+  const handleCreateSubmit = async (data: CreateTransactionRequest) => {
+    await createMutation.mutateAsync(data);
+    onAddTxnClose();
+  };
+
+  const handleDebtSubmit = async (data: CreateDebtTransactionRequest) => {
+    await debtMutation.mutateAsync(data);
+    onAddTxnClose();
   };
 
   // Loading state
@@ -81,6 +110,12 @@ export const AccountDetailPage = () => {
         breadcrumbs={[{ label: 'Accounts', href: '/accounts' }, { label: account.name }]}
         actions={
           <HStack gap={2}>
+            <Button variant="outline" onClick={onAddTxnOpen}>
+              <HStack gap={2}>
+                <FiPlus />
+                <Box display={{ base: 'none', md: 'block' }}>Add Transaction</Box>
+              </HStack>
+            </Button>
             <IconButton
               aria-label="Toggle filters"
               variant={showFilters ? 'solid' : 'outline'}
@@ -127,6 +162,18 @@ export const AccountDetailPage = () => {
         navigationState={{
           from: { type: NavigationSourceType.ACCOUNT, id: account.id, name: account.name },
         }}
+      />
+
+      {/* Add Transaction Modal (account pre-selected) */}
+      <TransactionFormModal
+        isOpen={isAddTxnOpen}
+        onClose={onAddTxnClose}
+        accounts={accountsData || []}
+        categories={categories}
+        people={peopleData || []}
+        defaultAccountId={account.id}
+        onSubmit={handleCreateSubmit}
+        onSubmitDebt={handleDebtSubmit}
       />
 
       {/* Edit Account Modal */}

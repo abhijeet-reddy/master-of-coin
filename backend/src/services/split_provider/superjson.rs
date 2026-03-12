@@ -14,7 +14,7 @@ use serde_json::{Map, Value, json};
 /// ```
 ///
 /// SuperJSON format for query inputs (URL-encoded):
-/// ```
+/// ```text
 /// ?input={"json":{"expenseId":"uuid-here"}}
 /// ```
 
@@ -30,8 +30,9 @@ use serde_json::{Map, Value, json};
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// use serde_json::json;
+/// use master_of_coin_backend::services::split_provider::superjson::encode_mutation_body;
 /// let data = json!({"amount": "5000", "name": "Test"});
 /// let encoded = encode_mutation_body(&data, &["amount"]);
 /// // Result: {"json": {"amount": "5000", "name": "Test"}, "meta": {"values": {"amount": ["bigint"]}}}

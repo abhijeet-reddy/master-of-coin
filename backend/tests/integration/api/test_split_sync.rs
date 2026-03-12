@@ -73,7 +73,7 @@ async fn create_transaction_with_split(
         "account_id": account_id,
         "category_id": category_id,
         "title": "Shared Expense for Sync Test",
-        "amount": 100.0,
+        "amount": -100.0,
         "date": "2023-06-15T00:00:00Z",
         "splits": [{"person_id": person_id, "amount": 50.0}]
     });

@@ -1124,7 +1124,7 @@ async fn test_get_person_debts_with_data() {
         "account_id": account.id,
         "category_id": category.id,
         "title": "Shared Expense",
-        "amount": 100.0,
+        "amount": -100.0,
         "date": "2023-01-01T00:00:00Z",
         "splits": [
             {
@@ -1278,7 +1278,7 @@ async fn test_settle_debt_success() {
         "account_id": account.id,
         "category_id": category.id,
         "title": "Shared Expense",
-        "amount": 100.0,
+        "amount": -100.0,
         "date": "2023-01-01T00:00:00Z",
         "splits": [
             {
@@ -1602,7 +1602,7 @@ async fn test_full_debt_management_flow() {
         "account_id": account.id,
         "category_id": category.id,
         "title": "Shared Restaurant Bill",
-        "amount": 120.0,
+        "amount": -120.0,
         "date": "2023-01-01T00:00:00Z",
         "splits": [
             {
@@ -1640,7 +1640,7 @@ async fn test_full_debt_management_flow() {
         "account_id": account.id,
         "category_id": category.id,
         "title": "Shared Groceries",
-        "amount": 80.0,
+        "amount": -80.0,
         "date": "2023-01-02T00:00:00Z",
         "splits": [
             {

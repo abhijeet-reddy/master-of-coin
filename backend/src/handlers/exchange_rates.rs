@@ -1,13 +1,14 @@
 use crate::{
+    AppState,
     auth::context::AuthContext,
     errors::ApiError,
     models::{ExchangeRateQuery, ExchangeRateResponse},
-    services::exchange_rate_service::{ExchangeRateService, PRIMARY_CURRENCY},
+    services::exchange_rate_service::PRIMARY_CURRENCY,
     types::CurrencyCode,
 };
 use axum::{
     Json,
-    extract::{Extension, Query},
+    extract::{Extension, Query, State},
 };
 use bigdecimal::BigDecimal;
 use std::collections::HashMap;
@@ -16,7 +17,7 @@ use std::collections::HashMap;
 /// GET /exchange-rates?base=EUR
 ///
 /// Returns current exchange rates for all supported currencies.
-/// Rates are cached for 24 hours to minimize API calls.
+/// Uses the shared exchange rate provider from AppState (cached for 24 hours in production).
 ///
 /// # Query Parameters
 ///
@@ -28,8 +29,9 @@ use std::collections::HashMap;
 ///
 /// # Errors
 ///
-/// * `ApiError::Internal` - If exchange rate service fails
+/// * `ApiError::Internal` - If exchange rate provider fails
 pub async fn get_exchange_rates(
+    State(state): State<AppState>,
     Extension(auth_context): Extension<AuthContext>,
     Query(query): Query<ExchangeRateQuery>,
 ) -> Result<Json<ExchangeRateResponse>, ApiError> {
@@ -42,11 +44,9 @@ pub async fn get_exchange_rates(
         base_currency.as_str()
     );
 
-    // Get exchange rate service
-    let exchange_rate_service = ExchangeRateService::new()?;
-
-    // Fetch rates from service (uses cache if available)
-    let rates: HashMap<CurrencyCode, BigDecimal> = exchange_rate_service
+    // Use shared provider from AppState
+    let rates: HashMap<CurrencyCode, BigDecimal> = state
+        .exchange_rate_provider
         .get_exchange_rates(base_currency)
         .await?;
 

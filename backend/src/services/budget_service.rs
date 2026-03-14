@@ -12,7 +12,7 @@ use crate::{
         NewBudget, NewBudgetRange, UpdateBudgetRequest,
     },
     repositories,
-    services::exchange_rate_service::ExchangeRateService,
+    services::exchange_rate_service::ExchangeRateProvider,
 };
 
 /// Budget status information
@@ -56,6 +56,7 @@ pub async fn get_budget(
     pool: &DbPool,
     budget_id: Uuid,
     user_id: Uuid,
+    exchange_provider: &dyn ExchangeRateProvider,
 ) -> Result<BudgetResponse, ApiError> {
     // Fetch budget
     let budget = repositories::budget::find_by_id(pool, budget_id).await?;
@@ -109,11 +110,10 @@ pub async fn get_budget(
         .await?;
 
         // Convert each currency total to primary currency and sum
-        let exchange_service = ExchangeRateService::new()?;
         let mut current_spending = BigDecimal::from(0);
 
         for row in &spending_by_currency {
-            let converted = exchange_service
+            let converted = exchange_provider
                 .convert_to_primary_currency(&row.total_user_spending, row.currency)
                 .await?;
             current_spending += converted;
@@ -273,6 +273,7 @@ pub async fn calculate_budget_status(
     pool: &DbPool,
     budget_id: Uuid,
     user_id: Uuid,
+    exchange_provider: &dyn ExchangeRateProvider,
 ) -> Result<BudgetStatus, ApiError> {
     // Verify budget ownership
     let budget = repositories::budget::find_by_id(pool, budget_id).await?;
@@ -324,11 +325,10 @@ pub async fn calculate_budget_status(
     .await?;
 
     // Convert each currency total to primary currency and sum
-    let exchange_service = ExchangeRateService::new()?;
     let mut current_spending = BigDecimal::from(0);
 
     for row in &spending_by_currency {
-        let converted = exchange_service
+        let converted = exchange_provider
             .convert_to_primary_currency(&row.total_user_spending, row.currency)
             .await?;
         current_spending += converted;

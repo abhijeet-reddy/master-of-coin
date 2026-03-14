@@ -7,7 +7,11 @@
 use axum_test::TestServer;
 use diesel::PgConnection;
 use diesel::r2d2::{self, ConnectionManager};
+use master_of_coin_backend::services::exchange_rate_service::{
+    ExchangeRateProvider, MockExchangeRateProvider,
+};
 use master_of_coin_backend::{AppState, Config, api::routes::create_router};
+use std::sync::Arc;
 
 use super::get_test_database_url;
 
@@ -49,8 +53,12 @@ pub async fn create_test_server() -> TestServer {
     // Create database connection pool
     let db_pool = create_test_db_pool();
 
-    // Create application state
-    let state = AppState::new(db_pool, config);
+    // Use mock exchange rate provider — no real API calls in tests
+    let exchange_provider: Arc<dyn ExchangeRateProvider> =
+        Arc::new(MockExchangeRateProvider::new());
+
+    // Create application state with mock provider
+    let state = AppState::with_exchange_provider(db_pool, config, exchange_provider);
 
     // Create router with all routes
     let app = create_router(state);

@@ -51,7 +51,8 @@ pub async fn get(
     let user_id = auth_context.user_id();
     tracing::debug!("Fetching budget {} for user {}", id, user_id);
 
-    let budget = budget_service::get_budget(&state.db, id, user_id).await?;
+    let budget =
+        budget_service::get_budget(&state.db, id, user_id, &*state.exchange_rate_provider).await?;
 
     Ok(Json(budget))
 }

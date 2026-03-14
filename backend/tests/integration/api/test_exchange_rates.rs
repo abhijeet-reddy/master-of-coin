@@ -9,6 +9,9 @@
 //! - Response format validation
 //! - Authentication requirement
 //! - Supported currency codes
+//!
+//! Note: Tests use MockExchangeRateProvider with fixed deterministic rates.
+//! The live API smoke test is gated behind #[ignore].
 
 use crate::common::*;
 use serde_json::Value;
@@ -34,6 +37,7 @@ fn extract_exchange_rates(response: axum_test::TestResponse) -> Value {
 /// - Base currency defaults to EUR
 /// - Conversion rates are included
 /// - All supported currencies are present
+/// - Rates match the mock provider's fixed values
 #[tokio::test]
 async fn test_get_exchange_rates_default_base() {
     let server = create_test_server().await;
@@ -62,7 +66,7 @@ async fn test_get_exchange_rates_default_base() {
     let rates = data["conversion_rates"].as_object().unwrap();
     assert!(rates.len() > 0, "Should have conversion rates");
 
-    // Verify all supported currencies are present
+    // Verify all supported currencies are present with valid rates
     let supported_currencies = vec!["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "INR"];
     for currency in supported_currencies {
         assert!(
@@ -76,6 +80,29 @@ async fn test_get_exchange_rates_default_base() {
         let rate: f64 = rate_str.parse().expect("Rate should be a valid number");
         assert!(rate > 0.0, "{} rate should be positive", currency);
     }
+
+    // Verify EUR rate is 1.0 when EUR is base
+    let eur_rate_str = rates["EUR"].as_str().unwrap();
+    let eur_rate: f64 = eur_rate_str.parse().unwrap();
+    assert!(
+        (eur_rate - 1.0).abs() < 0.0001,
+        "EUR rate should be 1.0 when EUR is base"
+    );
+
+    // Verify mock rates match expected values (EUR base)
+    let usd_rate: f64 = rates["USD"].as_str().unwrap().parse().unwrap();
+    assert!(
+        (usd_rate - 1.08).abs() < 0.001,
+        "USD rate should be ~1.08, got {}",
+        usd_rate
+    );
+
+    let gbp_rate: f64 = rates["GBP"].as_str().unwrap().parse().unwrap();
+    assert!(
+        (gbp_rate - 0.85).abs() < 0.001,
+        "GBP rate should be ~0.85, got {}",
+        gbp_rate
+    );
 }
 
 /// Test that users can retrieve exchange rates with a custom base currency.
@@ -282,6 +309,7 @@ async fn test_exchange_rates_response_format() {
 /// Verifies that:
 /// - Each supported currency can be used as base
 /// - Response is successful for all supported currencies
+/// - The base currency's own rate is always 1.0
 #[tokio::test]
 async fn test_all_supported_currencies_as_base() {
     let server = create_test_server().await;
@@ -314,6 +342,19 @@ async fn test_all_supported_currencies_as_base() {
             data["base_code"].as_str().unwrap(),
             currency,
             "Base code should match requested currency"
+        );
+
+        // The base currency's own rate should be 1.0
+        let self_rate: f64 = data["conversion_rates"][currency]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(
+            (self_rate - 1.0).abs() < 0.0001,
+            "{} self-rate should be 1.0, got {}",
+            currency,
+            self_rate
         );
     }
 }
@@ -359,4 +400,57 @@ async fn test_exchange_rates_sanity_check() {
             rate_value
         );
     }
+}
+
+// ============================================================================
+// Live API Smoke Test (ignored by default)
+// ============================================================================
+
+/// Smoke test that verifies the real exchange rate API integration works.
+///
+/// This test is ignored by default to avoid consuming API quota.
+/// Run explicitly with: `cargo test test_live_exchange_rate_api -- --ignored`
+///
+/// Requires `EXCHANGE_RATE_API_KEY` to be set in the environment.
+#[tokio::test]
+#[ignore]
+async fn test_live_exchange_rate_api() {
+    use master_of_coin_backend::services::exchange_rate_service::{
+        ExchangeRateProvider, LiveExchangeRateProvider,
+    };
+    use master_of_coin_backend::types::CurrencyCode;
+
+    // Load .env for API key
+    dotenvy::from_filename("../.env").ok();
+
+    let provider =
+        LiveExchangeRateProvider::new().expect("EXCHANGE_RATE_API_KEY must be set for this test");
+
+    let rates = provider
+        .get_exchange_rates(CurrencyCode::Eur)
+        .await
+        .expect("Should fetch rates from live API");
+
+    // Basic sanity checks
+    assert!(
+        rates.contains_key(&CurrencyCode::Usd),
+        "Should have USD rate"
+    );
+    assert!(
+        rates.contains_key(&CurrencyCode::Gbp),
+        "Should have GBP rate"
+    );
+    assert!(
+        rates.contains_key(&CurrencyCode::Jpy),
+        "Should have JPY rate"
+    );
+
+    // USD rate should be reasonable (between 0.5 and 2.0 for EUR base)
+    let usd_rate = rates.get(&CurrencyCode::Usd).unwrap();
+    let usd_f64: f64 = usd_rate.to_string().parse().unwrap();
+    assert!(
+        usd_f64 > 0.5 && usd_f64 < 2.0,
+        "USD rate should be reasonable, got {}",
+        usd_f64
+    );
 }

@@ -59,6 +59,9 @@ pub use errors::{ApiError, ApiResult};
 // Database connection pool type
 use diesel::PgConnection;
 use diesel::r2d2::{self, ConnectionManager};
+use std::sync::Arc;
+
+use services::exchange_rate_service::{ExchangeRateProvider, LiveExchangeRateProvider};
 
 /// Database connection pool type alias
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -72,12 +75,37 @@ pub struct AppState {
     pub config: Config,
     /// Split sync service for syncing transaction splits to external providers
     pub split_sync: Option<services::split_sync_service::SplitSyncService>,
+    /// Exchange rate provider (shared singleton for effective caching)
+    pub exchange_rate_provider: Arc<dyn ExchangeRateProvider>,
 }
 
 impl AppState {
-    /// Create a new AppState instance
+    /// Create a new AppState instance with the live exchange rate provider (production).
     pub fn new(db: DbPool, config: Config) -> Self {
         // Initialize split sync service
+        let split_sync = Some(services::split_sync_service::SplitSyncService::new(
+            db.clone(),
+        ));
+
+        // Create the live exchange rate provider as a shared singleton
+        let exchange_rate_provider: Arc<dyn ExchangeRateProvider> = Arc::new(
+            LiveExchangeRateProvider::new().expect("Failed to create exchange rate provider"),
+        );
+
+        Self {
+            db,
+            config,
+            split_sync,
+            exchange_rate_provider,
+        }
+    }
+
+    /// Create a new AppState with a custom exchange rate provider (for testing).
+    pub fn with_exchange_provider(
+        db: DbPool,
+        config: Config,
+        exchange_rate_provider: Arc<dyn ExchangeRateProvider>,
+    ) -> Self {
         let split_sync = Some(services::split_sync_service::SplitSyncService::new(
             db.clone(),
         ));
@@ -86,6 +114,7 @@ impl AppState {
             db,
             config,
             split_sync,
+            exchange_rate_provider,
         }
     }
 }

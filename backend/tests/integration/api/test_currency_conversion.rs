@@ -13,6 +13,12 @@
 //! - Multi-currency category breakdown
 //! - Currency conversion accuracy
 //! - Data isolation between users with different currencies
+//!
+//! Note: Tests use MockExchangeRateProvider with fixed deterministic rates:
+//! EUR base: USD=1.08, GBP=0.85, JPY=162.0, CAD=1.47, AUD=1.65, INR=90.0
+//! This means:
+//! - 1080 USD = 1080 / 1.08 = 1000 EUR
+//! - 850 GBP = 850 / 0.85 = 1000 EUR
 
 use crate::common::*;
 use axum_test::{TestResponse, TestServer};
@@ -144,13 +150,10 @@ async fn create_test_budget(
 ///
 /// Scenario:
 /// - Create EUR account with 1000 EUR
-/// - Create USD account with 1080 USD (approximately 1000 EUR)
-/// - Create GBP account with 850 GBP (approximately 1000 EUR)
+/// - Create USD account with 1080 USD (= 1000 EUR at mock rate 1.08)
+/// - Create GBP account with 850 GBP (= 1000 EUR at mock rate 0.85)
 ///
-/// Verifies that:
-/// - Status code is 200 OK
-/// - Net worth is approximately 3000 EUR (allowing for exchange rate variations)
-/// - All account balances are converted to primary currency
+/// With mock rates: net worth should be exactly 3000 EUR.
 #[tokio::test]
 async fn test_multi_currency_net_worth() {
     let server = create_test_server().await;
@@ -177,7 +180,7 @@ async fn test_multi_currency_net_worth() {
     )
     .await;
 
-    // USD account (should be converted to EUR)
+    // USD account: 1080 USD / 1.08 = 1000 EUR
     create_account_with_currency(
         &server,
         &auth.token,
@@ -188,7 +191,7 @@ async fn test_multi_currency_net_worth() {
     )
     .await;
 
-    // GBP account (should be converted to EUR)
+    // GBP account: 850 GBP / 0.85 = 1000 EUR
     create_account_with_currency(
         &server,
         &auth.token,
@@ -205,11 +208,11 @@ async fn test_multi_currency_net_worth() {
 
     let dashboard = extract_dashboard(response);
 
-    // Verify net worth is approximately 3000 EUR
-    // Allow for exchange rate variations (±10%)
+    // With mock rates, net worth should be exactly 3000 EUR
+    // EUR: 1000, USD: 1080/1.08=1000, GBP: 850/0.85=1000
     let net_worth = BigDecimal::from_str(dashboard["net_worth"].as_str().unwrap()).unwrap();
-    let expected_min = BigDecimal::from_str("2700").unwrap(); // 3000 - 10%
-    let expected_max = BigDecimal::from_str("3300").unwrap(); // 3000 + 10%
+    let expected_min = BigDecimal::from_str("2990").unwrap();
+    let expected_max = BigDecimal::from_str("3010").unwrap();
 
     assert!(
         net_worth >= expected_min && net_worth <= expected_max,
@@ -227,12 +230,9 @@ async fn test_multi_currency_net_worth() {
 /// Scenario:
 /// - Create EUR account and USD account
 /// - Create budget with 1000 EUR limit
-/// - Add transactions in both EUR and USD
+/// - Add 300 EUR spending and 324 USD spending (= 300 EUR at mock rate 1.08)
 ///
-/// Verifies that:
-/// - Status code is 200 OK
-/// - Budget spending is converted to primary currency
-/// - Budget percentage is calculated correctly
+/// With mock rates: total spending should be exactly 600 EUR.
 #[tokio::test]
 async fn test_multi_currency_budget_tracking() {
     let server = create_test_server().await;
@@ -296,7 +296,7 @@ async fn test_multi_currency_budget_tracking() {
     )
     .await;
 
-    // 324 USD spending (approximately 300 EUR at 1.08 rate)
+    // 324 USD spending: 324 / 1.08 = 300 EUR
     create_test_transaction(
         &server,
         &auth.token,
@@ -319,12 +319,11 @@ async fn test_multi_currency_budget_tracking() {
 
     let budget_status = &budget_statuses[0];
 
-    // Current spending should be approximately 600 EUR (300 EUR + 300 EUR from USD)
-    // Allow for exchange rate variations (±10%)
+    // Current spending should be exactly 600 EUR (300 EUR + 324 USD / 1.08 = 300 EUR)
     let current_spending =
         BigDecimal::from_str(budget_status["current_spending"].as_str().unwrap()).unwrap();
-    let expected_min = BigDecimal::from_str("540").unwrap(); // 600 - 10%
-    let expected_max = BigDecimal::from_str("660").unwrap(); // 600 + 10%
+    let expected_min = BigDecimal::from_str("599").unwrap();
+    let expected_max = BigDecimal::from_str("601").unwrap();
 
     assert!(
         current_spending >= expected_min && current_spending <= expected_max,
@@ -342,7 +341,7 @@ async fn test_multi_currency_budget_tracking() {
     // Percentage should be around 60%
     let percentage = budget_status["percentage_used"].as_f64().unwrap();
     assert!(
-        percentage > 50.0 && percentage < 70.0,
+        percentage > 59.0 && percentage < 61.0,
         "Percentage should be around 60% (got {})",
         percentage
     );
@@ -357,11 +356,11 @@ async fn test_multi_currency_budget_tracking() {
 /// Scenario:
 /// - Create accounts in EUR, USD, and GBP
 /// - Create transactions in the same category but different currencies
+///   - 500 EUR
+///   - 540 USD (= 500 EUR at mock rate 1.08)
+///   - 425 GBP (= 500 EUR at mock rate 0.85)
 ///
-/// Verifies that:
-/// - Status code is 200 OK
-/// - Category totals are converted to primary currency
-/// - Percentages are calculated correctly
+/// With mock rates: total category spending should be exactly 1500 EUR.
 #[tokio::test]
 async fn test_multi_currency_category_breakdown() {
     let server = create_test_server().await;
@@ -426,7 +425,7 @@ async fn test_multi_currency_category_breakdown() {
     )
     .await;
 
-    // 540 USD (approximately 500 EUR at 1.08 rate)
+    // 540 USD: 540 / 1.08 = 500 EUR
     create_test_transaction(
         &server,
         &auth.token,
@@ -437,7 +436,7 @@ async fn test_multi_currency_category_breakdown() {
     )
     .await;
 
-    // 425 GBP (approximately 500 EUR at 0.85 rate)
+    // 425 GBP: 425 / 0.85 = 500 EUR
     create_test_transaction(
         &server,
         &auth.token,
@@ -467,11 +466,10 @@ async fn test_multi_currency_category_breakdown() {
         .find(|c| c["category_name"].as_str() == Some("Travel"))
         .expect("Should have Travel category");
 
-    // Total should be approximately 1500 EUR (500 + 500 + 500)
-    // Allow for exchange rate variations (±10%)
+    // Total should be exactly 1500 EUR (500 + 500 + 500)
     let travel_total = BigDecimal::from_str(travel_breakdown["total"].as_str().unwrap()).unwrap();
-    let expected_min = BigDecimal::from_str("1350").unwrap(); // 1500 - 10%
-    let expected_max = BigDecimal::from_str("1650").unwrap(); // 1500 + 10%
+    let expected_min = BigDecimal::from_str("1499").unwrap();
+    let expected_max = BigDecimal::from_str("1501").unwrap();
 
     assert!(
         travel_total >= expected_min && travel_total <= expected_max,
@@ -492,11 +490,11 @@ async fn test_multi_currency_category_breakdown() {
 /// - Create budgets and verify they track spending correctly
 /// - Verify category breakdown aggregates correctly
 ///
-/// Verifies that:
-/// - Net worth calculation converts all currencies
-/// - Budget tracking works across currencies
-/// - Category breakdown aggregates correctly
-/// - All dashboard features work with multi-currency data
+/// With mock rates (EUR base: USD=1.08, GBP=0.85):
+/// - 10000 EUR + 10800 USD (=10000 EUR) + 8500 GBP (=10000 EUR) = 30000 EUR initial
+/// - Food: 200 EUR + 216 USD (=200 EUR) + 170 GBP (=200 EUR) = 600 EUR
+/// - Transport: 100 EUR + 108 USD (=100 EUR) = 200 EUR
+/// - Net worth ≈ 30000 - 600 - 200 = 29200 EUR
 #[tokio::test]
 async fn test_comprehensive_multi_currency_scenario() {
     let server = create_test_server().await;
@@ -519,6 +517,7 @@ async fn test_comprehensive_multi_currency_scenario() {
     let transport_id = transport["id"].as_str().unwrap();
 
     // Create accounts in different currencies with initial balances
+    // Using exact multiples of mock rates for deterministic results
     let eur_account = create_account_with_currency(
         &server,
         &auth.token,
@@ -536,7 +535,7 @@ async fn test_comprehensive_multi_currency_scenario() {
         "USD Savings",
         "SAVINGS",
         "USD",
-        10800.0, // Approximately 10000 EUR
+        10800.0, // 10800 / 1.08 = 10000 EUR
     )
     .await;
     let usd_account_id = usd_account["id"].as_str().unwrap();
@@ -547,7 +546,7 @@ async fn test_comprehensive_multi_currency_scenario() {
         "GBP Investment",
         "INVESTMENT",
         "GBP",
-        8500.0, // Approximately 10000 EUR
+        8500.0, // 8500 / 0.85 = 10000 EUR
     )
     .await;
     let gbp_account_id = gbp_account["id"].as_str().unwrap();
@@ -567,21 +566,23 @@ async fn test_comprehensive_multi_currency_scenario() {
     )
     .await;
 
+    // 216 USD / 1.08 = 200 EUR
     create_test_transaction(
         &server,
         &auth.token,
         usd_account_id,
-        -216.0, // Approximately 200 EUR
+        -216.0,
         "USD Groceries",
         Some(food_id),
     )
     .await;
 
+    // 170 GBP / 0.85 = 200 EUR
     create_test_transaction(
         &server,
         &auth.token,
         gbp_account_id,
-        -170.0, // Approximately 200 EUR
+        -170.0,
         "GBP Takeout",
         Some(food_id),
     )
@@ -598,11 +599,12 @@ async fn test_comprehensive_multi_currency_scenario() {
     )
     .await;
 
+    // 108 USD / 1.08 = 100 EUR
     create_test_transaction(
         &server,
         &auth.token,
         usd_account_id,
-        -108.0, // Approximately 100 EUR
+        -108.0,
         "USD Uber",
         Some(transport_id),
     )
@@ -614,11 +616,10 @@ async fn test_comprehensive_multi_currency_scenario() {
 
     let dashboard = extract_dashboard(response);
 
-    // Verify net worth (approximately 30000 EUR - 600 EUR food - 200 EUR transport = 29200 EUR)
-    // Allow for exchange rate variations (±10%)
+    // Verify net worth: 30000 - 600 (food) - 200 (transport) = 29200 EUR
     let net_worth = BigDecimal::from_str(dashboard["net_worth"].as_str().unwrap()).unwrap();
-    let expected_min = BigDecimal::from_str("26000").unwrap();
-    let expected_max = BigDecimal::from_str("32000").unwrap();
+    let expected_min = BigDecimal::from_str("29190").unwrap();
+    let expected_max = BigDecimal::from_str("29210").unwrap();
 
     assert!(
         net_worth >= expected_min && net_worth <= expected_max,
@@ -632,12 +633,11 @@ async fn test_comprehensive_multi_currency_scenario() {
 
     let budget_status = &budget_statuses[0];
 
-    // Food spending should be approximately 600 EUR (200 + 200 + 200)
-    // Allow for exchange rate variations (±10%)
+    // Food spending should be exactly 600 EUR (200 + 200 + 200)
     let current_spending =
         BigDecimal::from_str(budget_status["current_spending"].as_str().unwrap()).unwrap();
-    let spending_min = BigDecimal::from_str("540").unwrap(); // 600 - 10%
-    let spending_max = BigDecimal::from_str("660").unwrap(); // 600 + 10%
+    let spending_min = BigDecimal::from_str("599").unwrap();
+    let spending_max = BigDecimal::from_str("601").unwrap();
 
     assert!(
         current_spending >= spending_min && current_spending <= spending_max,
@@ -677,8 +677,8 @@ async fn test_comprehensive_multi_currency_scenario() {
         BigDecimal::from_str(transport_breakdown["total"].as_str().unwrap()).unwrap();
 
     // Transport total should be approximately 200 EUR
-    let transport_min = BigDecimal::from_str("180").unwrap(); // 200 - 10%
-    let transport_max = BigDecimal::from_str("220").unwrap(); // 200 + 10%
+    let transport_min = BigDecimal::from_str("199").unwrap();
+    let transport_max = BigDecimal::from_str("201").unwrap();
 
     assert!(
         transport_total >= transport_min && transport_total <= transport_max,

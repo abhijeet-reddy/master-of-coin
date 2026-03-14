@@ -8,7 +8,7 @@ use crate::{
     errors::ApiError,
     models::{TransactionFilter, TransactionResponse},
     repositories,
-    services::exchange_rate_service::ExchangeRateService,
+    services::exchange_rate_service::ExchangeRateProvider,
 };
 
 /// Net worth calculation result
@@ -54,12 +54,13 @@ pub struct DashboardSummary {
 /// Calculate net worth (sum of all account balances converted to primary currency).
 /// DEBT pseudo-accounts are excluded — they track expenses paid by others
 /// and should not affect net worth.
-pub async fn calculate_net_worth(pool: &DbPool, user_id: Uuid) -> Result<NetWorth, ApiError> {
+pub async fn calculate_net_worth(
+    pool: &DbPool,
+    user_id: Uuid,
+    exchange_provider: &dyn ExchangeRateProvider,
+) -> Result<NetWorth, ApiError> {
     // Get all user accounts, excluding DEBT pseudo-accounts
     let accounts = repositories::account::list_by_user_excluding_debt(pool, user_id).await?;
-
-    // Initialize exchange rate service
-    let exchange_service = ExchangeRateService::new()?;
 
     let mut account_balances = Vec::new();
     let mut total = BigDecimal::from(0);
@@ -68,7 +69,7 @@ pub async fn calculate_net_worth(pool: &DbPool, user_id: Uuid) -> Result<NetWort
         let balance = repositories::account::calculate_balance(pool, account.id).await?;
 
         // Convert balance to primary currency
-        let converted_balance = exchange_service
+        let converted_balance = exchange_provider
             .convert_to_primary_currency(&balance, account.currency)
             .await?;
 
@@ -94,6 +95,7 @@ pub async fn get_spending_trend(
     user_id: Uuid,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
+    exchange_provider: &dyn ExchangeRateProvider,
 ) -> Result<Vec<SpendingTrendPoint>, ApiError> {
     // Get transactions in date range
     let filter = TransactionFilter {
@@ -110,9 +112,6 @@ pub async fn get_spending_trend(
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
 
-    // Initialize exchange rate service
-    let exchange_service = ExchangeRateService::new()?;
-
     // Group by date
     let mut daily_spending: HashMap<String, BigDecimal> = HashMap::new();
 
@@ -127,7 +126,7 @@ pub async fn get_spending_trend(
             let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
 
             // Convert to primary currency
-            let converted_spending = exchange_service
+            let converted_spending = exchange_provider
                 .convert_to_primary_currency(&spending, account.currency)
                 .await?;
 
@@ -158,6 +157,7 @@ pub async fn get_category_breakdown(
     user_id: Uuid,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
+    exchange_provider: &dyn ExchangeRateProvider,
 ) -> Result<Vec<CategoryBreakdown>, ApiError> {
     // Get transactions in date range
     let filter = TransactionFilter {
@@ -174,9 +174,6 @@ pub async fn get_category_breakdown(
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
 
-    // Initialize exchange rate service
-    let exchange_service = ExchangeRateService::new()?;
-
     // Group by category
     let mut category_totals: HashMap<Option<Uuid>, BigDecimal> = HashMap::new();
     let mut total_spending = BigDecimal::from(0);
@@ -191,7 +188,7 @@ pub async fn get_category_breakdown(
             let account = repositories::account::find_by_id(pool, transaction.account_id).await?;
 
             // Convert to primary currency
-            let converted_spending = exchange_service
+            let converted_spending = exchange_provider
                 .convert_to_primary_currency(&spending, account.currency)
                 .await?;
 
@@ -247,6 +244,7 @@ pub async fn get_category_breakdown(
 pub async fn get_dashboard_summary(
     pool: &DbPool,
     user_id: Uuid,
+    exchange_provider: &dyn ExchangeRateProvider,
 ) -> Result<DashboardSummary, ApiError> {
     // Calculate date range for last 30 days
     let end_date = Utc::now();
@@ -254,10 +252,10 @@ pub async fn get_dashboard_summary(
 
     // Run queries in parallel using tokio::join!
     let (net_worth_result, recent_transactions_result, budgets_result, category_breakdown_result) = tokio::join!(
-        calculate_net_worth(pool, user_id),
+        calculate_net_worth(pool, user_id, exchange_provider),
         get_recent_transactions(pool, user_id),
-        get_all_budget_statuses(pool, user_id),
-        get_category_breakdown(pool, user_id, start_date, end_date)
+        get_all_budget_statuses(pool, user_id, exchange_provider),
+        get_category_breakdown(pool, user_id, start_date, end_date, exchange_provider)
     );
 
     // Handle results
@@ -307,6 +305,7 @@ async fn get_recent_transactions(
 async fn get_all_budget_statuses(
     pool: &DbPool,
     user_id: Uuid,
+    exchange_provider: &dyn ExchangeRateProvider,
 ) -> Result<Vec<super::budget_service::BudgetStatus>, ApiError> {
     let budgets = repositories::budget::list_by_user(pool, user_id).await?;
 
@@ -314,7 +313,14 @@ async fn get_all_budget_statuses(
 
     for budget in budgets {
         // Try to calculate status, skip if no active range
-        match super::budget_service::calculate_budget_status(pool, budget.id, user_id).await {
+        match super::budget_service::calculate_budget_status(
+            pool,
+            budget.id,
+            user_id,
+            exchange_provider,
+        )
+        .await
+        {
             Ok(status) => statuses.push(status),
             Err(ApiError::NotFound(_)) => continue, // Skip budgets without active ranges
             Err(e) => return Err(e),

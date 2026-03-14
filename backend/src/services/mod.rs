@@ -11,6 +11,8 @@ pub mod debt_transaction_service;
 pub mod drift_detection_service;
 pub mod exchange_rate_service;
 pub mod import_service;
+pub mod live_exchange_rate;
+pub mod mock_exchange_rate;
 pub mod split_provider;
 pub mod split_sync_service;
 pub mod splitwise_oauth;

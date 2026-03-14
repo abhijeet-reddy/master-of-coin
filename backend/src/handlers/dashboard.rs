@@ -18,7 +18,12 @@ pub async fn get_summary(
     let user_id = auth_context.user_id();
     tracing::info!("Fetching dashboard summary for user {}", user_id);
 
-    let summary = analytics_service::get_dashboard_summary(&state.db, user_id).await?;
+    let summary = analytics_service::get_dashboard_summary(
+        &state.db,
+        user_id,
+        &*state.exchange_rate_provider,
+    )
+    .await?;
 
     Ok(Json(summary))
 }

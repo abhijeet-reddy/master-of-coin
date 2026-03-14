@@ -1,173 +1,41 @@
+//! Exchange rate provider trait and primary currency constant.
+//!
+//! This module defines the `ExchangeRateProvider` trait that abstracts exchange rate
+//! fetching. Implementations live in separate modules:
+//! - [`LiveExchangeRateProvider`](super::live_exchange_rate::LiveExchangeRateProvider) — production (calls exchangerate-api.com)
+//! - [`MockExchangeRateProvider`](super::mock_exchange_rate::MockExchangeRateProvider) — testing (fixed deterministic rates)
+
+use async_trait::async_trait;
 use bigdecimal::BigDecimal;
-use serde::Deserialize;
 use std::collections::HashMap;
-use std::env;
-use std::str::FromStr;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 use crate::errors::ApiError;
 use crate::types::CurrencyCode;
 
-/// Primary currency for the application
+/// Primary currency for the application.
 /// TODO: Fetch from user settings in database
 pub const PRIMARY_CURRENCY: CurrencyCode = CurrencyCode::Eur;
 
-/// Exchange rate API response structure
-#[derive(Debug, Deserialize)]
-struct ExchangeRateResponse {
-    result: String,
-    conversion_rates: Option<HashMap<String, f64>>,
-    #[serde(rename = "error-type")]
-    error_type: Option<String>,
-}
-
-/// Cached exchange rates with timestamp
-/// Key is the base currency, value is the rates for that base
-#[derive(Debug, Clone)]
-struct CachedRates {
-    rates: HashMap<CurrencyCode, BigDecimal>,
-    timestamp: std::time::Instant,
-}
-
-/// Exchange rate service with caching
-/// Fetches rates from exchangerate-api.com and caches them for 1 hour
-/// Maintains separate caches for different base currencies
-pub struct ExchangeRateService {
-    cache: Arc<RwLock<HashMap<CurrencyCode, CachedRates>>>,
-    api_key: String,
-    cache_duration: std::time::Duration,
-}
-
-impl ExchangeRateService {
-    /// Create a new exchange rate service
-    pub fn new() -> Result<Self, ApiError> {
-        let api_key = env::var("EXCHANGE_RATE_API_KEY").map_err(|_| {
-            tracing::error!("EXCHANGE_RATE_API_KEY environment variable not set");
-            ApiError::Internal
-        })?;
-
-        Ok(Self {
-            cache: Arc::new(RwLock::new(HashMap::new())),
-            api_key,
-            cache_duration: std::time::Duration::from_secs(86400), // 24 hours
-        })
-    }
-
-    /// Get exchange rates with specified base currency
-    /// Uses cached rates if available and not expired
-    /// Maintains separate caches for each base currency
-    pub async fn get_exchange_rates(
+/// Trait for exchange rate providers.
+///
+/// This abstraction allows swapping between a live API provider (production)
+/// and a mock provider (testing) without changing business logic.
+///
+/// Only `get_exchange_rates` must be implemented; `convert_currency` and
+/// `convert_to_primary_currency` have default implementations built on top of it.
+#[async_trait]
+pub trait ExchangeRateProvider: Send + Sync {
+    /// Get exchange rates for a given base currency.
+    /// Returns a map of currency codes to their exchange rates relative to the base.
+    async fn get_exchange_rates(
         &self,
         base_currency: CurrencyCode,
-    ) -> Result<HashMap<CurrencyCode, BigDecimal>, ApiError> {
-        // Check cache first
-        {
-            let cache_read = self.cache.read().await;
-            if let Some(cached) = cache_read.get(&base_currency) {
-                if cached.timestamp.elapsed() < self.cache_duration {
-                    tracing::debug!(
-                        "Using cached exchange rates for base {}",
-                        base_currency.as_str()
-                    );
-                    return Ok(cached.rates.clone());
-                }
-            }
-        }
+    ) -> Result<HashMap<CurrencyCode, BigDecimal>, ApiError>;
 
-        // Fetch fresh rates
-        tracing::info!(
-            "Fetching fresh exchange rates from API for base {}",
-            base_currency.as_str()
-        );
-        let rates = self.fetch_rates(base_currency).await?;
-
-        // Update cache for this specific base currency
-        {
-            let mut cache_write = self.cache.write().await;
-            cache_write.insert(
-                base_currency,
-                CachedRates {
-                    rates: rates.clone(),
-                    timestamp: std::time::Instant::now(),
-                },
-            );
-        }
-
-        Ok(rates)
-    }
-
-    /// Fetch exchange rates from the API
-    async fn fetch_rates(
-        &self,
-        base_currency: CurrencyCode,
-    ) -> Result<HashMap<CurrencyCode, BigDecimal>, ApiError> {
-        let url = format!(
-            "https://v6.exchangerate-api.com/v6/{}/latest/{}",
-            self.api_key,
-            base_currency.as_str()
-        );
-
-        let response = reqwest::get(&url).await.map_err(|e| {
-            tracing::error!("Failed to fetch exchange rates: {}", e);
-            ApiError::Internal
-        })?;
-
-        if !response.status().is_success() {
-            tracing::error!(
-                "Exchange rate API returned error status: {}",
-                response.status()
-            );
-            return Err(ApiError::Internal);
-        }
-
-        let data: ExchangeRateResponse = response.json().await.map_err(|e| {
-            tracing::error!("Failed to parse exchange rate response: {}", e);
-            ApiError::Internal
-        })?;
-
-        if data.result != "success" {
-            tracing::error!("Exchange rate API returned error: {:?}", data.error_type);
-            return Err(ApiError::Internal);
-        }
-
-        let conversion_rates = data.conversion_rates.ok_or_else(|| {
-            tracing::error!("No conversion rates in API response");
-            ApiError::Internal
-        })?;
-
-        // Convert to our format - iterate through all supported currency codes
-        let mut rates = HashMap::new();
-
-        let supported_currencies = [
-            CurrencyCode::Eur,
-            CurrencyCode::Usd,
-            CurrencyCode::Gbp,
-            CurrencyCode::Jpy,
-            CurrencyCode::Cad,
-            CurrencyCode::Aud,
-            CurrencyCode::Inr,
-        ];
-
-        for currency in supported_currencies {
-            if let Some(&rate) = conversion_rates.get(currency.as_str()) {
-                // Convert f64 to BigDecimal properly to preserve decimal places
-                let rate_str = rate.to_string();
-                let rate_decimal = BigDecimal::from_str(&rate_str).map_err(|e| {
-                    tracing::error!("Failed to convert rate {} to BigDecimal: {}", rate, e);
-                    ApiError::Internal
-                })?;
-                rates.insert(currency, rate_decimal);
-            }
-        }
-
-        Ok(rates)
-    }
-
-    /// Convert an amount from one currency to another
-    /// Fetches exchange rates with the source currency as base for direct conversion
-    /// This eliminates compounding errors from intermediate conversions
-    pub async fn convert_currency(
+    /// Convert an amount from one currency to another.
+    /// Fetches exchange rates with the source currency as base for direct conversion.
+    /// This eliminates compounding errors from intermediate conversions.
+    async fn convert_currency(
         &self,
         amount: &BigDecimal,
         from_currency: CurrencyCode,
@@ -206,8 +74,8 @@ impl ExchangeRateService {
         Ok(converted_amount)
     }
 
-    /// Convert an amount to the primary currency
-    pub async fn convert_to_primary_currency(
+    /// Convert an amount to the primary currency.
+    async fn convert_to_primary_currency(
         &self,
         amount: &BigDecimal,
         from_currency: CurrencyCode,
@@ -217,8 +85,10 @@ impl ExchangeRateService {
     }
 }
 
-impl Default for ExchangeRateService {
-    fn default() -> Self {
-        Self::new().expect("Failed to create ExchangeRateService")
-    }
-}
+// Re-export implementations for convenience
+pub use super::live_exchange_rate::LiveExchangeRateProvider;
+pub use super::mock_exchange_rate::MockExchangeRateProvider;
+
+/// Type alias for backward compatibility during migration.
+/// New code should use `LiveExchangeRateProvider` directly.
+pub type ExchangeRateService = LiveExchangeRateProvider;

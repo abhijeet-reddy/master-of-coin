@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useReducer } from 'react';
 import {
-  Badge,
   Button,
   CloseButton,
   Dialog,
   Field,
   Input,
+  NativeSelect,
   Portal,
   Stack,
   Text,
@@ -178,12 +178,20 @@ export const ScheduleFormModal = ({ isOpen, onClose, editSchedule }: ScheduleFor
                   />
                 </Field.Root>
 
-                {/* Job Type — only Drift Detection is supported for schedules */}
+                {/* Job Type */}
                 <Field.Root>
                   <Field.Label>Job Type</Field.Label>
-                  <Badge variant="surface" colorPalette="blue" size="lg" px={3} py={1}>
-                    Drift Detection
-                  </Badge>
+                  <NativeSelect.Root>
+                    <NativeSelect.Field
+                      value={form.jobType}
+                      onChange={(e) =>
+                        dispatch({ type: 'SET_JOB_TYPE', value: e.target.value as JobType })
+                      }
+                    >
+                      <option value={JobType.DRIFT_DETECTION}>Drift Detection</option>
+                      <option value={JobType.PORTFOLIO_SYNC}>Portfolio Sync</option>
+                    </NativeSelect.Field>
+                  </NativeSelect.Root>
                 </Field.Root>
 
                 {/* Type-specific parameters */}

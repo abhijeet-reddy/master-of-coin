@@ -19,8 +19,8 @@ use std::io::Write;
     diesel::FromSqlRow,
 )]
 #[diesel(sql_type = crate::schema::sql_types::InvestmentProviderType)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum InvestmentProviderType {
+    #[serde(rename = "TRADING_212")]
     Trading212,
 }
 

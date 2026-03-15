@@ -18,3 +18,5 @@ export { default as useAccountDetail } from './useAccountDetail';
 export { default as useCategoryDetail } from './useCategoryDetail';
 export { default as useBudgetDetail } from './useBudgetDetail';
 export { default as useTransactionSplitState } from './useTransactionSplitState';
+export { default as useInvestmentProviderConnection } from './useInvestmentProviderConnection';
+export { default as usePortfolioSyncTrigger } from './usePortfolioSyncTrigger';

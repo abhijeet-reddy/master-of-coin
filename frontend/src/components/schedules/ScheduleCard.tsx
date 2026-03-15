@@ -15,6 +15,7 @@ interface ScheduleCardProps {
 const jobTypeConfig: Record<string, { label: string; colorPalette: string }> = {
   DRIFT_DETECTION: { label: 'Drift Detection', colorPalette: 'purple' },
   BULK_SYNC: { label: 'Bulk Sync', colorPalette: 'cyan' },
+  PORTFOLIO_SYNC: { label: 'Portfolio Sync', colorPalette: 'green' },
 };
 
 export const ScheduleCard = ({ schedule, onDelete }: ScheduleCardProps) => {

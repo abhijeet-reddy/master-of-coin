@@ -8,6 +8,7 @@ interface JobTypeBadgeProps {
 const typeConfig: Record<JobType, { label: string; colorPalette: string }> = {
   [JobType.DRIFT_DETECTION]: { label: 'Drift Detection', colorPalette: 'purple' },
   [JobType.BULK_SYNC]: { label: 'Bulk Sync', colorPalette: 'cyan' },
+  [JobType.PORTFOLIO_SYNC]: { label: 'Portfolio Sync', colorPalette: 'green' },
 };
 
 export const JobTypeBadge = ({ jobType }: JobTypeBadgeProps) => {

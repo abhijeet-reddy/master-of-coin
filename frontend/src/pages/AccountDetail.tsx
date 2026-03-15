@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Button, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { FiFilter, FiPlus } from 'react-icons/fi';
 import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
-import { AccountInfoCard, AccountFormModal } from '@/components/accounts';
+import { AccountInfoCard, AccountFormModal, InvestmentProviderCard, PortfolioSyncSection } from '@/components/accounts';
 import {
   TransactionList,
   TransactionFilters,
@@ -17,7 +17,7 @@ import {
   useCreateTransaction,
   useCreateDebtTransaction,
 } from '@/hooks';
-import { NavigationSourceType } from '@/types';
+import { NavigationSourceType, AccountType } from '@/types';
 import type { CreateTransactionRequest, CreateDebtTransactionRequest } from '@/types';
 
 export const AccountDetailPage = () => {
@@ -133,6 +133,14 @@ export const AccountDetailPage = () => {
         onEdit={() => setIsEditOpen(true)}
         onDelete={() => setShowDeleteDialog(true)}
       />
+
+      {/* Investment Provider Section (INVESTMENT accounts only) */}
+      {account.account_type === AccountType.INVESTMENT && (
+        <>
+          <InvestmentProviderCard accountId={account.id} />
+          <PortfolioSyncSection accountId={account.id} />
+        </>
+      )}
 
       {/* Delete Error Alert */}
       {deleteMutation.isError && deleteMutation.error && (

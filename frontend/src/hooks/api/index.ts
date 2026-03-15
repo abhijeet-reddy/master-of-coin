@@ -74,3 +74,17 @@ export {
   useUpdateSchedule,
   useDeleteSchedule,
 } from './useSchedules';
+
+// Investment provider hooks
+export {
+  useInvestmentProviders,
+  useConnectInvestmentProvider,
+  useDisconnectInvestmentProvider,
+} from './useInvestmentProviders';
+
+// Portfolio sync hooks
+export {
+  useStartPortfolioSync,
+  usePortfolioSyncJob,
+  useRetryPortfolioSync,
+} from './usePortfolioSync';

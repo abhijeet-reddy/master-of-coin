@@ -18,6 +18,7 @@ interface JobHistoryListProps {
 const jobTypeToRoute: Record<JobType, string> = {
   [JobType.DRIFT_DETECTION]: 'drift-detection',
   [JobType.BULK_SYNC]: 'sync',
+  [JobType.PORTFOLIO_SYNC]: 'portfolio-sync',
 };
 
 function extractSummaryText(job: BackgroundJobSummary): string {

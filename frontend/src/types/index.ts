@@ -10,3 +10,5 @@ export * from './drift';
 export * from './sync';
 export * from './schedule';
 export * from './navigation';
+export * from './investmentProvider';
+export * from './portfolioSync';

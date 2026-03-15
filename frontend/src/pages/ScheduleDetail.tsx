@@ -34,6 +34,7 @@ const formatDateTime = (iso: string): string => {
 const jobTypeLabels: Record<string, string> = {
   DRIFT_DETECTION: 'Drift Detection',
   BULK_SYNC: 'Bulk Sync',
+  PORTFOLIO_SYNC: 'Portfolio Sync',
 };
 
 export const ScheduleDetailPage = () => {

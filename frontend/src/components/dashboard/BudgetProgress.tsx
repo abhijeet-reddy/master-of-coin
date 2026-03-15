@@ -1,4 +1,5 @@
 import { Box, Card, HStack, VStack, Text, Icon, Badge, Progress } from '@chakra-ui/react';
+import { useNavigate } from 'react-router-dom';
 import { FiAlertCircle, FiCheckCircle, FiClock } from 'react-icons/fi';
 import type { EnrichedBudgetStatus, BudgetStatusType } from '@/types/models';
 import { EmptyState } from '@/components/common';
@@ -41,6 +42,8 @@ const getProgressColor = (percentage: number): string => {
 };
 
 export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
+  const navigate = useNavigate();
+
   if (budgets.length === 0) {
     return (
       <Box>
@@ -97,6 +100,7 @@ export const BudgetProgress = ({ budgets }: BudgetProgressProps) => {
               _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
               transition="all 0.2s"
               cursor="pointer"
+              onClick={() => void navigate(`/budgets/${budget.budget_id}`)}
             >
               <Card.Body p={4}>
                 <VStack alignItems="flex-start" gap={3}>

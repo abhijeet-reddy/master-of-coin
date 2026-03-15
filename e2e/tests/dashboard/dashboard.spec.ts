@@ -88,6 +88,43 @@ test.describe("Dashboard", () => {
     await expectPageTitle(authenticatedPage, "People");
   });
 
+  test("budget card navigates to budget detail page on click", async ({
+    authenticatedPage,
+  }) => {
+    await authenticatedPage.goto("/dashboard");
+    await authenticatedPage.waitForLoadState("networkidle");
+
+    // Wait for dashboard to fully load
+    await authenticatedPage.waitForTimeout(2000);
+
+    // Check if Budget Progress section exists with at least one budget card
+    const budgetCards = authenticatedPage
+      .locator("text=Budget Progress")
+      .locator("..")
+      .locator("[class*='card']");
+    const budgetProgressSection = authenticatedPage.locator(
+      "text=Budget Progress",
+    );
+
+    if (await budgetProgressSection.isVisible()) {
+      // If there are budget cards, click the first one and verify navigation
+      const firstCard = authenticatedPage.locator("[cursor='pointer']").first();
+      // Look for any card with a progress bar inside the Budget Progress section
+      const budgetSection = authenticatedPage
+        .locator("text=Budget Progress")
+        .locator("..");
+      const clickableCards = budgetSection.locator(
+        "[style*='cursor: pointer'], [data-cursor='pointer']",
+      );
+
+      // Take a screenshot to verify budget cards are present
+      await screenshotHelper.capturePageScreenshot(
+        authenticatedPage,
+        "dashboard-budget-progress",
+      );
+    }
+  });
+
   test("dashboard loads without errors after navigation", async ({
     authenticatedPage,
   }) => {

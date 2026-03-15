@@ -1,4 +1,15 @@
-import { Badge, Box, Button, Card, HStack, IconButton, Text, VStack } from '@chakra-ui/react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Card,
+  HStack,
+  IconButton,
+  Text,
+  VStack,
+} from '@chakra-ui/react';
 import {
   FaMoneyCheckAlt,
   FaPiggyBank,
@@ -8,6 +19,8 @@ import {
   FaGift,
   FaEdit,
   FaTrash,
+  FaSync,
+  FaExternalLinkAlt,
 } from 'react-icons/fa';
 import { formatCurrency } from '@/utils/formatters';
 import { AccountType } from '@/types';
@@ -17,6 +30,18 @@ interface AccountInfoCardProps {
   account: Account;
   onEdit: () => void;
   onDelete: () => void;
+  /** Show the Sync Portfolio button (Investment accounts with connected provider) */
+  showSyncButton?: boolean;
+  /** Handler for the Sync Portfolio button */
+  onSync?: () => void;
+  /** Whether a sync is currently in progress */
+  isSyncing?: boolean;
+  /** Whether the last sync failed */
+  syncFailed?: boolean;
+  /** Error message from the failed sync */
+  syncError?: string;
+  /** Job ID of the failed sync (for linking to job detail) */
+  syncJobId?: string | null;
 }
 
 /** Map account types to icons */
@@ -68,76 +93,125 @@ const getColorScheme = (type: AccountType): string => {
   }
 };
 
-export const AccountInfoCard = ({ account, onEdit, onDelete }: AccountInfoCardProps) => {
+export const AccountInfoCard = ({
+  account,
+  onEdit,
+  onDelete,
+  showSyncButton,
+  onSync,
+  isSyncing,
+  syncFailed,
+  syncError,
+  syncJobId,
+}: AccountInfoCardProps) => {
+  const navigate = useNavigate();
   const Icon = getAccountIcon(account.account_type);
   const colorScheme = getColorScheme(account.account_type);
   const balance = account.balance;
 
   return (
-    <Card.Root variant="elevated" mb={6}>
-      <Card.Body p={6}>
-        <VStack align="stretch" gap={4}>
-          {/* Header with icon, name, and actions */}
-          <HStack justify="space-between" align="flex-start">
-            <HStack gap={4}>
-              <Box
-                p={3}
-                borderRadius="lg"
-                bg={`${colorScheme}.50`}
-                color={`${colorScheme}.500`}
-                fontSize="2xl"
-              >
-                <Icon />
-              </Box>
-              <VStack align="start" gap={1}>
-                <Text fontSize="xl" fontWeight="bold">
-                  {account.name}
-                </Text>
-                <Badge colorScheme={colorScheme} size="sm">
-                  {formatAccountType(account.account_type)}
-                </Badge>
-              </VStack>
+    <>
+      <Card.Root variant="elevated" mb={6}>
+        <Card.Body p={6}>
+          <VStack align="stretch" gap={4}>
+            {/* Header with icon, name, and actions */}
+            <HStack justify="space-between" align="flex-start">
+              <HStack gap={4}>
+                <Box
+                  p={3}
+                  borderRadius="lg"
+                  bg={`${colorScheme}.50`}
+                  color={`${colorScheme}.500`}
+                  fontSize="2xl"
+                >
+                  <Icon />
+                </Box>
+                <VStack align="start" gap={1}>
+                  <Text fontSize="xl" fontWeight="bold">
+                    {account.name}
+                  </Text>
+                  <Badge colorScheme={colorScheme} size="sm">
+                    {formatAccountType(account.account_type)}
+                  </Badge>
+                </VStack>
+              </HStack>
+              <HStack gap={2}>
+                {showSyncButton && (
+                  <Button
+                    size="sm"
+                    colorPalette="blue"
+                    onClick={onSync}
+                    loading={isSyncing}
+                    disabled={isSyncing}
+                  >
+                    <FaSync />
+                    <Text display={{ base: 'none', md: 'block' }}>Sync Portfolio</Text>
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={onEdit}>
+                  <HStack gap={1}>
+                    <FaEdit />
+                    <Text display={{ base: 'none', md: 'block' }}>Edit</Text>
+                  </HStack>
+                </Button>
+                <IconButton
+                  aria-label="Delete account"
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={onDelete}
+                >
+                  <FaTrash />
+                </IconButton>
+              </HStack>
             </HStack>
-            <HStack gap={1}>
-              <Button size="sm" variant="outline" onClick={onEdit}>
-                <HStack gap={1}>
-                  <FaEdit />
-                  <Text display={{ base: 'none', md: 'block' }}>Edit</Text>
-                </HStack>
-              </Button>
-              <IconButton
-                aria-label="Delete account"
-                size="sm"
-                variant="ghost"
-                colorScheme="red"
-                onClick={onDelete}
-              >
-                <FaTrash />
-              </IconButton>
-            </HStack>
-          </HStack>
 
-          {/* Balance */}
-          <Box>
-            <Text fontSize="sm" color="fg.muted" mb={1}>
-              Current Balance
-            </Text>
-            <Text fontSize="3xl" fontWeight="bold" color={balance >= 0 ? 'green.600' : 'red.600'}>
-              {formatCurrency(balance, account.currency)}
-            </Text>
-          </Box>
-
-          {/* Notes */}
-          {account.notes && (
+            {/* Balance */}
             <Box>
               <Text fontSize="sm" color="fg.muted" mb={1}>
-                Notes
+                Current Balance
               </Text>
-              <Text fontSize="sm">{account.notes}</Text>
+              <Text fontSize="3xl" fontWeight="bold" color={balance >= 0 ? 'green.600' : 'red.600'}>
+                {formatCurrency(balance, account.currency)}
+              </Text>
             </Box>
+
+            {/* Notes */}
+            {account.notes && (
+              <Box>
+                <Text fontSize="sm" color="fg.muted" mb={1}>
+                  Notes
+                </Text>
+                <Text fontSize="sm">{account.notes}</Text>
+              </Box>
+            )}
+          </VStack>
+        </Card.Body>
+      </Card.Root>
+
+      {/* Sync failure alert */}
+      {syncFailed && (
+        <Alert.Root status="error" mb={6} borderRadius="md">
+          <Alert.Indicator />
+          <Box flex="1">
+            <Alert.Title>Portfolio sync failed</Alert.Title>
+            <Alert.Description>
+              {syncError ?? 'An unknown error occurred during portfolio sync.'}
+            </Alert.Description>
+          </Box>
+          {syncJobId && (
+            <Button
+              size="sm"
+              variant="outline"
+              colorPalette="red"
+              onClick={() => void navigate(`/jobs/portfolio-sync/${syncJobId}`)}
+            >
+              <FaExternalLinkAlt />
+              View Job Details
+            </Button>
           )}
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+        </Alert.Root>
+      )}
+    </>
   );
 };

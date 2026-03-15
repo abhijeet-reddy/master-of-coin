@@ -3,13 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Button, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { FiFilter, FiPlus } from 'react-icons/fi';
 import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
-import { AccountInfoCard, AccountFormModal, InvestmentProviderCard, PortfolioSyncSection } from '@/components/accounts';
+import { AccountInfoCard, AccountFormModal } from '@/components/accounts';
 import {
   TransactionList,
   TransactionFilters,
   TransactionFormModal,
 } from '@/components/transactions';
-import { useAccountDetail } from '@/hooks/usecase';
+import {
+  useAccountDetail,
+  useInvestmentProviderConnection,
+  usePortfolioSyncTrigger,
+} from '@/hooks/usecase';
 import {
   useDocumentTitle,
   useAccounts,
@@ -17,7 +21,7 @@ import {
   useCreateTransaction,
   useCreateDebtTransaction,
 } from '@/hooks';
-import { NavigationSourceType, AccountType } from '@/types';
+import { NavigationSourceType, AccountType, JobStatus } from '@/types';
 import type { CreateTransactionRequest, CreateDebtTransactionRequest } from '@/types';
 
 export const AccountDetailPage = () => {
@@ -51,6 +55,11 @@ export const AccountDetailPage = () => {
 
   const createMutation = useCreateTransaction();
   const debtMutation = useCreateDebtTransaction();
+
+  // Investment account: provider connection and portfolio sync
+  const isInvestment = account?.account_type === AccountType.INVESTMENT;
+  const { isConnected: isProviderConnected } = useInvestmentProviderConnection(id ?? '');
+  const { syncJob, isSyncing, handleSync } = usePortfolioSyncTrigger(id ?? '');
 
   useDocumentTitle(account ? `${account.name} — Account` : 'Account');
 
@@ -127,20 +136,18 @@ export const AccountDetailPage = () => {
         }
       />
 
-      {/* Account Info Card */}
+      {/* Account Info Card with optional Sync Portfolio button */}
       <AccountInfoCard
         account={account}
         onEdit={() => setIsEditOpen(true)}
         onDelete={() => setShowDeleteDialog(true)}
+        showSyncButton={isInvestment && isProviderConnected}
+        onSync={handleSync}
+        isSyncing={isSyncing}
+        syncFailed={syncJob?.status === (JobStatus.FAILED as string)}
+        syncError={syncJob?.error}
+        syncJobId={syncJob?.job_id}
       />
-
-      {/* Investment Provider Section (INVESTMENT accounts only) */}
-      {account.account_type === AccountType.INVESTMENT && (
-        <>
-          <InvestmentProviderCard accountId={account.id} />
-          <PortfolioSyncSection accountId={account.id} />
-        </>
-      )}
 
       {/* Delete Error Alert */}
       {deleteMutation.isError && deleteMutation.error && (

@@ -6,6 +6,11 @@ import {
 } from '@/hooks/api/useInvestmentProviders';
 import { toaster } from '@/components/ui/toaster';
 import { InvestmentProviderType } from '@/types';
+import { PROVIDER_TYPE_LABELS } from '@/components/accounts/ConnectProviderForm';
+
+/** Get a human-readable label for a provider type */
+const getProviderLabel = (type: InvestmentProviderType): string =>
+  PROVIDER_TYPE_LABELS[type] ?? type;
 
 /**
  * Manages investment provider connection lifecycle for a specific account.
@@ -25,11 +30,17 @@ export default function useInvestmentProviderConnection(accountId: string) {
   const provider = providers?.find((p) => p.account_id === accountId);
   const isConnected = !!provider?.is_active;
 
-  const handleConnect = (apiKey: string, apiSecret: string, environment?: string) => {
+  const handleConnect = (
+    providerType: InvestmentProviderType,
+    apiKey: string,
+    apiSecret: string,
+    environment?: string
+  ) => {
+    const label = getProviderLabel(providerType);
     connectMutation.mutate(
       {
         account_id: accountId,
-        provider_type: InvestmentProviderType.TRADING_212,
+        provider_type: providerType,
         api_key: apiKey,
         api_secret: apiSecret,
         environment,
@@ -39,7 +50,7 @@ export default function useInvestmentProviderConnection(accountId: string) {
           setFormOpen(false);
           toaster.create({
             title: 'Provider Connected',
-            description: 'Trading 212 has been connected to this account.',
+            description: `${label} has been connected to this account.`,
             type: 'success',
           });
         },
@@ -47,7 +58,7 @@ export default function useInvestmentProviderConnection(accountId: string) {
           const message =
             error instanceof Error
               ? error.message
-              : 'Could not connect to Trading 212. Please check your credentials.';
+              : `Could not connect to ${label}. Please check your credentials.`;
           toaster.create({
             title: 'Connection Failed',
             description: message,
@@ -60,11 +71,12 @@ export default function useInvestmentProviderConnection(accountId: string) {
 
   const handleDisconnect = () => {
     if (!provider) return;
+    const label = getProviderLabel(provider.provider_type);
     disconnectMutation.mutate(provider.id, {
       onSuccess: () => {
         toaster.create({
           title: 'Provider Disconnected',
-          description: 'Trading 212 has been disconnected from this account.',
+          description: `${label} has been disconnected from this account.`,
           type: 'success',
         });
       },

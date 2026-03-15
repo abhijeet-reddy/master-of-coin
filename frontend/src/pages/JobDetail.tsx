@@ -2,17 +2,18 @@ import { useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Button, Card, HStack, SimpleGrid, Text, VStack } from '@chakra-ui/react';
 import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
-import { JobProgressCard, JobStatusBadge } from '@/components/jobs';
+import { JobProgressCard, JobStatusBadge, PortfolioSyncReportView } from '@/components/jobs';
 import { DriftReportView } from '@/components/drift';
 import { BulkSyncReportView } from '@/components/sync';
 import { SyncWizard } from '@/components/sync/wizard';
 import { useDriftJob, useRetryDriftJob } from '@/hooks/api/useDriftDetection';
 import { useBulkSyncJob, useRetryBulkSync } from '@/hooks/api/useBulkSync';
+import { usePortfolioSyncJob, useRetryPortfolioSync } from '@/hooks/api/usePortfolioSync';
 import { useDocumentTitle } from '@/hooks/effects';
 import { JobStatus } from '@/types';
-import type { DriftReport } from '@/types';
+import type { DriftReport, PortfolioSyncReport } from '@/types';
 
-type JobDetailType = 'drift-detection' | 'sync';
+type JobDetailType = 'drift-detection' | 'sync' | 'portfolio-sync';
 
 /** Format an ISO date string to a human-readable date/time */
 const formatDateTime = (iso: string): string => {
@@ -286,9 +287,91 @@ const SyncJobDetail = ({ id, pageTitle }: { id: string; pageTitle: string }) => 
   );
 };
 
+const PortfolioSyncJobDetail = ({ id, pageTitle }: { id: string; pageTitle: string }) => {
+  const navigate = useNavigate();
+  const { data: job, isLoading, error } = usePortfolioSyncJob(id);
+  const retryPortfolioSync = useRetryPortfolioSync();
+
+  const handleRetry = useCallback(() => {
+    retryPortfolioSync.mutate(id, {
+      onSuccess: (data) => {
+        void navigate(`/jobs/portfolio-sync/${data.job_id}`);
+      },
+    });
+  }, [retryPortfolioSync, id, navigate]);
+
+  if (isLoading) return <LoadingSpinner message="Loading portfolio sync job..." />;
+  if (error) return <ErrorAlert title="Failed to load job" error={error} />;
+  if (!job)
+    return <ErrorAlert title="Job not found" error={new Error('Job data is unavailable.')} />;
+
+  const jobStatus = job.status as JobStatus;
+
+  if (jobStatus === JobStatus.PENDING || jobStatus === JobStatus.RUNNING) {
+    return (
+      <VStack gap={4} alignItems="stretch">
+        <JobHeaderCard
+          title={pageTitle}
+          status={jobStatus}
+          createdAt={job.created_at}
+          startedAt={job.started_at}
+        />
+        <JobProgressCard status={jobStatus} />
+      </VStack>
+    );
+  }
+
+  if (jobStatus === JobStatus.FAILED) {
+    return (
+      <VStack gap={4} alignItems="stretch">
+        <JobHeaderCard
+          title={pageTitle}
+          status={jobStatus}
+          createdAt={job.created_at}
+          startedAt={job.started_at}
+          completedAt={job.completed_at}
+          actions={
+            <Button
+              colorPalette="blue"
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              loading={retryPortfolioSync.isPending}
+            >
+              Retry
+            </Button>
+          }
+        />
+        <ErrorAlert title="Portfolio sync failed" error={new Error(job.error ?? 'Unknown error')} />
+      </VStack>
+    );
+  }
+
+  if (jobStatus === JobStatus.COMPLETED && job.result) {
+    const report: PortfolioSyncReport = job.result;
+    return (
+      <VStack gap={4} alignItems="stretch">
+        <JobHeaderCard
+          title={pageTitle}
+          status={jobStatus}
+          createdAt={job.created_at}
+          startedAt={job.started_at}
+          completedAt={job.completed_at}
+        />
+        <PortfolioSyncReportView report={report} />
+      </VStack>
+    );
+  }
+
+  return (
+    <ErrorAlert title="Unexpected state" error={new Error('Job is in an unexpected state.')} />
+  );
+};
+
 const titleMap: Record<JobDetailType, string> = {
   'drift-detection': 'Drift Detection',
   sync: 'Bulk Sync',
+  'portfolio-sync': 'Portfolio Sync',
 };
 
 export const JobDetailPage = () => {
@@ -307,7 +390,8 @@ export const JobDetailPage = () => {
     );
   }
 
-  const isValidType = jobType === 'drift-detection' || jobType === 'sync';
+  const isValidType =
+    jobType === 'drift-detection' || jobType === 'sync' || jobType === 'portfolio-sync';
 
   return (
     <Box>
@@ -320,6 +404,8 @@ export const JobDetailPage = () => {
         />
       ) : jobType === 'drift-detection' ? (
         <DriftJobDetail id={id} pageTitle={pageTitle} />
+      ) : jobType === 'portfolio-sync' ? (
+        <PortfolioSyncJobDetail id={id} pageTitle={pageTitle} />
       ) : (
         <SyncJobDetail id={id} pageTitle={pageTitle} />
       )}

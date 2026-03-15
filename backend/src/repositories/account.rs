@@ -185,6 +185,7 @@ pub async fn calculate_balance(pool: &DbPool, account_id: Uuid) -> Result<BigDec
 
         let balance: Option<BigDecimal> = transactions::table
             .filter(transactions::account_id.eq(account_id))
+            .filter(transactions::is_deleted.eq(false))
             .select(sum(transactions::amount))
             .first(&mut conn)
             .map_err(|e| {

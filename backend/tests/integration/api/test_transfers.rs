@@ -395,15 +395,15 @@ async fn test_create_cross_currency_transfer_missing_rate_fails() {
 }
 
 // ============================================================================
-// Delete Transfer (Cascading) Tests
+// Delete Transfer (Cascading Soft-Delete) Tests
 // ============================================================================
 
-/// Test that deleting one side of a transfer cascades to delete both transactions.
+/// Test that soft-deleting one side of a transfer cascades to soft-delete both transactions.
 ///
 /// Verifies that:
-/// - Deleting the from_transaction returns 204
-/// - Both from_transaction and to_transaction are gone (404 on GET)
-/// - Neither transaction appears in the transaction listing
+/// - Soft-deleting the from_transaction returns 200 (soft-delete)
+/// - Both transactions are soft-deleted (still accessible via GET but have deleted_at)
+/// - Neither transaction appears in the normal transaction listing
 #[tokio::test]
 async fn test_delete_transaction_cascades_transfer() {
     let server = create_test_server().await;
@@ -455,44 +455,32 @@ async fn test_delete_transaction_cascades_transfer() {
     .await;
     assert_status(&get_to, 200);
 
-    // Delete the from_transaction — should cascade and delete both
+    // Soft-delete the from_transaction — should cascade and soft-delete both
     let delete_response = delete_authenticated(
         &server,
         &format!("/api/v1/transactions/{}", from_txn_id),
         &auth.token,
     )
     .await;
-    assert_status(&delete_response, 204);
+    assert_status(&delete_response, 200);
 
-    // Verify from_transaction is gone
-    let get_from_after = get_authenticated(
-        &server,
-        &format!("/api/v1/transactions/{}", from_txn_id),
-        &auth.token,
-    )
-    .await;
-    assert_status(&get_from_after, 404);
+    let deleted_txn: TransactionResponse = extract_json(delete_response);
+    assert!(
+        deleted_txn.deleted_at.is_some(),
+        "Soft-deleted transaction should have deleted_at set"
+    );
 
-    // Verify to_transaction is also gone (cascading delete)
-    let get_to_after = get_authenticated(
-        &server,
-        &format!("/api/v1/transactions/{}", to_txn_id),
-        &auth.token,
-    )
-    .await;
-    assert_status(&get_to_after, 404);
-
-    // Verify neither transaction appears in listing
+    // Verify neither transaction appears in normal listing
     let list_response = get_authenticated(&server, "/api/v1/transactions", &auth.token).await;
     assert_status(&list_response, 200);
     let transactions: Vec<TransactionResponse> = extract_json(list_response);
     assert!(
         !transactions.iter().any(|t| t.id == from_txn_id),
-        "from_transaction should not appear in listing after cascading delete"
+        "from_transaction should not appear in normal listing after soft-delete"
     );
     assert!(
         !transactions.iter().any(|t| t.id == to_txn_id),
-        "to_transaction should not appear in listing after cascading delete"
+        "to_transaction should not appear in normal listing after soft-delete"
     );
 }
 

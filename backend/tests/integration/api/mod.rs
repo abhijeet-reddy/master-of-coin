@@ -36,6 +36,7 @@ mod test_jobs;
 mod test_people;
 mod test_schedules;
 mod test_scope_enforcement;
+mod test_soft_delete;
 mod test_split_providers;
 mod test_split_sync;
 mod test_splitwise_debt_sync;

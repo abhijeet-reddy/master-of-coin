@@ -33,6 +33,8 @@ pub struct Config {
     pub import: ImportConfig,
     pub splitwise: Option<SplitwiseConfig>,
     pub encryption_key_configured: bool,
+    /// Number of days to retain soft-deleted transactions before permanent purge
+    pub soft_delete_retention_days: i64,
 }
 
 /// Server configuration
@@ -158,6 +160,10 @@ impl Config {
             },
             splitwise,
             encryption_key_configured,
+            soft_delete_retention_days: std::env::var("SOFT_DELETE_RETENTION_DAYS")
+                .unwrap_or_else(|_| "30".to_string())
+                .parse()
+                .unwrap_or(30),
         };
 
         // Validate configuration
@@ -214,6 +220,13 @@ impl Config {
         use crate::types::ConfidenceLevel;
         ConfidenceLevel::from_str(&self.import.duplicate_confidence_threshold)
             .map_err(|e| ConfigError::InvalidConfig(e))?;
+
+        // Validate soft delete retention days
+        if self.soft_delete_retention_days <= 0 {
+            return Err(ConfigError::InvalidConfig(
+                "Soft delete retention days must be greater than 0".to_string(),
+            ));
+        }
 
         // Validate Splitwise config consistency: if Splitwise is configured, encryption key must be too
         if self.splitwise.is_some() && !self.encryption_key_configured {

@@ -9,3 +9,4 @@ export { TransferFormModal } from './TransferFormModal';
 export { SplitPaymentForm } from './SplitPaymentForm';
 export { DebtExpenseParticipantsForm } from './DebtExpenseParticipantsForm';
 export { SplitSyncStatus } from './SplitSyncStatus';
+export { TrashTransactionRow } from './TrashTransactionRow';

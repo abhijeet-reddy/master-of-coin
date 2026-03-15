@@ -114,6 +114,8 @@ export interface Transaction {
   user_share?: string;
   debt_metadata?: DebtMetadata | null;
   transfer_info?: TransferInfo;
+  deleted_at?: string;
+  permanent_delete_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -147,6 +149,8 @@ export interface EnrichedTransaction {
   user_share?: string;
   debt_metadata?: DebtMetadata | null;
   transfer_info?: TransferInfo;
+  deleted_at?: string;
+  permanent_delete_at?: string;
   created_at: string;
   updated_at: string;
 }

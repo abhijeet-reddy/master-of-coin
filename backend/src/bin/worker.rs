@@ -30,6 +30,7 @@ use master_of_coin_backend::DbPool;
 use master_of_coin_backend::models::background_job::NewBackgroundJob;
 use master_of_coin_backend::models::bulk_sync::BulkSyncRequest;
 use master_of_coin_backend::models::drift_detection::DriftDetectionRequest;
+use master_of_coin_backend::repositories;
 use master_of_coin_backend::repositories::background_job::BackgroundJobRepository;
 use master_of_coin_backend::repositories::schedule::ScheduleRepository;
 use master_of_coin_backend::services::investment_provider::{
@@ -271,6 +272,141 @@ fn run_cleanup(pool: &DbPool) {
     }
 }
 
+/// Purge soft-deleted transactions that have exceeded the retention period.
+///
+/// Computes a cutoff date (`now - retention_days`), finds all soft-deleted
+/// transactions older than the cutoff, and permanently deletes them along
+/// with their associated splits, debt metadata, and transfer records.
+///
+/// Transfer pairs are handled atomically — when one side of a transfer is
+/// found, both transactions are deleted together, and the paired transaction
+/// ID is tracked to avoid double-processing.
+async fn purge_soft_deleted_transactions(pool: &DbPool, retention_days: i64) -> usize {
+    let cutoff = Utc::now() - Duration::days(retention_days);
+    tracing::info!(
+        "Purging soft-deleted transactions older than {} (retention: {} days)",
+        cutoff.format("%Y-%m-%d %H:%M:%S UTC"),
+        retention_days
+    );
+
+    // Find all expired soft-deleted transactions
+    let expired = match repositories::transaction::find_expired_soft_deleted(pool, cutoff).await {
+        Ok(txns) => txns,
+        Err(e) => {
+            tracing::error!("Failed to query expired soft-deleted transactions: {}", e);
+            return 0;
+        }
+    };
+
+    if expired.is_empty() {
+        tracing::info!("No expired soft-deleted transactions to purge");
+        return 0;
+    }
+
+    tracing::info!(
+        "Found {} expired soft-deleted transaction(s) to purge",
+        expired.len()
+    );
+
+    let mut purged_count: usize = 0;
+    let mut processed_ids: std::collections::HashSet<uuid::Uuid> = std::collections::HashSet::new();
+
+    for txn in &expired {
+        // Skip if already processed (e.g. paired transaction from a transfer)
+        if processed_ids.contains(&txn.id) {
+            continue;
+        }
+
+        // Check if this transaction is part of a transfer
+        match repositories::transfer::find_transfer_by_transaction_id(pool, txn.id).await {
+            Ok(Some(transfer)) => {
+                // Mark both sides as processed to avoid double-processing
+                processed_ids.insert(transfer.from_transaction_id);
+                processed_ids.insert(transfer.to_transaction_id);
+
+                // Hard-delete the transfer and both transactions atomically
+                match repositories::transfer::delete_transfer_and_transactions(pool, &transfer)
+                    .await
+                {
+                    Ok(()) => {
+                        tracing::info!(
+                            "Purged transfer {} (transactions: {}, {})",
+                            transfer.id,
+                            transfer.from_transaction_id,
+                            transfer.to_transaction_id
+                        );
+                        purged_count += 2;
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to purge transfer {} (transactions: {}, {}): {}",
+                            transfer.id,
+                            transfer.from_transaction_id,
+                            transfer.to_transaction_id,
+                            e
+                        );
+                    }
+                }
+            }
+            Ok(None) => {
+                // Standalone transaction — delete splits, debt metadata, then the transaction
+                processed_ids.insert(txn.id);
+
+                // Delete splits
+                if let Err(e) =
+                    repositories::transaction::delete_splits_for_transaction(pool, txn.id).await
+                {
+                    tracing::error!(
+                        "Failed to delete splits for transaction {} during purge: {}",
+                        txn.id,
+                        e
+                    );
+                    continue;
+                }
+
+                // Delete debt metadata (if any)
+                if let Err(e) =
+                    repositories::debt_transaction_metadata::delete_by_transaction_id(pool, txn.id)
+                        .await
+                {
+                    tracing::error!(
+                        "Failed to delete debt metadata for transaction {} during purge: {}",
+                        txn.id,
+                        e
+                    );
+                    continue;
+                }
+
+                // Hard-delete the transaction
+                match repositories::transaction::hard_delete_transaction(pool, txn.id).await {
+                    Ok(()) => {
+                        tracing::info!("Purged standalone transaction {}", txn.id);
+                        purged_count += 1;
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to purge standalone transaction {}: {}", txn.id, e);
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    "Failed to check transfer status for transaction {} during purge: {}",
+                    txn.id,
+                    e
+                );
+            }
+        }
+    }
+
+    if purged_count > 0 {
+        tracing::info!("Purged {} soft-deleted transaction(s)", purged_count);
+    } else {
+        tracing::info!("No soft-deleted transactions were purged");
+    }
+
+    purged_count
+}
+
 /// Main poll loop: checks for PENDING jobs, dispatches them, and handles daily cleanup.
 async fn run_poll_loop(
     pool: DbPool,
@@ -284,6 +420,11 @@ async fn run_poll_loop(
     let running_types: Arc<RwLock<HashSet<JobType>>> = Arc::new(RwLock::new(HashSet::new()));
     let mut last_cleanup_date = Utc::now().date_naive();
 
+    // Read soft-delete retention days from config (once at loop start)
+    let retention_days = master_of_coin_backend::Config::from_env()
+        .map(|c| c.soft_delete_retention_days)
+        .unwrap_or(30);
+
     tracing::info!("✨ Worker poll loop started");
 
     loop {
@@ -292,6 +433,7 @@ async fn run_poll_loop(
         if today != last_cleanup_date {
             tracing::info!("Date changed to {} — running daily cleanup", today);
             run_cleanup(&pool);
+            purge_soft_deleted_transactions(&pool, retention_days).await;
             last_cleanup_date = today;
         }
 

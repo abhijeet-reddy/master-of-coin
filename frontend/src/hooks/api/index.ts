@@ -6,6 +6,9 @@ export { default as useCreateDebtTransaction } from './useCreateDebtTransaction'
 export { default as useCreateTransfer } from './useCreateTransfer';
 export { default as useUpdateTransaction } from './useUpdateTransaction';
 export { default as useDeleteTransaction } from './useDeleteTransaction';
+export { default as useTrashTransactions } from './useTrashTransactions';
+export { default as useRestoreTransaction } from './useRestoreTransaction';
+export { default as usePermanentDeleteTransaction } from './usePermanentDeleteTransaction';
 
 // Account hooks
 export { default as useAccounts } from './useAccounts';

@@ -151,6 +151,7 @@ fn fetch_local_split_transactions(
                 .on(split_sync_records::transaction_split_id.eq(transaction_splits::id)),
         )
         .filter(transactions::user_id.eq(user_id))
+        .filter(transactions::is_deleted.eq(false))
         .filter(transactions::date.ge(start_date))
         .filter(transactions::date.le(end_date))
         .select((

@@ -156,6 +156,18 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        .route(
+            "/transactions/:id/restore",
+            post(handlers::transactions::restore).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
         // Transfers (account-to-account)
         .route(
             "/transfers",
@@ -707,20 +719,14 @@ pub fn create_router(state: AppState) -> Router {
             "/investment-providers",
             get(handlers::investment_providers::list_providers).layer(middleware::from_fn(
                 |auth, req, next| {
-                    require_scope(
-                        ResourceType::Accounts,
-                        OperationType::Read,
-                        auth,
-                        req,
-                        next,
-                    )
+                    require_scope(ResourceType::Accounts, OperationType::Read, auth, req, next)
                 },
             )),
         )
         .route(
             "/investment-providers/:id",
-            delete(handlers::investment_providers::disconnect_provider).layer(
-                middleware::from_fn(|auth, req, next| {
+            delete(handlers::investment_providers::disconnect_provider).layer(middleware::from_fn(
+                |auth, req, next| {
                     require_scope(
                         ResourceType::Accounts,
                         OperationType::Write,
@@ -728,8 +734,8 @@ pub fn create_router(state: AppState) -> Router {
                         req,
                         next,
                     )
-                }),
-            ),
+                },
+            )),
         )
         // Portfolio sync - async job-based (uses Accounts scope)
         .route(
@@ -750,13 +756,7 @@ pub fn create_router(state: AppState) -> Router {
             "/portfolio-sync/:job_id",
             get(handlers::portfolio_sync::get_portfolio_sync).layer(middleware::from_fn(
                 |auth, req, next| {
-                    require_scope(
-                        ResourceType::Accounts,
-                        OperationType::Read,
-                        auth,
-                        req,
-                        next,
-                    )
+                    require_scope(ResourceType::Accounts, OperationType::Read, auth, req, next)
                 },
             )),
         )

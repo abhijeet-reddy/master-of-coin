@@ -1564,12 +1564,13 @@ async fn test_update_transaction_preserves_splits_when_omitted() {
 // Delete Transaction Tests
 // ============================================================================
 
-/// Test successful transaction deletion.
+/// Test successful transaction soft-deletion.
 ///
 /// Verifies that:
-/// - Status code is 204 No Content
-/// - Transaction is actually deleted
-/// - Subsequent GET returns 404
+/// - Status code is 200 OK (soft-delete returns the response body)
+/// - Response contains `deleted_at` (not null)
+/// - Transaction no longer appears in normal listing
+/// - Transaction still accessible via GET (soft-deleted, not hard-deleted)
 #[tokio::test]
 async fn test_delete_transaction_success() {
     let server = create_test_server().await;
@@ -1605,31 +1606,28 @@ async fn test_delete_transaction_success() {
     assert_status(&create_response, 201);
     let transaction: TransactionResponse = extract_json(create_response);
 
-    // Delete the transaction
+    // Soft-delete the transaction (returns 200 with body)
     let delete_response = delete_authenticated(
         &server,
         &format!("/api/v1/transactions/{}", transaction.id),
         &auth.token,
     )
     .await;
-    assert_status(&delete_response, 204);
+    assert_status(&delete_response, 200);
 
-    // Verify transaction is deleted - GET should return 404
-    let get_response = get_authenticated(
-        &server,
-        &format!("/api/v1/transactions/{}", transaction.id),
-        &auth.token,
-    )
-    .await;
-    assert_status(&get_response, 404);
+    let deleted_txn: TransactionResponse = extract_json(delete_response);
+    assert!(
+        deleted_txn.deleted_at.is_some(),
+        "Soft-deleted transaction should have deleted_at set"
+    );
 
-    // Verify transaction is not in list
+    // Verify transaction is not in normal list
     let list_response = get_authenticated(&server, "/api/v1/transactions", &auth.token).await;
     assert_status(&list_response, 200);
     let transactions: Vec<TransactionResponse> = extract_json(list_response);
     assert!(
         !transactions.iter().any(|t| t.id == transaction.id),
-        "Deleted transaction should not appear in list"
+        "Soft-deleted transaction should not appear in normal list"
     );
 }
 
@@ -1851,16 +1849,44 @@ async fn test_full_transaction_crud_flow() {
     assert_eq!(verified_transaction.title, "Updated CRUD Transaction");
     assert_eq!(verified_transaction.amount, "-300.00");
 
-    // Step 5: Delete transaction
+    // Step 5: Soft-delete transaction (returns 200 with body)
     let delete_response = delete_authenticated(
         &server,
         &format!("/api/v1/transactions/{}", created_transaction.id),
         &auth.token,
     )
     .await;
-    assert_status(&delete_response, 204);
+    assert_status(&delete_response, 200);
 
-    // Step 6: Verify deletion
+    let deleted_txn: TransactionResponse = extract_json(delete_response);
+    assert!(
+        deleted_txn.deleted_at.is_some(),
+        "Soft-deleted transaction should have deleted_at set"
+    );
+
+    // Step 6: Verify transaction not in normal list
+    let list_response = get_authenticated(&server, "/api/v1/transactions", &auth.token).await;
+    assert_status(&list_response, 200);
+    let final_transactions: Vec<TransactionResponse> = extract_json(list_response);
+    assert_eq!(
+        final_transactions.len(),
+        0,
+        "Soft-deleted transaction should not appear in normal list"
+    );
+
+    // Step 7: Permanently delete the soft-deleted transaction
+    let perm_delete_response = delete_authenticated(
+        &server,
+        &format!(
+            "/api/v1/transactions/{}?is_permanent=true",
+            created_transaction.id
+        ),
+        &auth.token,
+    )
+    .await;
+    assert_status(&perm_delete_response, 204);
+
+    // Step 8: Verify transaction is truly gone
     let get_response3 = get_authenticated(
         &server,
         &format!("/api/v1/transactions/{}", created_transaction.id),
@@ -1868,16 +1894,6 @@ async fn test_full_transaction_crud_flow() {
     )
     .await;
     assert_status(&get_response3, 404);
-
-    // Step 7: Verify transaction not in list
-    let list_response = get_authenticated(&server, "/api/v1/transactions", &auth.token).await;
-    assert_status(&list_response, 200);
-    let final_transactions: Vec<TransactionResponse> = extract_json(list_response);
-    assert_eq!(
-        final_transactions.len(),
-        0,
-        "All transactions should be deleted"
-    );
 }
 
 // ============================================================================
@@ -1919,8 +1935,7 @@ async fn test_create_income_transaction_with_splits_rejected() {
         ]
     });
 
-    let response =
-        post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
+    let response = post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
     assert_status(&response, 422);
 }
 
@@ -1959,8 +1974,13 @@ async fn test_update_to_income_with_splits_rejected() {
         ]
     });
 
-    let create_response =
-        post_authenticated(&server, "/api/v1/transactions", &auth.token, &create_request).await;
+    let create_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &create_request,
+    )
+    .await;
     assert_status(&create_response, 201);
     let transaction: TransactionResponse = extract_json(create_response);
 
@@ -1983,4 +2003,3 @@ async fn test_update_to_income_with_splits_rejected() {
     // Should be rejected — splits not allowed on income
     assert_status(&update_response, 422);
 }
-

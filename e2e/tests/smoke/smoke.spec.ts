@@ -31,6 +31,7 @@ const pages: [string, string, string][] = [
   ["/jobs", "Jobs", "jobs"],
   ["/schedules", "Schedules", "schedules"],
   ["/settings", "Settings", "settings"],
+  ["/trash", "Trash", "trash"],
 ];
 
 test.describe("Smoke Tests — All Pages Load", () => {
@@ -102,6 +103,7 @@ test.describe("Smoke Tests — Navigation", () => {
       { href: "/categories", expectedUrl: "/categories" },
       { href: "/people", expectedUrl: "/people" },
       { href: "/reports", expectedUrl: "/reports" },
+      { href: "/trash", expectedUrl: "/trash" },
       { href: "/", expectedUrl: "/" },
     ];
 

@@ -61,6 +61,8 @@ export default function useEnrichedTransactions(
         user_share: transaction.user_share,
         debt_metadata: transaction.debt_metadata,
         transfer_info: transaction.transfer_info,
+        deleted_at: transaction.deleted_at,
+        permanent_delete_at: transaction.permanent_delete_at,
         created_at: transaction.created_at,
         updated_at: transaction.updated_at,
       };

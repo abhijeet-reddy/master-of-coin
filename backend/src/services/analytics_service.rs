@@ -116,6 +116,7 @@ pub async fn get_spending_trend(
         search: None,
         limit: None,
         offset: None,
+        is_deleted: None,
     };
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
@@ -178,6 +179,7 @@ pub async fn get_category_breakdown(
         search: None,
         limit: None,
         offset: None,
+        is_deleted: None,
     };
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
@@ -308,6 +310,7 @@ async fn get_recent_transactions(
         search: None,
         limit: Some(10), // TODO: Make recent transaction limit configurable
         offset: None,
+        is_deleted: None,
     };
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;

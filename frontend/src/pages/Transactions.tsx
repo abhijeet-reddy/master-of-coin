@@ -370,7 +370,7 @@ export const TransactionsPage = () => {
         onClose={() => setDeleteDialog({ isOpen: false, transaction: null })}
         onConfirm={handleConfirmDelete}
         title="Delete Transaction"
-        message={`Are you sure you want to delete "${deleteDialog.transaction?.title}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${deleteDialog.transaction?.title}"? This transaction will be moved to trash and permanently deleted after 30 days.`}
         confirmText="Delete"
         colorScheme="red"
         isLoading={deleteMutation.isPending}

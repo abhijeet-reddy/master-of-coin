@@ -1,4 +1,5 @@
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Duration, Utc};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use uuid::Uuid;
@@ -6,6 +7,7 @@ use validator::Validate;
 
 use crate::{
     DbPool,
+    config::Config,
     errors::ApiError,
     models::{
         CreateTransactionRequest, NewTransaction, NewTransactionSplit, TransactionFilter,
@@ -13,6 +15,22 @@ use crate::{
     },
     repositories,
 };
+
+/// Compute the date when a soft-deleted transaction will be permanently purged.
+///
+/// Returns `deleted_at + retention_days` using the configured retention period.
+fn compute_permanent_delete_at(deleted_at: DateTime<Utc>, retention_days: i64) -> DateTime<Utc> {
+    deleted_at + Duration::days(retention_days)
+}
+
+/// Read the soft-delete retention days from the application configuration.
+///
+/// Falls back to 30 days if the config cannot be loaded.
+fn get_retention_days() -> i64 {
+    Config::from_env()
+        .map(|c| c.soft_delete_retention_days)
+        .unwrap_or(30)
+}
 
 /// Create a new transaction with optional splits
 pub async fn create_transaction(
@@ -163,6 +181,13 @@ pub async fn get_transaction(
         Some(splits)
     };
 
+    // Compute permanent_delete_at for soft-deleted transactions
+    if let Some(deleted_at) = response.deleted_at {
+        let retention_days = get_retention_days();
+        response.permanent_delete_at =
+            Some(compute_permanent_delete_at(deleted_at, retention_days));
+    }
+
     // Fetch transfer info if this transaction is part of a transfer
     let transfer_map =
         repositories::transfer::find_transfer_info_for_transactions(pool, &[transaction_id])
@@ -206,14 +231,33 @@ pub async fn list_transactions(
         }
     }
 
+    // Determine if we're listing soft-deleted transactions (for permanent_delete_at computation)
+    let listing_deleted = filters.is_deleted == Some(true);
+
     // List transactions with debt metadata via LEFT JOIN
+    // The is_deleted filter is passed through to the repository layer
     let results = repositories::transaction::list_transactions(pool, user_id, filters).await?;
+
+    // Read retention days once if listing deleted transactions
+    let retention_days = if listing_deleted {
+        get_retention_days()
+    } else {
+        0
+    };
 
     // Convert to responses with splits
     let mut responses = Vec::new();
     for result in results {
         let transaction_id = result.transaction.id;
         let mut response = TransactionResponse::from(result);
+
+        // Compute permanent_delete_at for soft-deleted transactions
+        if listing_deleted {
+            if let Some(deleted_at) = response.deleted_at {
+                response.permanent_delete_at =
+                    Some(compute_permanent_delete_at(deleted_at, retention_days));
+            }
+        }
 
         // Fetch splits for this transaction
         let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id)
@@ -446,15 +490,16 @@ pub async fn update_transaction(
     Ok(response)
 }
 
-/// Delete a transaction
+/// Soft-delete a transaction (move to trash).
 ///
-/// If the transaction is part of a transfer, both linked transactions and the
-/// transfer record are deleted atomically.
+/// If the transaction is part of a transfer, both linked transactions are
+/// soft-deleted atomically. Returns the soft-deleted transaction with
+/// `deleted_at` and computed `permanent_delete_at`.
 pub async fn delete_transaction(
     pool: &DbPool,
     transaction_id: Uuid,
     user_id: Uuid,
-) -> Result<(), ApiError> {
+) -> Result<TransactionResponse, ApiError> {
     // Fetch and verify ownership
     let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
     if result.transaction.user_id != user_id {
@@ -471,29 +516,182 @@ pub async fn delete_transaction(
     if let Some(transfer) =
         repositories::transfer::find_transfer_by_transaction_id(pool, transaction_id).await?
     {
-        // Delete both transactions and the transfer link atomically
-        repositories::transfer::delete_transfer_and_transactions(pool, &transfer).await?;
+        // Soft-delete both transactions in the transfer
+        repositories::transfer::soft_delete_transfer_transactions(pool, &transfer).await?;
 
         tracing::info!(
-            "Deleted transfer {} and both transactions for user {}",
+            "Soft-deleted transfer {} and both transactions for user {}",
             transfer.id,
             user_id
         );
+    } else {
+        // Soft-delete the standalone transaction
+        repositories::transaction::soft_delete_transaction(pool, transaction_id).await?;
 
-        return Ok(());
+        tracing::info!(
+            "Soft-deleted transaction {} for user {}",
+            transaction_id,
+            user_id
+        );
     }
 
-    // Delete splits first
-    repositories::transaction::delete_splits_for_transaction(pool, transaction_id).await?;
+    // Re-fetch the transaction to get the updated deleted_at timestamp
+    let updated_result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    let mut response = TransactionResponse::from(updated_result);
 
-    // Delete transaction
-    repositories::transaction::delete_transaction(pool, transaction_id).await?;
+    // Compute permanent_delete_at
+    if let Some(deleted_at) = response.deleted_at {
+        let retention_days = get_retention_days();
+        response.permanent_delete_at =
+            Some(compute_permanent_delete_at(deleted_at, retention_days));
+    }
 
-    tracing::info!(
-        "Deleted transaction {} for user {}",
-        transaction_id,
-        user_id
-    );
+    Ok(response)
+}
+
+/// Restore a soft-deleted transaction from trash.
+///
+/// If the transaction is part of a transfer, both linked transactions are
+/// restored. Returns the restored `TransactionResponse`.
+pub async fn restore_transaction(
+    pool: &DbPool,
+    transaction_id: Uuid,
+    user_id: Uuid,
+) -> Result<TransactionResponse, ApiError> {
+    // Fetch transaction (find_by_id does NOT filter by is_deleted)
+    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+
+    // Verify ownership
+    if result.transaction.user_id != user_id {
+        tracing::warn!(
+            "User {} attempted to restore transaction {} owned by {}",
+            user_id,
+            transaction_id,
+            result.transaction.user_id
+        );
+        return Err(ApiError::Forbidden("Access denied".to_string()));
+    }
+
+    // Verify the transaction is actually soft-deleted
+    if !result.transaction.is_deleted {
+        return Err(ApiError::BadRequest(
+            "Transaction is not in trash".to_string(),
+        ));
+    }
+
+    // Check if the transaction is part of a transfer
+    if let Some(transfer) =
+        repositories::transfer::find_transfer_by_transaction_id(pool, transaction_id).await?
+    {
+        // Restore both transactions in the transfer
+        repositories::transfer::restore_transfer_transactions(pool, &transfer).await?;
+
+        tracing::info!(
+            "Restored transfer {} and both transactions for user {}",
+            transfer.id,
+            user_id
+        );
+    } else {
+        // Restore the standalone transaction
+        repositories::transaction::restore_transaction(pool, transaction_id).await?;
+
+        tracing::info!(
+            "Restored transaction {} for user {}",
+            transaction_id,
+            user_id
+        );
+    }
+
+    // Re-fetch the restored transaction to build the response
+    let restored_result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+
+    // Fetch splits
+    let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id)
+        .await?
+        .into_iter()
+        .map(|split| split.into())
+        .collect::<Vec<_>>();
+
+    let mut response = TransactionResponse::from(restored_result);
+    response.splits = if splits.is_empty() {
+        None
+    } else {
+        Some(splits)
+    };
+
+    // Fetch transfer info
+    let transfer_map =
+        repositories::transfer::find_transfer_info_for_transactions(pool, &[transaction_id])
+            .await?;
+    if let Some(info) = transfer_map.into_values().next() {
+        response.transfer_info = Some(info);
+    }
+
+    Ok(response)
+}
+
+/// Permanently delete a soft-deleted transaction.
+///
+/// The transaction must already be in the trash (`is_deleted == true`).
+/// If the transaction is part of a transfer, both linked transactions,
+/// the transfer record, associated splits, and debt metadata are all
+/// hard-deleted.
+pub async fn permanent_delete_transaction(
+    pool: &DbPool,
+    transaction_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), ApiError> {
+    // Fetch transaction (find_by_id does NOT filter by is_deleted)
+    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+
+    // Verify ownership
+    if result.transaction.user_id != user_id {
+        tracing::warn!(
+            "User {} attempted to permanently delete transaction {} owned by {}",
+            user_id,
+            transaction_id,
+            result.transaction.user_id
+        );
+        return Err(ApiError::Forbidden("Access denied".to_string()));
+    }
+
+    // Verify the transaction is actually soft-deleted
+    if !result.transaction.is_deleted {
+        return Err(ApiError::BadRequest(
+            "Transaction is not in trash".to_string(),
+        ));
+    }
+
+    // Check if the transaction is part of a transfer
+    if let Some(transfer) =
+        repositories::transfer::find_transfer_by_transaction_id(pool, transaction_id).await?
+    {
+        // Hard-delete both transactions and the transfer link atomically
+        // (delete_transfer_and_transactions handles splits deletion and cascade)
+        repositories::transfer::delete_transfer_and_transactions(pool, &transfer).await?;
+
+        tracing::info!(
+            "Permanently deleted transfer {} and both transactions for user {}",
+            transfer.id,
+            user_id
+        );
+    } else {
+        // Delete splits first
+        repositories::transaction::delete_splits_for_transaction(pool, transaction_id).await?;
+
+        // Delete debt metadata if present
+        repositories::debt_transaction_metadata::delete_by_transaction_id(pool, transaction_id)
+            .await?;
+
+        // Hard-delete the transaction
+        repositories::transaction::hard_delete_transaction(pool, transaction_id).await?;
+
+        tracing::info!(
+            "Permanently deleted transaction {} for user {}",
+            transaction_id,
+            user_id
+        );
+    }
 
     Ok(())
 }

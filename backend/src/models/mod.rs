@@ -69,7 +69,8 @@ pub use person_split_config::SetPersonSplitConfigRequest;
 pub use portfolio_sync::PortfolioSyncRequest;
 pub use split_provider::CreateSplitProviderRequest;
 pub use transaction::{
-    CreateTransactionRequest, TransactionFilter, TransactionType, UpdateTransactionRequest,
+    CreateTransactionRequest, DeleteTransactionQuery, TransactionFilter, TransactionType,
+    UpdateTransactionRequest,
 };
 pub use transfer::CreateTransferRequest;
 pub use user::{AuthResponse, CreateUserRequest, LoginRequest};

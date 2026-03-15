@@ -10,6 +10,7 @@ import {
   MdAssessment,
   MdWorkHistory,
   MdSchedule,
+  MdDelete,
   MdSettings,
 } from 'react-icons/md';
 import { useAuth } from '@/contexts/AuthContext';
@@ -151,6 +152,13 @@ export const Sidebar = ({ onClose, isCollapsed = false }: SidebarProps) => {
           icon={MdSchedule}
           label="Schedules"
           to="/schedules"
+          onClick={onClose}
+          isCollapsed={isCollapsed}
+        />
+        <NavItem
+          icon={MdDelete}
+          label="Trash"
+          to="/trash"
           onClick={onClose}
           isCollapsed={isCollapsed}
         />

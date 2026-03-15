@@ -1191,16 +1191,25 @@ async fn test_full_account_crud_flow() {
     );
     let transaction_id = transactions[0]["id"].as_str().unwrap();
 
-    // Step 7: Delete the transaction
+    // Step 7: Soft-delete the transaction (returns 200 with soft-deleted response)
     let delete_tx_response = delete_authenticated(
         &server,
         &format!("/api/v1/transactions/{}", transaction_id),
         &auth.token,
     )
     .await;
-    assert_status(&delete_tx_response, 204);
+    assert_status(&delete_tx_response, 200);
 
-    // Step 8: Now delete account (should succeed)
+    // Step 8: Permanently delete the transaction so the account can be deleted
+    let perm_delete_response = delete_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}?is_permanent=true", transaction_id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&perm_delete_response, 204);
+
+    // Step 9: Now delete account (should succeed since transaction is permanently gone)
     let delete_response = delete_authenticated(
         &server,
         &format!("/api/v1/accounts/{}", created_account.id),
@@ -1209,7 +1218,7 @@ async fn test_full_account_crud_flow() {
     .await;
     assert_status(&delete_response, 204);
 
-    // Step 9: Verify deletion
+    // Step 10: Verify deletion
     let get_response3 = get_authenticated(
         &server,
         &format!("/api/v1/accounts/{}", created_account.id),
@@ -1218,7 +1227,7 @@ async fn test_full_account_crud_flow() {
     .await;
     assert_status(&get_response3, 404);
 
-    // Step 10: Verify account not in list
+    // Step 11: Verify account not in list
     let list_response = get_authenticated(&server, "/api/v1/accounts", &auth.token).await;
     assert_status(&list_response, 200);
     let final_accounts: Vec<AccountResponse> = extract_json(list_response);

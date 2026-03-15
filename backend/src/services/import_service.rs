@@ -81,6 +81,7 @@ pub async fn check_duplicates(
             search: None,
             limit: Some(1000),
             offset: None,
+            is_deleted: None,
         },
     )
     .await?;

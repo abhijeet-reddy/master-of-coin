@@ -1,4 +1,5 @@
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -136,6 +137,13 @@ pub async fn list_transactions(
                 debt_transaction_metadata::expense_participants.nullable(),
             ))
             .into_boxed();
+
+        // Apply soft-delete filter: default to showing only active transactions
+        if filters.is_deleted == Some(true) {
+            query = query.filter(transactions::is_deleted.eq(true));
+        } else {
+            query = query.filter(transactions::is_deleted.eq(false));
+        }
 
         // Apply filters
         if let Some(account_id) = filters.account_id {
@@ -341,8 +349,11 @@ pub async fn update_transaction(
     })?
 }
 
-/// Delete transaction
-pub async fn delete_transaction(pool: &DbPool, transaction_id: Uuid) -> Result<(), ApiError> {
+/// Hard-delete a transaction permanently from the database.
+///
+/// This performs an actual `DELETE FROM transactions WHERE id = transaction_id`.
+/// Use `soft_delete_transaction()` for the default soft-delete behaviour.
+pub async fn hard_delete_transaction(pool: &DbPool, transaction_id: Uuid) -> Result<(), ApiError> {
     let mut conn = pool.get().map_err(|e| {
         tracing::error!("Failed to get DB connection: {}", e);
         ApiError::Internal
@@ -479,6 +490,102 @@ pub async fn update_split_amount(
                     split_id,
                     e
                 );
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Soft-delete a transaction by setting `is_deleted = true` and `deleted_at = now()`.
+///
+/// Returns the updated `Transaction`.
+pub async fn soft_delete_transaction(
+    pool: &DbPool,
+    transaction_id: Uuid,
+) -> Result<Transaction, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        let now = Utc::now();
+        diesel::update(transactions::table.find(transaction_id))
+            .set((
+                transactions::is_deleted.eq(true),
+                transactions::deleted_at.eq(now),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to soft-delete transaction {}: {}",
+                    transaction_id,
+                    e
+                );
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Restore a soft-deleted transaction by setting `is_deleted = false` and `deleted_at = None`.
+///
+/// Returns the updated `Transaction`.
+pub async fn restore_transaction(
+    pool: &DbPool,
+    transaction_id: Uuid,
+) -> Result<Transaction, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::update(transactions::table.find(transaction_id))
+            .set((
+                transactions::is_deleted.eq(false),
+                transactions::deleted_at.eq(None::<DateTime<Utc>>),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to restore transaction {}: {}", transaction_id, e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Find all soft-deleted transactions whose `deleted_at` is older than the given cutoff.
+///
+/// These are candidates for permanent purging by the background worker.
+pub async fn find_expired_soft_deleted(
+    pool: &DbPool,
+    cutoff: DateTime<Utc>,
+) -> Result<Vec<Transaction>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        transactions::table
+            .filter(transactions::is_deleted.eq(true))
+            .filter(transactions::deleted_at.lt(cutoff))
+            .load(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to find expired soft-deleted transactions: {}", e);
                 ApiError::from(e)
             })
     })

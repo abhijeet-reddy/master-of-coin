@@ -100,3 +100,51 @@ export async function updateDebtExpenseDetails(
   );
   return response.data;
 }
+
+/**
+ * Get soft-deleted (trashed) transactions with optional pagination
+ */
+export async function getTrashTransactions(
+  params?: Pick<QueryParams, 'limit' | 'offset'>
+): Promise<PaginatedResponse<Transaction>> {
+  const limit = params?.limit || 50;
+  const offset = params?.offset || 0;
+
+  const response = await apiClient.get<Transaction[]>('/transactions', {
+    params: {
+      is_deleted: true,
+      limit,
+      offset,
+    },
+  });
+
+  const transactions = response.data;
+  const has_more = transactions.length === limit;
+
+  return {
+    data: transactions,
+    pagination: {
+      total: transactions.length,
+      limit,
+      offset,
+      has_more,
+    },
+  };
+}
+
+/**
+ * Restore a soft-deleted transaction
+ */
+export async function restoreTransaction(id: string): Promise<Transaction> {
+  const response = await apiClient.post<Transaction>(`/transactions/${id}/restore`);
+  return response.data;
+}
+
+/**
+ * Permanently delete a soft-deleted transaction (cannot be undone)
+ */
+export async function permanentDeleteTransaction(id: string): Promise<void> {
+  await apiClient.delete(`/transactions/${id}`, {
+    params: { is_permanent: true },
+  });
+}

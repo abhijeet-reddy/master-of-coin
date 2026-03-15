@@ -103,6 +103,7 @@ fn create_test_config() -> Config {
         import: master_of_coin_backend::config::ImportConfig::default(),
         splitwise: None,
         encryption_key_configured: false,
+        soft_delete_retention_days: 30,
     }
 }
 

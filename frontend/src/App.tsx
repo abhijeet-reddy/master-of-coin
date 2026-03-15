@@ -22,6 +22,7 @@ import { JobsPage } from '@/pages/Jobs';
 import { JobDetailPage } from '@/pages/JobDetail';
 import { SchedulesPage } from '@/pages/Schedules';
 import { ScheduleDetailPage } from '@/pages/ScheduleDetail';
+import { TrashPage } from '@/pages/Trash';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
@@ -61,6 +62,7 @@ function App() {
               <Route path="jobs/:type/:id" element={<JobDetailPage />} />
               <Route path="schedules" element={<SchedulesPage />} />
               <Route path="schedules/:id" element={<ScheduleDetailPage />} />
+              <Route path="trash" element={<TrashPage />} />
               <Route path="settings" element={<Settings />} />
             </Route>
 

@@ -1,4 +1,5 @@
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -260,6 +261,89 @@ pub async fn delete_transfer_and_transactions(
             );
             ApiError::from(e)
         })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Soft-delete both transactions that form a transfer.
+///
+/// Sets `is_deleted = true` and `deleted_at = now()` on both
+/// `transfer.from_transaction_id` and `transfer.to_transaction_id`.
+pub async fn soft_delete_transfer_transactions(
+    pool: &DbPool,
+    transfer: &Transfer,
+) -> Result<(), ApiError> {
+    let from_id = transfer.from_transaction_id;
+    let to_id = transfer.to_transaction_id;
+
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        let now = Utc::now();
+        diesel::update(transactions::table.filter(transactions::id.eq_any(&[from_id, to_id])))
+            .set((
+                transactions::is_deleted.eq(true),
+                transactions::deleted_at.eq(now),
+            ))
+            .execute(&mut conn)
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to soft-delete transfer transactions (from={}, to={}): {}",
+                    from_id,
+                    to_id,
+                    e
+                );
+                ApiError::from(e)
+            })
+            .map(|_| ())
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Restore both transactions that form a transfer.
+///
+/// Sets `is_deleted = false` and `deleted_at = None` on both
+/// `transfer.from_transaction_id` and `transfer.to_transaction_id`.
+pub async fn restore_transfer_transactions(
+    pool: &DbPool,
+    transfer: &Transfer,
+) -> Result<(), ApiError> {
+    let from_id = transfer.from_transaction_id;
+    let to_id = transfer.to_transaction_id;
+
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::update(transactions::table.filter(transactions::id.eq_any(&[from_id, to_id])))
+            .set((
+                transactions::is_deleted.eq(false),
+                transactions::deleted_at.eq(None::<DateTime<Utc>>),
+            ))
+            .execute(&mut conn)
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to restore transfer transactions (from={}, to={}): {}",
+                    from_id,
+                    to_id,
+                    e
+                );
+                ApiError::from(e)
+            })
+            .map(|_| ())
     })
     .await
     .map_err(|e| {

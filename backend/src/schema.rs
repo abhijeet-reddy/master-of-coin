@@ -269,6 +269,8 @@ diesel::table! {
         notes -> Nullable<Text>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        is_deleted -> Bool,
+        deleted_at -> Nullable<Timestamptz>,
     }
 }
 

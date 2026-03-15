@@ -22,6 +22,8 @@ pub struct Transaction {
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub is_deleted: bool,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Insertable)]
@@ -198,6 +200,16 @@ pub struct TransactionFilter {
     /// Pagination: offset
     #[validate(range(min = 0, message = "Offset must be non-negative"))]
     pub offset: Option<i64>,
+
+    /// Filter by soft-delete status (None or Some(false) = active, Some(true) = deleted)
+    pub is_deleted: Option<bool>,
+}
+
+/// Query parameters for the delete transaction endpoint
+#[derive(Debug, Deserialize)]
+pub struct DeleteTransactionQuery {
+    /// If true, permanently delete instead of soft-delete
+    pub is_permanent: Option<bool>,
 }
 
 // Response DTOs
@@ -221,6 +233,12 @@ pub struct TransactionResponse {
     pub transfer_info: Option<crate::models::TransferInfo>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    /// Timestamp when the transaction was soft-deleted (None if not deleted)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deleted_at: Option<DateTime<Utc>>,
+    /// Computed date when the transaction will be permanently purged (None if not deleted)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permanent_delete_at: Option<DateTime<Utc>>,
 }
 
 impl From<Transaction> for TransactionResponse {
@@ -239,6 +257,8 @@ impl From<Transaction> for TransactionResponse {
             transfer_info: None, // Populated separately from transfers table
             created_at: transaction.created_at,
             updated_at: transaction.updated_at,
+            deleted_at: transaction.deleted_at,
+            permanent_delete_at: None, // Computed in service layer
         }
     }
 }
@@ -271,6 +291,8 @@ impl From<crate::repositories::transaction::TransactionWithDebtInfo> for Transac
             None
         };
 
+        let deleted_at = info.transaction.deleted_at;
+
         TransactionResponse {
             id: info.transaction.id,
             user_id: info.transaction.user_id,
@@ -285,6 +307,8 @@ impl From<crate::repositories::transaction::TransactionWithDebtInfo> for Transac
             transfer_info: None, // Populated separately from transfers table
             created_at: info.transaction.created_at,
             updated_at: info.transaction.updated_at,
+            deleted_at,
+            permanent_delete_at: None, // Computed in service layer
         }
     }
 }

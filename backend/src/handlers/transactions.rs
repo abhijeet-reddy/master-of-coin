@@ -3,7 +3,8 @@ use crate::{
     auth::context::AuthContext,
     errors::ApiError,
     models::{
-        CreateTransactionRequest, TransactionFilter, TransactionResponse, UpdateTransactionRequest,
+        CreateTransactionRequest, DeleteTransactionQuery, TransactionFilter, TransactionResponse,
+        UpdateTransactionRequest,
     },
     services::{split_sync_service::SplitSyncService, transaction_service},
 };
@@ -11,6 +12,7 @@ use axum::{
     Json,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
+    response::IntoResponse,
 };
 use uuid::Uuid;
 
@@ -86,32 +88,75 @@ pub async fn update(
     Ok(Json(transaction))
 }
 
-/// Delete a transaction
+/// Delete a transaction (soft-delete by default, permanent with `?is_permanent=true`)
 /// DELETE /transactions/:id
+/// DELETE /transactions/:id?is_permanent=true
 pub async fn delete(
     State(state): State<AppState>,
     Extension(auth_context): Extension<AuthContext>,
     Path(id): Path<Uuid>,
-) -> Result<StatusCode, ApiError> {
+    Query(query): Query<DeleteTransactionQuery>,
+) -> Result<impl IntoResponse, ApiError> {
     let user_id = auth_context.user_id();
-    tracing::info!("Deleting transaction {} for user {}", id, user_id);
 
-    // Get splits before deletion so we can notify sync service
-    let existing = transaction_service::get_transaction(&state.db, id, user_id).await?;
-    let split_ids: Vec<Uuid> = existing
-        .splits
-        .as_ref()
-        .map(|s| s.iter().map(|split| split.id).collect())
-        .unwrap_or_default();
+    if query.is_permanent == Some(true) {
+        tracing::info!(
+            "Permanently deleting transaction {} for user {}",
+            id,
+            user_id
+        );
 
-    transaction_service::delete_transaction(&state.db, id, user_id).await?;
+        // Get splits before deletion so we can notify sync service
+        let existing = transaction_service::get_transaction(&state.db, id, user_id).await?;
+        let split_ids: Vec<Uuid> = existing
+            .splits
+            .as_ref()
+            .map(|s| s.iter().map(|split| split.id).collect())
+            .unwrap_or_default();
 
-    // Trigger split sync deletion for each split (fire-and-forget)
-    for split_id in split_ids {
-        trigger_split_sync_deleted(state.split_sync.clone(), id, split_id).await;
+        transaction_service::permanent_delete_transaction(&state.db, id, user_id).await?;
+
+        // Trigger split sync deletion for each split (fire-and-forget)
+        for split_id in split_ids {
+            trigger_split_sync_deleted(state.split_sync.clone(), id, split_id).await;
+        }
+
+        Ok(StatusCode::NO_CONTENT.into_response())
+    } else {
+        tracing::info!("Soft-deleting transaction {} for user {}", id, user_id);
+
+        // Get splits before soft-deletion so we can notify sync service
+        let existing = transaction_service::get_transaction(&state.db, id, user_id).await?;
+        let split_ids: Vec<Uuid> = existing
+            .splits
+            .as_ref()
+            .map(|s| s.iter().map(|split| split.id).collect())
+            .unwrap_or_default();
+
+        let response = transaction_service::delete_transaction(&state.db, id, user_id).await?;
+
+        // Trigger split sync deletion for each split (fire-and-forget)
+        for split_id in split_ids {
+            trigger_split_sync_deleted(state.split_sync.clone(), id, split_id).await;
+        }
+
+        Ok((StatusCode::OK, Json(response)).into_response())
     }
+}
 
-    Ok(StatusCode::NO_CONTENT)
+/// Restore a soft-deleted transaction from trash
+/// POST /transactions/:id/restore
+pub async fn restore(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(id): Path<Uuid>,
+) -> Result<(StatusCode, Json<TransactionResponse>), ApiError> {
+    let user_id = auth_context.user_id();
+    tracing::info!("Restoring transaction {} for user {}", id, user_id);
+
+    let response = transaction_service::restore_transaction(&state.db, id, user_id).await?;
+
+    Ok((StatusCode::OK, Json(response)))
 }
 
 /// Bulk create transactions

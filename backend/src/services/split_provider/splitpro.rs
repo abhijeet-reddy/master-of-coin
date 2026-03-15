@@ -394,6 +394,7 @@ impl SplitProProvider {
             currency_code: currency,
             date,
             users,
+            provider_type: "splitpro".to_string(),
         })
     }
 

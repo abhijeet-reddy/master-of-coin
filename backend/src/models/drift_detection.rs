@@ -70,6 +70,9 @@ pub struct DriftedItem {
     pub external_date: String,
     pub local_splits: Vec<LocalSplitInfo>,
     pub external_splits: Vec<ExternalSplitInfo>,
+    /// Provider that owns the external expense (e.g. "splitwise", "splitpro")
+    #[serde(default)]
+    pub provider_type: String,
 }
 
 /// A local transaction with splits that has no linked external expense
@@ -94,6 +97,9 @@ pub struct MissingOnLocal {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     pub unmapped_users: Vec<UnmappedUser>,
+    /// Provider that owns the external expense (e.g. "splitwise", "splitpro")
+    #[serde(default)]
+    pub provider_type: String,
 }
 
 /// Split info from the local side (person_name + owed_share)

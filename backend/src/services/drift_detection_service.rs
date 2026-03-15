@@ -535,6 +535,7 @@ pub fn classify(
                         external_date: external_expense.date.clone(),
                         local_splits,
                         external_splits,
+                        provider_type: external_expense.provider_type.clone(),
                     });
                 }
             }
@@ -633,6 +634,7 @@ pub fn classify(
             date: expense.date.clone(),
             users,
             unmapped_users,
+            provider_type: expense.provider_type.clone(),
         });
     }
 

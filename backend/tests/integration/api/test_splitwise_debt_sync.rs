@@ -113,6 +113,7 @@ fn build_paid_by_others_expense(
                 owed_share: user_owed.to_string(),
             },
         ],
+        provider_type: "splitwise".to_string(),
     }
 }
 

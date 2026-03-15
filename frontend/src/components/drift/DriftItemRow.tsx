@@ -3,6 +3,23 @@ import { formatDate } from '@/utils/formatters/date';
 import { buildSplitDiffs, compareTotals } from '@/utils/driftHelpers';
 import type { DriftedItem, MissingOnExternal, MissingOnLocal } from '@/types';
 
+/** Color palette and display label for each known provider type */
+const PROVIDER_CONFIG: Record<string, { label: string; color: string }> = {
+  splitwise: { label: 'Splitwise', color: 'teal' },
+  splitpro: { label: 'SplitPro', color: 'purple' },
+};
+
+/** Small badge showing which split provider an expense belongs to */
+const ProviderBadge = ({ providerType }: { providerType?: string }) => {
+  if (!providerType) return null;
+  const config = PROVIDER_CONFIG[providerType] ?? { label: providerType, color: 'gray' };
+  return (
+    <Badge size="sm" variant="subtle" colorPalette={config.color}>
+      {config.label}
+    </Badge>
+  );
+};
+
 interface DriftedItemRowProps {
   item: DriftedItem;
 }
@@ -25,7 +42,10 @@ export const DriftedItemRow = ({ item }: DriftedItemRowProps) => {
       <Card.Body py={3} px={4}>
         <VStack gap={2} alignItems="stretch">
           <HStack justifyContent="space-between">
-            <Text fontWeight="medium">{item.transaction_title}</Text>
+            <HStack gap={2}>
+              <Text fontWeight="medium">{item.transaction_title}</Text>
+              <ProviderBadge providerType={item.provider_type} />
+            </HStack>
             <HStack gap={2}>
               <Text fontSize="sm" color="fg.muted">
                 {formatDate(item.transaction_date)}
@@ -123,9 +143,12 @@ export const MissingOnLocalRow = ({ item }: MissingOnLocalRowProps) => (
     <Card.Body py={3} px={4}>
       <VStack gap={2} alignItems="stretch">
         <HStack justifyContent="space-between">
-          <Text fontWeight="medium">
-            {item.description} #{item.external_expense_id}
-          </Text>
+          <HStack gap={2}>
+            <Text fontWeight="medium">
+              {item.description} #{item.external_expense_id}
+            </Text>
+            <ProviderBadge providerType={item.provider_type} />
+          </HStack>
           <HStack gap={2}>
             <Text fontSize="sm" color="fg.muted">
               {formatDate(item.date)}

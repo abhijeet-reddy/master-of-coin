@@ -49,6 +49,8 @@ export interface DriftedItem {
   external_date: string;
   local_splits: LocalSplitInfo[];
   external_splits: ExternalSplitInfo[];
+  /** Provider that owns the external expense (e.g. "splitwise", "splitpro") */
+  provider_type?: string;
 }
 
 /** A local transaction missing on the external provider */
@@ -69,6 +71,8 @@ export interface MissingOnLocal {
   date: string;
   users: ExternalSplitInfo[];
   unmapped_users?: UnmappedUser[];
+  /** Provider that owns the external expense (e.g. "splitwise", "splitpro") */
+  provider_type?: string;
 }
 
 /** Local split share info */

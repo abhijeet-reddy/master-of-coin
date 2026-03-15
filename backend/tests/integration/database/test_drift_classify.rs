@@ -64,6 +64,7 @@ fn make_external_expense(
         currency_code: "USD".to_string(),
         date: "2026-01-15".to_string(),
         users,
+        provider_type: "splitwise".to_string(),
     }
 }
 

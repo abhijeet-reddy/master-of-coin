@@ -387,6 +387,7 @@ impl SplitProvider for SplitwiseProvider {
                     currency_code: exp.currency_code.unwrap_or_else(|| "USD".to_string()),
                     date: exp.date.unwrap_or_default(),
                     users,
+                    provider_type: "splitwise".to_string(),
                 }
             })
             .collect();
@@ -514,6 +515,7 @@ impl SplitProvider for SplitwiseProvider {
             currency_code,
             date,
             users,
+            provider_type: "splitwise".to_string(),
         }))
     }
 

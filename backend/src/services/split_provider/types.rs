@@ -17,6 +17,11 @@ pub struct ExternalExpenseDetail {
     pub date: String,
     /// Users involved with their shares
     pub users: Vec<ExternalExpenseUser>,
+    /// Provider that owns this expense (e.g. "splitwise", "splitpro").
+    /// Populated by the drift detection service; defaults to empty when
+    /// constructed by individual provider implementations.
+    #[serde(default)]
+    pub provider_type: String,
 }
 
 /// User in an external expense (with names for display)

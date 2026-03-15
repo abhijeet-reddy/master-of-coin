@@ -263,11 +263,32 @@ function UserMenu() {
 
 ### 10. TypeScript Integration
 
+- **Prefer enums over strings**: When a value comes from a known, finite set (e.g., provider types, job statuses, account types), always use a TypeScript `enum` — never a bare `string` or string literal union. Enums provide a single source of truth, enable exhaustive `switch` checks, and are reusable across the codebase.
 - **Always type props**: Use interfaces or types for component props.
 - **Type custom hooks**: Return types should be explicit.
 - **Avoid `any`**: Use proper types or `unknown` if type is truly unknown.
 
 ```tsx
+// ❌ Bad: Using bare string — no compile-time safety
+interface Expense {
+  provider_type: string;
+}
+
+// ❌ Also bad: String literal union — still strings at runtime, duplicated everywhere
+interface Expense {
+  provider_type: "splitwise" | "splitpro";
+}
+
+// ✅ Good: Use an enum — single source of truth, exhaustive switch checks
+export enum ProviderType {
+  SPLITWISE = "splitwise",
+  SPLITPRO = "splitpro",
+}
+
+interface Expense {
+  provider_type: ProviderType;
+}
+
 // ✅ Good: Properly typed component
 interface UserCardProps {
   userId: string;

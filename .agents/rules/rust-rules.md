@@ -64,15 +64,42 @@ fn get_user(id: i32) -> Result<User, UserError> {
 }
 ```
 
-### 3. Type Safety and Newtype Pattern
+### 3. Type Safety and Strict Typing
 
+- **Prefer enums over strings**: When a value comes from a known, finite set (e.g., provider types, account types, job statuses), always use an enum — never a raw `String`. Enums give you compile-time exhaustiveness checks, prevent typos, and make refactoring safe.
 - **Use newtype pattern for domain concepts**: Wrap primitive types to add type safety.
-- **Leverage the type system**: Make invalid states unrepresentable.
+- **Leverage the type system**: Make invalid states unrepresentable. If the compiler can catch a bug, let it.
 - **Use enums for state machines**: Model state transitions explicitly.
+- **Derive serde traits on enums**: Use `#[serde(rename_all = "snake_case")]` for clean JSON serialization.
 
 **Example:**
 
 ```rust
+// ❌ Bad: Using String for a known set of values
+fn get_provider(provider_type: &str) -> Box<dyn Provider> {
+    match provider_type {
+        "splitwise" => ...,
+        "splitpro" => ...,
+        _ => panic!("unknown provider"),  // Runtime crash!
+    }
+}
+
+// ✅ Good: Use an enum — compiler catches missing variants
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderType {
+    Splitwise,
+    SplitPro,
+}
+
+fn get_provider(provider_type: ProviderType) -> Box<dyn Provider> {
+    match provider_type {
+        ProviderType::Splitwise => ...,
+        ProviderType::SplitPro => ...,
+        // No wildcard needed — compiler ensures exhaustiveness
+    }
+}
+
 // ❌ Bad: Using primitives everywhere
 fn transfer_money(from: i32, to: i32, amount: f64) -> Result<()> {
     // Easy to mix up parameters

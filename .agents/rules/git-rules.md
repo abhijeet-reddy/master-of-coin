@@ -170,6 +170,23 @@ Relates to #46
 - [ ] Issue number is referenced (if applicable)
 - [ ] Only related changes are included
 
+### 8. Never Use `--no-verify`
+
+- **Never bypass pre-commit hooks**: `git commit --no-verify` is **strictly forbidden**.
+- **If tests fail in pre-commit, investigate the issue**: Pre-commit hooks exist to catch problems before they reach the repository. If tests fail, the failure is real and must be understood and fixed.
+- **Flaky tests are bugs too**: If a test fails intermittently due to database connection issues, race conditions, or resource exhaustion, that's a test infrastructure bug — fix it, don't skip it.
+- **Re-run the commit if needed**: If you suspect a transient failure (e.g., database pool exhaustion from parallel tests), re-run the commit. If it passes on retry, the test infrastructure needs hardening.
+
+```bash
+# ❌ NEVER do this
+git commit --no-verify -m "Skip failing tests"
+
+# ✅ Instead: investigate and fix
+cargo test --test integration_api -- test_that_failed  # Run the failing test in isolation
+# If it passes alone → test infrastructure issue (parallelism, resource limits)
+# If it fails alone → real bug in your code, fix it before committing
+```
+
 ## Common Patterns
 
 ### Working on a Feature
@@ -272,6 +289,7 @@ git reset --hard HEAD~1
 3. ✅ Commit often, commit focused changes
 4. ✅ Use descriptive branch names with issue numbers
 5. ✅ Test before committing
+6. ❌ Never use `--no-verify` — investigate failing tests instead
 
 **Common Format:**
 

@@ -28,6 +28,7 @@ fn parse_job_type(s: &str) -> Result<JobType, ApiError> {
     match s {
         "DRIFT_DETECTION" => Ok(JobType::DriftDetection),
         "BULK_SYNC" => Ok(JobType::BulkSync),
+        "PORTFOLIO_SYNC" => Ok(JobType::PortfolioSync),
         _ => Err(ApiError::BadRequest(format!("Invalid job type: {}", s))),
     }
 }

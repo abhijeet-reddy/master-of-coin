@@ -18,6 +18,10 @@ pub mod sql_types {
     pub struct CurrencyCode;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "investment_provider_type"))]
+    pub struct InvestmentProviderType;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "job_status"))]
     pub struct JobStatus;
 
@@ -139,6 +143,22 @@ diesel::table! {
         created_at -> Timestamptz,
         total_cost -> Numeric,
         expense_participants -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::InvestmentProviderType;
+
+    investment_providers (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        account_id -> Uuid,
+        provider_type -> InvestmentProviderType,
+        credentials -> Jsonb,
+        is_active -> Bool,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -280,6 +300,8 @@ diesel::joinable!(budgets -> users (user_id));
 diesel::joinable!(categories -> users (user_id));
 diesel::joinable!(debt_transaction_metadata -> people (payer_person_id));
 diesel::joinable!(debt_transaction_metadata -> transactions (transaction_id));
+diesel::joinable!(investment_providers -> accounts (account_id));
+diesel::joinable!(investment_providers -> users (user_id));
 diesel::joinable!(people -> users (user_id));
 diesel::joinable!(person_split_configs -> people (person_id));
 diesel::joinable!(person_split_configs -> split_providers (split_provider_id));
@@ -301,6 +323,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     budgets,
     categories,
     debt_transaction_metadata,
+    investment_providers,
     people,
     person_split_configs,
     schedules,

@@ -688,6 +688,92 @@ pub fn create_router(state: AppState) -> Router {
             "/integrations/providers/:id/friends",
             get(handlers::split_providers::get_provider_friends),
         )
+        // Investment providers - with scope enforcement (uses Accounts scope)
+        .route(
+            "/investment-providers",
+            post(handlers::investment_providers::connect_provider).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Accounts,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/investment-providers",
+            get(handlers::investment_providers::list_providers).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Accounts,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/investment-providers/:id",
+            delete(handlers::investment_providers::disconnect_provider).layer(
+                middleware::from_fn(|auth, req, next| {
+                    require_scope(
+                        ResourceType::Accounts,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                }),
+            ),
+        )
+        // Portfolio sync - async job-based (uses Accounts scope)
+        .route(
+            "/portfolio-sync",
+            post(handlers::portfolio_sync::start_portfolio_sync).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Accounts,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/portfolio-sync/:job_id",
+            get(handlers::portfolio_sync::get_portfolio_sync).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Accounts,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/portfolio-sync/:job_id/retry",
+            post(handlers::portfolio_sync::retry_portfolio_sync).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Accounts,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // API Keys - no scope enforcement (always accessible to authenticated users)
         // API keys cannot manage other API keys via API key authentication
         .route(

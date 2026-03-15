@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 
 /// PostgreSQL ENUM: job_type
-/// Maps to: CREATE TYPE job_type AS ENUM ('DRIFT_DETECTION', 'BULK_SYNC')
+/// Maps to: CREATE TYPE job_type AS ENUM ('DRIFT_DETECTION', 'BULK_SYNC', 'PORTFOLIO_SYNC')
 #[derive(
     Debug,
     Clone,
@@ -23,6 +23,7 @@ use std::io::Write;
 pub enum JobType {
     DriftDetection,
     BulkSync,
+    PortfolioSync,
 }
 
 impl ToSql<crate::schema::sql_types::JobType, Pg> for JobType {
@@ -30,6 +31,7 @@ impl ToSql<crate::schema::sql_types::JobType, Pg> for JobType {
         match *self {
             JobType::DriftDetection => out.write_all(b"DRIFT_DETECTION")?,
             JobType::BulkSync => out.write_all(b"BULK_SYNC")?,
+            JobType::PortfolioSync => out.write_all(b"PORTFOLIO_SYNC")?,
         }
         Ok(serialize::IsNull::No)
     }
@@ -40,6 +42,7 @@ impl FromSql<crate::schema::sql_types::JobType, Pg> for JobType {
         match bytes.as_bytes() {
             b"DRIFT_DETECTION" => Ok(JobType::DriftDetection),
             b"BULK_SYNC" => Ok(JobType::BulkSync),
+            b"PORTFOLIO_SYNC" => Ok(JobType::PortfolioSync),
             _ => Err("Unrecognized enum variant for JobType".into()),
         }
     }

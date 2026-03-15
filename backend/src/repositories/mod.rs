@@ -5,6 +5,7 @@ pub mod background_job;
 pub mod budget;
 pub mod category;
 pub mod debt_transaction_metadata;
+pub mod investment_provider;
 pub mod person;
 pub mod person_split_config;
 pub mod schedule;

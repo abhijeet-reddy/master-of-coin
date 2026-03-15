@@ -10,10 +10,12 @@ pub mod debt_transaction_metadata;
 pub mod drift_detection;
 pub mod exchange_rate;
 pub mod import;
+pub mod investment_provider;
 pub mod job_summary;
 pub mod parser_error;
 pub mod person;
 pub mod person_split_config;
+pub mod portfolio_sync;
 pub mod schedule;
 pub mod split_provider;
 pub mod split_sync_record;
@@ -29,6 +31,7 @@ pub use budget::{Budget, CreateBudget, UpdateBudget};
 pub use budget_range::{BudgetRange, CreateBudgetRange, UpdateBudgetRange};
 pub use category::{Category, CreateCategory, UpdateCategory};
 pub use debt_transaction_metadata::{DebtTransactionMetadata, NewDebtTransactionMetadata};
+pub use investment_provider::{InvestmentProviderRecord, NewInvestmentProvider};
 pub use person::{CreatePerson, Person, UpdatePerson};
 pub use person_split_config::{PersonSplitConfig, UpdatePersonSplitConfig};
 pub use split_provider::{SplitProvider, UpdateSplitProvider};
@@ -60,8 +63,10 @@ pub use budget_range::{CreateBudgetRangeRequest, UpdateBudgetRangeRequest};
 pub use category::{CreateCategoryRequest, UpdateCategoryRequest};
 pub use debt_transaction_metadata::{CreateDebtTransactionRequest, UpdateExpenseDetailsRequest};
 pub use exchange_rate::ExchangeRateQuery;
+pub use investment_provider::ConnectInvestmentProviderRequest;
 pub use person::{CreatePersonRequest, UpdatePersonRequest};
 pub use person_split_config::SetPersonSplitConfigRequest;
+pub use portfolio_sync::PortfolioSyncRequest;
 pub use split_provider::CreateSplitProviderRequest;
 pub use transaction::{
     CreateTransactionRequest, TransactionFilter, TransactionType, UpdateTransactionRequest,
@@ -77,8 +82,12 @@ pub use budget_range::BudgetRangeResponse;
 pub use category::CategoryResponse;
 pub use debt_transaction_metadata::DebtMetadataResponse;
 pub use exchange_rate::ExchangeRateResponse;
+pub use investment_provider::InvestmentProviderResponse;
 pub use person::PersonResponse;
 pub use person_split_config::PersonSplitConfigResponse;
+pub use portfolio_sync::{
+    AccountSyncResult, PortfolioSyncJobResponse, PortfolioSyncReport, StartPortfolioSyncResponse,
+};
 pub use split_provider::{SplitProviderResponse, SplitwiseCredentials};
 pub use split_sync_record::SplitSyncStatusResponse;
 pub use transaction::TransactionResponse;
@@ -96,7 +105,9 @@ pub use bulk_transaction::{
 pub use import::{DuplicateMatch, ImportSummary, ParseData, ParseResponse, ParsedTransaction};
 
 // Re-export types from types module for convenience
-pub use crate::types::{AccountType, ApiKeyStatus, BudgetPeriod, ConfidenceLevel, CurrencyCode};
+pub use crate::types::{
+    AccountType, ApiKeyStatus, BudgetPeriod, ConfidenceLevel, CurrencyCode, InvestmentProviderType,
+};
 pub use crate::types::{JobStatus, JobType};
 
 // Re-export background job models

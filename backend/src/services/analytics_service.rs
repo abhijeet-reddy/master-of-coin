@@ -41,6 +41,13 @@ pub struct CategoryBreakdown {
     pub percentage: f64,
 }
 
+/// Aggregate debt overview for the dashboard
+#[derive(Debug, serde::Serialize)]
+pub struct DebtOverview {
+    pub total_owed_to_me: String,
+    pub total_i_owe: String,
+}
+
 /// Dashboard summary with all key metrics
 #[derive(Debug, serde::Serialize)]
 pub struct DashboardSummary {
@@ -49,6 +56,7 @@ pub struct DashboardSummary {
     pub budget_statuses: Vec<super::budget_service::BudgetStatus>,
     pub category_breakdown: Vec<CategoryBreakdown>,
     pub top_spending_categories: Vec<CategoryBreakdown>,
+    pub debt_overview: DebtOverview,
 }
 
 /// Calculate net worth (sum of all account balances converted to primary currency).
@@ -251,11 +259,18 @@ pub async fn get_dashboard_summary(
     let start_date = end_date - chrono::Duration::days(30); // TODO: Make time range configurable (30 days hardcoded)
 
     // Run queries in parallel using tokio::join!
-    let (net_worth_result, recent_transactions_result, budgets_result, category_breakdown_result) = tokio::join!(
+    let (
+        net_worth_result,
+        recent_transactions_result,
+        budgets_result,
+        category_breakdown_result,
+        debt_overview_result,
+    ) = tokio::join!(
         calculate_net_worth(pool, user_id, exchange_provider),
         get_recent_transactions(pool, user_id),
         get_all_budget_statuses(pool, user_id, exchange_provider),
-        get_category_breakdown(pool, user_id, start_date, end_date, exchange_provider)
+        get_category_breakdown(pool, user_id, start_date, end_date, exchange_provider),
+        get_debt_overview(pool, user_id)
     );
 
     // Handle results
@@ -263,6 +278,7 @@ pub async fn get_dashboard_summary(
     let recent_transactions = recent_transactions_result?;
     let budget_statuses = budgets_result?;
     let category_breakdown = category_breakdown_result?;
+    let debt_overview = debt_overview_result?;
 
     // Get top 5 spending categories
     let top_spending_categories = category_breakdown.iter().take(5).cloned().collect(); // TODO: Make top N configurable
@@ -273,6 +289,7 @@ pub async fn get_dashboard_summary(
         budget_statuses,
         category_breakdown,
         top_spending_categories,
+        debt_overview,
     })
 }
 
@@ -328,6 +345,30 @@ async fn get_all_budget_statuses(
     }
 
     Ok(statuses)
+}
+
+/// Helper: Get aggregate debt overview (total owed to me and total I owe)
+async fn get_debt_overview(pool: &DbPool, user_id: Uuid) -> Result<DebtOverview, ApiError> {
+    let debts = super::debt_service::get_all_debts_for_user(pool, user_id).await?;
+
+    let mut total_owed_to_me = BigDecimal::from(0);
+    let mut total_i_owe = BigDecimal::from(0);
+
+    for debt in &debts {
+        let amount = BigDecimal::from_str(&debt.debt_amount).unwrap_or_default();
+        if amount > BigDecimal::from(0) {
+            // Positive = they owe me
+            total_owed_to_me += amount;
+        } else if amount < BigDecimal::from(0) {
+            // Negative = I owe them (store as positive)
+            total_i_owe += amount.abs();
+        }
+    }
+
+    Ok(DebtOverview {
+        total_owed_to_me: total_owed_to_me.to_string(),
+        total_i_owe: total_i_owe.to_string(),
+    })
 }
 
 // Re-export BigDecimal::from_str for use in this module

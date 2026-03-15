@@ -181,6 +181,11 @@ async fn test_get_dashboard_empty() {
             .len(),
         0
     );
+
+    // Verify debt overview is present with zeros
+    let debt_overview = &dashboard["debt_overview"];
+    assert_eq!(debt_overview["total_owed_to_me"].as_str().unwrap(), "0");
+    assert_eq!(debt_overview["total_i_owe"].as_str().unwrap(), "0");
 }
 
 /// Test that getting dashboard without authentication fails.
@@ -1037,5 +1042,115 @@ async fn test_full_dashboard_scenario() {
         entertainment_budget["is_over_budget"].as_bool().unwrap(),
         false,
         "Entertainment should be under budget"
+    );
+
+    // Verify debt overview is present with zeros (no splits created in this test)
+    let debt_overview = &dashboard["debt_overview"];
+    assert_eq!(debt_overview["total_owed_to_me"].as_str().unwrap(), "0");
+    assert_eq!(debt_overview["total_i_owe"].as_str().unwrap(), "0");
+}
+
+// ============================================================================
+// Dashboard Debt Overview Tests
+// ============================================================================
+
+/// Test that dashboard shows correct debt overview when debts exist.
+///
+/// Verifies that:
+/// - debt_overview field is present
+/// - total_owed_to_me is correct (sum of positive split amounts)
+/// - total_i_owe is correct (sum of negative split amounts)
+#[tokio::test]
+async fn test_get_dashboard_debt_overview() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("debtuser_{}", timestamp),
+        &format!("debt_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Debt Dashboard User",
+    )
+    .await;
+
+    // Create account
+    let account = create_test_account(&server, &auth.token, "Checking", "CHECKING", 5000.0).await;
+    let account_id = account["id"].as_str().unwrap();
+
+    // Create people
+    let alice = create_test_person(&server, &auth.token, "Alice").await;
+    let bob = create_test_person(&server, &auth.token, "Bob").await;
+
+    // Create transaction where I paid for Alice (she owes me 50)
+    // Positive split = they owe me
+    let request = json!({
+        "account_id": account_id,
+        "amount": -100.0,
+        "title": "Dinner with Alice",
+        "date": Utc::now().to_rfc3339(),
+        "splits": [{"person_id": alice.id, "amount": 50.0}]
+    });
+    let response = post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
+    assert_status(&response, 201);
+
+    // Create transaction where I paid for Bob (he owes me 30)
+    let request = json!({
+        "account_id": account_id,
+        "amount": -60.0,
+        "title": "Lunch with Bob",
+        "date": Utc::now().to_rfc3339(),
+        "splits": [{"person_id": bob.id, "amount": 30.0}]
+    });
+    let response = post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
+    assert_status(&response, 201);
+
+    // Create a debt transaction where Bob paid for me (I owe Bob 20)
+    // Uses the debt-transactions endpoint which creates negative splits
+    let debt_request = json!({
+        "payer_person_id": bob.id,
+        "currency": "EUR",
+        "title": "Coffee Bob paid",
+        "amount": -20.0,
+        "date": Utc::now().to_rfc3339()
+    });
+    let response = post_authenticated(
+        &server,
+        "/api/v1/debt-transactions",
+        &auth.token,
+        &debt_request,
+    )
+    .await;
+    assert_status(&response, 201);
+
+    // Get dashboard
+    let response = get_authenticated(&server, "/api/v1/dashboard", &auth.token).await;
+    assert_status(&response, 200);
+
+    let dashboard = extract_dashboard(response);
+
+    // Verify debt overview
+    let debt_overview = &dashboard["debt_overview"];
+
+    // Alice owes me 50, Bob owes me net 10 (30 - 20 = 10)
+    // total_owed_to_me = 60 (Alice 50 + Bob net 10)
+    // total_i_owe = 0 (no one has a net negative)
+    // Note: debt_service calculates NET per person, then aggregates
+    let total_owed =
+        BigDecimal::from_str(debt_overview["total_owed_to_me"].as_str().unwrap()).unwrap();
+    let total_owe = BigDecimal::from_str(debt_overview["total_i_owe"].as_str().unwrap()).unwrap();
+
+    // Alice: net = +50 (she owes me)
+    // Bob: net = +30 - 20 = +10 (he owes me)
+    // total_owed_to_me = 50 + 10 = 60
+    assert_eq!(
+        total_owed,
+        BigDecimal::from_str("60").unwrap(),
+        "Total owed to me should be 60 (Alice 50 + Bob 10)"
+    );
+    assert_eq!(
+        total_owe,
+        BigDecimal::from_str("0").unwrap(),
+        "Total I owe should be 0 (no net negative debts)"
     );
 }

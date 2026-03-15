@@ -304,10 +304,16 @@ export interface SpendingTrendPoint {
   month?: string;
 }
 
+export interface DebtOverview {
+  total_owed_to_me: string;
+  total_i_owe: string;
+}
+
 export interface DashboardSummary {
   net_worth: string;
   recent_transactions: Transaction[];
   budget_statuses: BudgetStatus[];
   category_breakdown: CategoryBreakdownItem[];
   top_spending_categories: CategoryBreakdownItem[];
+  debt_overview: DebtOverview;
 }

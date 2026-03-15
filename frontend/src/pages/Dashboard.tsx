@@ -8,6 +8,7 @@ import {
 import { PageHeader, LoadingSpinner, ErrorAlert } from '@/components/common';
 import {
   NetWorthWidget,
+  DebtWidget,
   BudgetProgress,
   CategoryBreakdown,
   RecentTransactions,
@@ -56,10 +57,13 @@ export default function Dashboard() {
         {/* Row 2: Budget Progress (full width) */}
         <BudgetProgress budgets={enrichedBudgetStatuses} />
 
-        {/* Row 3: Grid layout for Category Breakdown and Recent Transactions */}
+        {/* Row 3: Grid layout for Category Breakdown + Debts and Recent Transactions */}
         <Grid templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }} gap={6}>
           <GridItem>
-            <CategoryBreakdown data={data.category_breakdown} />
+            <VStack gap={6} alignItems="stretch">
+              <CategoryBreakdown data={data.category_breakdown} />
+              <DebtWidget debtOverview={data.debt_overview} />
+            </VStack>
           </GridItem>
           <GridItem>
             <RecentTransactions transactions={enrichedTransactions} />

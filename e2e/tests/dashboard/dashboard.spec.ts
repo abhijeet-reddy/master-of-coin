@@ -11,6 +11,7 @@ import {
  *
  * Verifies the dashboard renders correctly with all widgets:
  * - Net Worth widget
+ * - Debt widget
  * - Budget Progress
  * - Category Breakdown
  * - Recent Transactions
@@ -53,6 +54,38 @@ test.describe("Dashboard", () => {
       authenticatedPage,
       "dashboard-full",
     );
+  });
+
+  test("debt widget is visible with You Are Owed and You Owe", async ({
+    authenticatedPage,
+  }) => {
+    await authenticatedPage.goto("/dashboard");
+    await authenticatedPage.waitForLoadState("networkidle");
+
+    // Wait for dashboard to fully load
+    await authenticatedPage.waitForTimeout(2000);
+
+    // Verify debt widget sections are visible
+    await expect(authenticatedPage.locator("text=You Are Owed")).toBeVisible();
+    await expect(authenticatedPage.locator("text=You Owe")).toBeVisible();
+    await expect(authenticatedPage.locator("text=Debts")).toBeVisible();
+  });
+
+  test("debt widget navigates to people page on click", async ({
+    authenticatedPage,
+  }) => {
+    await authenticatedPage.goto("/dashboard");
+    await authenticatedPage.waitForLoadState("networkidle");
+
+    // Wait for dashboard to fully load
+    await authenticatedPage.waitForTimeout(2000);
+
+    // Click the debt widget card (find by the "Debts" heading)
+    await authenticatedPage.locator("text=Debts").click();
+
+    // Verify navigation to people page
+    await authenticatedPage.waitForURL("**/people", { timeout: 10_000 });
+    await expectPageTitle(authenticatedPage, "People");
   });
 
   test("dashboard loads without errors after navigation", async ({

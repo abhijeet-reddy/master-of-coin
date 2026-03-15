@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::types::SplitProviderType;
+
 /// External expense with user shares (returned from search/get)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExternalExpenseDetail {
@@ -17,11 +19,11 @@ pub struct ExternalExpenseDetail {
     pub date: String,
     /// Users involved with their shares
     pub users: Vec<ExternalExpenseUser>,
-    /// Provider that owns this expense (e.g. "splitwise", "splitpro").
-    /// Populated by the drift detection service; defaults to empty when
+    /// Provider that owns this expense (e.g. Splitwise, SplitPro).
+    /// Populated by the drift detection service; defaults to Splitwise when
     /// constructed by individual provider implementations.
     #[serde(default)]
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
 }
 
 /// User in an external expense (with names for display)

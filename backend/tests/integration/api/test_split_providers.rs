@@ -6,6 +6,7 @@ use diesel::prelude::*;
 use master_of_coin_backend::{
     models::{NewSplitProvider, PersonSplitConfigResponse, SplitProvider, SplitProviderResponse},
     schema::split_providers,
+    types::SplitProviderType,
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -17,12 +18,12 @@ use uuid::Uuid;
 fn create_test_split_provider(
     pool: &master_of_coin_backend::DbPool,
     user_id: Uuid,
-    provider_type: &str,
+    provider_type: SplitProviderType,
 ) -> SplitProvider {
     let mut conn = pool.get().expect("Failed to get DB connection");
     let new_provider = NewSplitProvider {
         user_id,
-        provider_type: provider_type.to_string(),
+        provider_type,
         credentials: json!({"encrypted": "test_encrypted_credentials"}),
         is_active: true,
     };
@@ -82,13 +83,13 @@ async fn test_list_providers_with_data() {
     )
     .await;
 
-    create_test_split_provider(&pool, auth.user.id, "splitwise");
+    create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
 
     let response = get_authenticated(&server, "/api/v1/integrations/providers", &auth.token).await;
     assert_status(&response, 200);
     let providers: Vec<SplitProviderResponse> = extract_json(response);
     assert_eq!(providers.len(), 1);
-    assert_eq!(providers[0].provider_type, "splitwise");
+    assert_eq!(providers[0].provider_type, SplitProviderType::Splitwise);
     assert!(providers[0].is_active);
     assert_eq!(providers[0].user_id, auth.user.id);
 }
@@ -122,7 +123,7 @@ async fn test_list_providers_isolation() {
     )
     .await;
 
-    create_test_split_provider(&pool, auth_a.user.id, "splitwise");
+    create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
 
     let ra = get_authenticated(&server, "/api/v1/integrations/providers", &auth_a.token).await;
     assert_status(&ra, 200);
@@ -153,7 +154,7 @@ async fn test_disconnect_provider_success() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let resp = delete_authenticated(
         &server,
         &format!("/api/v1/integrations/providers/{}", provider.id),
@@ -212,7 +213,7 @@ async fn test_disconnect_provider_wrong_user() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth_a.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
     let resp = delete_authenticated(
         &server,
         &format!("/api/v1/integrations/providers/{}", provider.id),
@@ -253,7 +254,7 @@ async fn test_disconnect_provider_cascades_to_configs() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let person = create_test_person(&server, &auth.token, "Cascade Person").await;
 
     // Set split config
@@ -304,7 +305,7 @@ async fn test_set_split_config_success() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let person = create_test_person(&server, &auth.token, "Config Person").await;
 
     let req = json!({"split_provider_id": provider.id, "external_user_id": "67890"});
@@ -321,7 +322,7 @@ async fn test_set_split_config_success() {
     assert_eq!(config.person_id, person.id);
     assert_eq!(config.split_provider_id, provider.id);
     assert_eq!(config.external_user_id, "67890");
-    assert_eq!(config.provider_type, "splitwise");
+    assert_eq!(config.provider_type, SplitProviderType::Splitwise);
 }
 
 #[tokio::test]
@@ -338,7 +339,7 @@ async fn test_set_split_config_upsert() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let person = create_test_person(&server, &auth.token, "Upsert Person").await;
     let path = format!("/api/v1/people/{}/split-config", person.id);
 
@@ -394,7 +395,7 @@ async fn test_set_split_config_person_not_found() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let req = json!({"split_provider_id": provider.id, "external_user_id": "12345"});
     let resp = put_authenticated(
         &server,
@@ -429,7 +430,7 @@ async fn test_set_split_config_wrong_user_person() {
     .await;
 
     let person_a = create_test_person(&server, &auth_a.token, "A Person").await;
-    let provider_b = create_test_split_provider(&pool, auth_b.user.id, "splitwise");
+    let provider_b = create_test_split_provider(&pool, auth_b.user.id, SplitProviderType::Splitwise);
 
     let req = json!({"split_provider_id": provider_b.id, "external_user_id": "12345"});
     let resp = put_authenticated(
@@ -464,7 +465,7 @@ async fn test_set_split_config_wrong_user_provider() {
     )
     .await;
 
-    let provider_a = create_test_split_provider(&pool, auth_a.user.id, "splitwise");
+    let provider_a = create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
     let person_b = create_test_person(&server, &auth_b.token, "B Person").await;
 
     let req = json!({"split_provider_id": provider_a.id, "external_user_id": "12345"});
@@ -492,7 +493,7 @@ async fn test_set_split_config_empty_external_id() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let person = create_test_person(&server, &auth.token, "EID Person").await;
 
     let req = json!({"split_provider_id": provider.id, "external_user_id": ""});
@@ -535,7 +536,7 @@ async fn test_get_split_config_success() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let person = create_test_person(&server, &auth.token, "Get Config Person").await;
     let path = format!("/api/v1/people/{}/split-config", person.id);
 
@@ -548,7 +549,7 @@ async fn test_get_split_config_success() {
     let config: PersonSplitConfigResponse = extract_json(get_resp);
     assert_eq!(config.person_id, person.id);
     assert_eq!(config.external_user_id, "99999");
-    assert_eq!(config.provider_type, "splitwise");
+    assert_eq!(config.provider_type, SplitProviderType::Splitwise);
 }
 
 #[tokio::test]
@@ -596,7 +597,7 @@ async fn test_get_split_config_wrong_user() {
     )
     .await;
 
-    let provider_a = create_test_split_provider(&pool, auth_a.user.id, "splitwise");
+    let provider_a = create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
     let person_a = create_test_person(&server, &auth_a.token, "A Person").await;
     let path = format!("/api/v1/people/{}/split-config", person_a.id);
 
@@ -637,7 +638,7 @@ async fn test_delete_split_config_success() {
     )
     .await;
 
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
     let person = create_test_person(&server, &auth.token, "Del Config Person").await;
     let path = format!("/api/v1/people/{}/split-config", person.id);
 
@@ -697,7 +698,7 @@ async fn test_delete_split_config_wrong_user() {
     )
     .await;
 
-    let provider_a = create_test_split_provider(&pool, auth_a.user.id, "splitwise");
+    let provider_a = create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
     let person_a = create_test_person(&server, &auth_a.token, "A Person").await;
     let path = format!("/api/v1/people/{}/split-config", person_a.id);
 
@@ -747,14 +748,14 @@ async fn test_full_split_config_flow() {
     assert_eq!(p0.len(), 0);
 
     // 2. Create provider (via DB - simulating OAuth)
-    let provider = create_test_split_provider(&pool, auth.user.id, "splitwise");
+    let provider = create_test_split_provider(&pool, auth.user.id, SplitProviderType::Splitwise);
 
     // 3. List providers (1 provider)
     let list1 = get_authenticated(&server, "/api/v1/integrations/providers", &auth.token).await;
     assert_status(&list1, 200);
     let p1: Vec<SplitProviderResponse> = extract_json(list1);
     assert_eq!(p1.len(), 1);
-    assert_eq!(p1[0].provider_type, "splitwise");
+    assert_eq!(p1[0].provider_type, SplitProviderType::Splitwise);
 
     // 4. Create person
     let person = create_test_person(&server, &auth.token, "Flow Person").await;

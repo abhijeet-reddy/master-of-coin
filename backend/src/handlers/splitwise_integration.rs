@@ -5,6 +5,7 @@ use crate::{
     models::NewSplitProvider,
     repositories,
     services::splitwise_oauth::{SplitwiseOAuth, SplitwiseOAuthError},
+    types::SplitProviderType,
     utils,
 };
 use axum::{
@@ -124,7 +125,7 @@ pub async fn oauth_callback(
     // Upsert split_provider record
     let new_provider = NewSplitProvider {
         user_id,
-        provider_type: "splitwise".to_string(),
+        provider_type: SplitProviderType::Splitwise,
         credentials: credentials_value,
         is_active: true,
     };
@@ -149,10 +150,13 @@ pub async fn list_splitwise_friends(
     tracing::info!("Fetching Splitwise friends for user {}", user_id);
 
     // Get user's Splitwise provider
-    let provider =
-        repositories::split_provider::find_by_user_and_type(&state.db, user_id, "splitwise")
-            .await?
-            .ok_or_else(|| ApiError::NotFound("Splitwise not connected".to_string()))?;
+    let provider = repositories::split_provider::find_by_user_and_type(
+        &state.db,
+        user_id,
+        SplitProviderType::Splitwise,
+    )
+    .await?
+    .ok_or_else(|| ApiError::NotFound("Splitwise not connected".to_string()))?;
 
     if !provider.is_active {
         return Err(ApiError::BadRequest(

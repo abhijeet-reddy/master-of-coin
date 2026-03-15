@@ -16,6 +16,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::Value;
 
+use crate::types::SplitProviderType;
+
 /// Build the canonical registry of **all** split-provider implementations.
 ///
 /// Both the API server (`SplitSyncService`) and the background worker must use
@@ -26,14 +28,14 @@ use serde_json::Value;
 /// 1. Create the module under `split_provider/`
 /// 2. Implement the `SplitProvider` trait
 /// 3. Register it here — no other file needs to change.
-pub fn all_providers() -> HashMap<String, Arc<dyn SplitProvider>> {
-    let mut providers: HashMap<String, Arc<dyn SplitProvider>> = HashMap::new();
+pub fn all_providers() -> HashMap<SplitProviderType, Arc<dyn SplitProvider>> {
+    let mut providers: HashMap<SplitProviderType, Arc<dyn SplitProvider>> = HashMap::new();
 
     let splitwise = Arc::new(SplitwiseProvider::new());
-    providers.insert(splitwise.provider_type().to_string(), splitwise);
+    providers.insert(splitwise.provider_type(), splitwise);
 
     let splitpro = Arc::new(SplitProProvider::new());
-    providers.insert(splitpro.provider_type().to_string(), splitpro);
+    providers.insert(splitpro.provider_type(), splitpro);
 
     providers
 }
@@ -44,8 +46,8 @@ pub fn all_providers() -> HashMap<String, Arc<dyn SplitProvider>> {
 /// to sync transaction splits to external platforms.
 #[async_trait]
 pub trait SplitProvider: Send + Sync {
-    /// Provider name identifier (e.g., "splitwise", "splitpro")
-    fn provider_type(&self) -> &str;
+    /// Provider type identifier
+    fn provider_type(&self) -> SplitProviderType;
 
     /// Create an expense on the external platform
     ///

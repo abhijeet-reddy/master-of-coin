@@ -5,6 +5,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::schema::split_providers;
+use crate::types::SplitProviderType;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = split_providers)]
@@ -12,7 +13,7 @@ use crate::schema::split_providers;
 pub struct SplitProvider {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
     pub credentials: serde_json::Value,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
@@ -23,7 +24,7 @@ pub struct SplitProvider {
 #[diesel(table_name = split_providers)]
 pub struct NewSplitProvider {
     pub user_id: Uuid,
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
     pub credentials: serde_json::Value,
     pub is_active: bool,
 }
@@ -37,8 +38,7 @@ pub struct UpdateSplitProvider {
 // Request DTOs
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateSplitProviderRequest {
-    #[validate(length(min = 1, max = 50))]
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
     pub credentials: serde_json::Value,
 }
 
@@ -47,7 +47,7 @@ pub struct CreateSplitProviderRequest {
 pub struct SplitProviderResponse {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

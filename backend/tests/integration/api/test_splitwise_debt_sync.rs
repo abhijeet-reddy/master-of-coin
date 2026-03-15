@@ -20,6 +20,7 @@ use master_of_coin_backend::{
     services::split_provider::ExternalExpenseDetail,
     services::split_provider::ExternalExpenseUser,
     services::split_sync_service::SplitSyncService,
+    types::SplitProviderType,
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -54,7 +55,7 @@ fn create_test_split_provider(
 
     let new_provider = NewSplitProvider {
         user_id,
-        provider_type: "splitwise".to_string(),
+        provider_type: SplitProviderType::Splitwise,
         credentials,
         is_active: true,
     };
@@ -113,7 +114,7 @@ fn build_paid_by_others_expense(
                 owed_share: user_owed.to_string(),
             },
         ],
-        provider_type: "splitwise".to_string(),
+        provider_type: SplitProviderType::Splitwise,
     }
 }
 

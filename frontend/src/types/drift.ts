@@ -1,6 +1,7 @@
 // Drift detection types
 
 import type { JobStatus } from './jobs';
+import type { SplitProviderType } from './splitIntegration';
 
 /** Request to start a drift detection job */
 export interface DriftDetectionRequest {
@@ -50,7 +51,7 @@ export interface DriftedItem {
   local_splits: LocalSplitInfo[];
   external_splits: ExternalSplitInfo[];
   /** Provider that owns the external expense (e.g. "splitwise", "splitpro") */
-  provider_type?: string;
+  provider_type?: SplitProviderType;
 }
 
 /** A local transaction missing on the external provider */
@@ -72,7 +73,7 @@ export interface MissingOnLocal {
   users: ExternalSplitInfo[];
   unmapped_users?: UnmappedUser[];
   /** Provider that owns the external expense (e.g. "splitwise", "splitpro") */
-  provider_type?: string;
+  provider_type?: SplitProviderType;
 }
 
 /** Local split share info */

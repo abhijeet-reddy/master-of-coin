@@ -5,6 +5,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::schema::person_split_configs;
+use crate::types::SplitProviderType;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = person_split_configs)]
@@ -46,7 +47,7 @@ pub struct PersonSplitConfigResponse {
     pub id: Uuid,
     pub person_id: Uuid,
     pub split_provider_id: Uuid,
-    pub provider_type: String, // Included for convenience
+    pub provider_type: SplitProviderType, // Included for convenience
     pub external_user_id: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -58,7 +59,7 @@ impl From<PersonSplitConfig> for PersonSplitConfigResponse {
             id: config.id,
             person_id: config.person_id,
             split_provider_id: config.split_provider_id,
-            provider_type: String::new(), // Will be populated by join query
+            provider_type: SplitProviderType::Splitwise, // Will be populated by join query
             external_user_id: config.external_user_id,
             created_at: config.created_at,
             updated_at: config.updated_at,

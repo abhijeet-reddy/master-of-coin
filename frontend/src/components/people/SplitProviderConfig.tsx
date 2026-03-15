@@ -2,6 +2,7 @@ import { Box, VStack, HStack, Text, Button, Badge, Separator, Skeleton } from '@
 import { MdLink, MdDelete } from 'react-icons/md';
 import { Field } from '@/components/ui/field';
 import { useSplitProviderConfig } from '@/hooks/usecase';
+import { SplitProviderType } from '@/types/splitIntegration';
 
 interface SplitProviderConfigProps {
   personId: string;
@@ -95,7 +96,7 @@ export const SplitProviderConfig = ({ personId }: SplitProviderConfigProps) => {
               <option value="">None</option>
               {activeProviders.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.provider_type === 'splitwise' ? 'Splitwise' : 'SplitPro'}
+                  {p.provider_type === SplitProviderType.SPLITWISE ? 'Splitwise' : 'SplitPro'}
                 </option>
               ))}
             </select>

@@ -1,6 +1,6 @@
 use crate::{
     AppState, auth::context::AuthContext, errors::ApiError, models::SplitProviderResponse,
-    repositories, utils,
+    repositories, types::SplitProviderType, utils,
 };
 use axum::{
     Json,
@@ -106,19 +106,15 @@ pub async fn get_provider_friends(
     })?;
 
     // Fetch friends based on provider type
-    match provider.provider_type.as_str() {
-        "splitwise" => {
+    match provider.provider_type {
+        SplitProviderType::Splitwise => {
             let access_token = credentials
                 .get("access_token")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| ApiError::InternalWithMessage("Missing access_token".to_string()))?;
             fetch_splitwise_friends(access_token).await
         }
-        "splitpro" => fetch_splitpro_friends(&credentials).await,
-        _ => Err(ApiError::BadRequest(format!(
-            "Provider type '{}' not supported",
-            provider.provider_type
-        ))),
+        SplitProviderType::SplitPro => fetch_splitpro_friends(&credentials).await,
     }
 }
 

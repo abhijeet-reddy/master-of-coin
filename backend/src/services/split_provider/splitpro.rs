@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use reqwest::{Client, StatusCode};
 use serde_json::{Value, json};
 
+use crate::types::SplitProviderType;
+
 use super::superjson;
 use super::{
     CreateExternalExpense, ExternalExpenseDetail, ExternalExpenseResult, ExternalExpenseUser,
@@ -394,7 +396,7 @@ impl SplitProProvider {
             currency_code: currency,
             date,
             users,
-            provider_type: "splitpro".to_string(),
+            provider_type: SplitProviderType::SplitPro,
         })
     }
 
@@ -440,8 +442,8 @@ impl Default for SplitProProvider {
 
 #[async_trait]
 impl SplitProvider for SplitProProvider {
-    fn provider_type(&self) -> &str {
-        "splitpro"
+    fn provider_type(&self) -> SplitProviderType {
+        SplitProviderType::SplitPro
     }
 
     async fn create_expense(

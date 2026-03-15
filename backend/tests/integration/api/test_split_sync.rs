@@ -22,6 +22,7 @@ use master_of_coin_backend::{
         split_sync_record::{NewSplitSyncRecord, SplitSyncStatusResponse},
     },
     schema::{split_providers, split_sync_records},
+    types::SplitProviderType,
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -50,7 +51,7 @@ fn create_test_split_provider(
     let mut conn = pool.get().expect("Failed to get DB connection");
     let new_provider = NewSplitProvider {
         user_id,
-        provider_type: "splitwise".to_string(),
+        provider_type: SplitProviderType::Splitwise,
         credentials: json!({"encrypted": "test_encrypted_credentials"}),
         is_active: true,
     };

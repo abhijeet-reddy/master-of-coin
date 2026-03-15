@@ -40,7 +40,9 @@ use master_of_coin_backend::services::split_sync_service::SplitSyncService;
 use master_of_coin_backend::services::{
     bulk_sync_service, drift_detection_service, portfolio_sync_service,
 };
-use master_of_coin_backend::types::{InvestmentProviderType, JobStatus, JobType};
+use master_of_coin_backend::types::{
+    InvestmentProviderType, JobStatus, JobType, SplitProviderType,
+};
 use master_of_coin_backend::utils::cron::compute_next_run_after;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -188,7 +190,7 @@ async fn health_handler(
 ///
 /// All provider registrations live in one place (`split_provider/mod.rs`), so
 /// adding a new provider never requires touching the worker binary.
-fn init_split_providers() -> HashMap<String, Arc<dyn SplitProvider>> {
+fn init_split_providers() -> HashMap<SplitProviderType, Arc<dyn SplitProvider>> {
     all_providers()
 }
 
@@ -272,7 +274,7 @@ fn run_cleanup(pool: &DbPool) {
 /// Main poll loop: checks for PENDING jobs, dispatches them, and handles daily cleanup.
 async fn run_poll_loop(
     pool: DbPool,
-    split_providers: HashMap<String, Arc<dyn SplitProvider>>,
+    split_providers: HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
     investment_providers: HashMap<InvestmentProviderType, Arc<dyn InvestmentProvider>>,
     sync_service: SplitSyncService,
     poll_interval_secs: u64,
@@ -522,7 +524,7 @@ fn build_job_input(
 /// Execute a single job by dispatching to the appropriate service based on job_type.
 async fn execute_job(
     pool: &DbPool,
-    split_providers: &HashMap<String, Arc<dyn SplitProvider>>,
+    split_providers: &HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
     investment_providers: &HashMap<InvestmentProviderType, Arc<dyn InvestmentProvider>>,
     sync_service: &SplitSyncService,
     job_id: uuid::Uuid,
@@ -579,7 +581,7 @@ async fn execute_job(
 /// and returns the serialized `DriftReport` or an error message.
 async fn execute_drift_detection(
     pool: &DbPool,
-    providers: &HashMap<String, Arc<dyn SplitProvider>>,
+    providers: &HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
     user_id: uuid::Uuid,
     input: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {

@@ -79,7 +79,7 @@ pub struct SplitSyncStatusResponse {
     pub id: Uuid,
     pub transaction_split_id: Uuid,
     pub split_provider_id: Uuid,
-    pub provider_type: String, // Included for convenience
+    pub provider_type: crate::types::SplitProviderType, // Included for convenience
     pub external_expense_id: Option<String>,
     pub sync_status: SyncStatus,
     pub last_sync_at: Option<DateTime<Utc>>,

@@ -7,6 +7,7 @@ import {
 } from '@/hooks/api/usePersonSplitConfig';
 import useSplitwiseFriends from '@/hooks/api/useSplitwiseFriends';
 import { toaster } from '@/components/ui/toaster';
+import { SplitProviderType } from '@/types/splitIntegration';
 
 /**
  * Manages split provider configuration for a person.
@@ -27,7 +28,7 @@ export default function useSplitProviderConfig(personId: string) {
   const setConfigMutation = useSetPersonSplitConfig();
   const deleteConfigMutation = useDeletePersonSplitConfig();
 
-  const splitwiseProvider = providers.find((p) => p.provider_type === 'splitwise');
+  const splitwiseProvider = providers.find((p) => p.provider_type === SplitProviderType.SPLITWISE);
   const hasConfig = !!existingConfig?.id;
 
   const handleProviderChange = (providerId: string) => {

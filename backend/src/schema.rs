@@ -28,6 +28,10 @@ pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "job_type"))]
     pub struct JobType;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "split_provider_type"))]
+    pub struct SplitProviderType;
 }
 
 diesel::table! {
@@ -210,11 +214,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::SplitProviderType;
+
     split_providers (id) {
         id -> Uuid,
         user_id -> Uuid,
-        #[max_length = 50]
-        provider_type -> Varchar,
+        provider_type -> SplitProviderType,
         credentials -> Jsonb,
         is_active -> Bool,
         created_at -> Timestamptz,

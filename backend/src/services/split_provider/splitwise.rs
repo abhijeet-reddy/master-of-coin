@@ -4,6 +4,8 @@ use reqwest::{Client, StatusCode};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use crate::types::SplitProviderType;
+
 use super::{
     CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, ExternalExpenseResult,
     ExternalExpenseUser, SplitProvider, SplitProviderError, UpdateExternalExpense,
@@ -95,8 +97,8 @@ impl Default for SplitwiseProvider {
 
 #[async_trait]
 impl SplitProvider for SplitwiseProvider {
-    fn provider_type(&self) -> &str {
-        "splitwise"
+    fn provider_type(&self) -> SplitProviderType {
+        SplitProviderType::Splitwise
     }
 
     async fn create_expense(
@@ -387,7 +389,7 @@ impl SplitProvider for SplitwiseProvider {
                     currency_code: exp.currency_code.unwrap_or_else(|| "USD".to_string()),
                     date: exp.date.unwrap_or_default(),
                     users,
-                    provider_type: "splitwise".to_string(),
+                    provider_type: SplitProviderType::Splitwise,
                 }
             })
             .collect();
@@ -515,7 +517,7 @@ impl SplitProvider for SplitwiseProvider {
             currency_code,
             date,
             users,
-            provider_type: "splitwise".to_string(),
+            provider_type: SplitProviderType::Splitwise,
         }))
     }
 

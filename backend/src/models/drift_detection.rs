@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::types::JobStatus;
+use crate::types::{JobStatus, SplitProviderType};
 
 /// Request body for POST /api/v1/drift-detection
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -72,7 +72,7 @@ pub struct DriftedItem {
     pub external_splits: Vec<ExternalSplitInfo>,
     /// Provider that owns the external expense (e.g. "splitwise", "splitpro")
     #[serde(default)]
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
 }
 
 /// A local transaction with splits that has no linked external expense
@@ -99,7 +99,7 @@ pub struct MissingOnLocal {
     pub unmapped_users: Vec<UnmappedUser>,
     /// Provider that owns the external expense (e.g. "splitwise", "splitpro")
     #[serde(default)]
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
 }
 
 /// Split info from the local side (person_name + owed_share)

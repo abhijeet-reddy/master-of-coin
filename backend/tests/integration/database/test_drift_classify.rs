@@ -16,6 +16,7 @@ use master_of_coin_backend::services::drift_detection_service::classify;
 use master_of_coin_backend::services::split_provider::{
     ExternalExpenseDetail, ExternalExpenseUser,
 };
+use master_of_coin_backend::types::SplitProviderType;
 use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -64,7 +65,7 @@ fn make_external_expense(
         currency_code: "USD".to_string(),
         date: "2026-01-15".to_string(),
         users,
-        provider_type: "splitwise".to_string(),
+        provider_type: SplitProviderType::Splitwise,
     }
 }
 

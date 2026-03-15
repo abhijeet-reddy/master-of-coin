@@ -27,6 +27,7 @@ use crate::schema::{
     transactions,
 };
 use crate::services::split_provider::{ExternalExpenseDetail, SplitProvider, SplitProviderError};
+use crate::types::SplitProviderType;
 use crate::utils::encryption;
 
 /// Maximum number of retry attempts for provider API calls
@@ -53,7 +54,7 @@ const MAX_RETRIES: u32 = 3;
 /// A `DriftReport` with summary counts and detailed items
 pub async fn detect_drift(
     pool: &DbPool,
-    providers: &HashMap<String, Arc<dyn SplitProvider>>,
+    providers: &HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
     user_id: Uuid,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
@@ -237,7 +238,7 @@ fn fetch_local_split_transactions(
 /// Tuple of (deduplicated expenses, current user's external_user_id)
 async fn fetch_all_external_expenses(
     pool: &DbPool,
-    providers: &HashMap<String, Arc<dyn SplitProvider>>,
+    providers: &HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
     user_id: Uuid,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,

@@ -38,7 +38,7 @@ pub async fn get_sync_status(
                 id: record.id,
                 transaction_split_id: record.transaction_split_id,
                 split_provider_id: record.split_provider_id,
-                provider_type: String::new(),
+                provider_type: crate::types::SplitProviderType::default(),
                 external_expense_id: record.external_expense_id,
                 sync_status: status,
                 last_sync_at: record.last_sync_at,
@@ -78,7 +78,7 @@ pub async fn retry_sync(
         id: record.id,
         transaction_split_id: record.transaction_split_id,
         split_provider_id: record.split_provider_id,
-        provider_type: String::new(),
+        provider_type: crate::types::SplitProviderType::default(),
         external_expense_id: record.external_expense_id,
         sync_status: status,
         last_sync_at: record.last_sync_at,
@@ -145,10 +145,13 @@ pub async fn sync_external_expense(
         .ok_or_else(|| ApiError::Configuration("Split sync service not configured".to_string()))?;
 
     // Get the user's Splitwise provider
-    let provider =
-        repositories::split_provider::find_by_user_and_type(&state.db, user_id, "splitwise")
-            .await?
-            .ok_or_else(|| ApiError::NotFound("Splitwise not connected".to_string()))?;
+    let provider = repositories::split_provider::find_by_user_and_type(
+        &state.db,
+        user_id,
+        crate::types::SplitProviderType::Splitwise,
+    )
+    .await?
+    .ok_or_else(|| ApiError::NotFound("Splitwise not connected".to_string()))?;
 
     if !provider.is_active {
         return Err(ApiError::BadRequest(

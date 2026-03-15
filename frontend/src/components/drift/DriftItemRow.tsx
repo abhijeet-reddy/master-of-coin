@@ -2,15 +2,16 @@ import { Badge, Card, DataList, HStack, Text, VStack } from '@chakra-ui/react';
 import { formatDate } from '@/utils/formatters/date';
 import { buildSplitDiffs, compareTotals } from '@/utils/driftHelpers';
 import type { DriftedItem, MissingOnExternal, MissingOnLocal } from '@/types';
+import { SplitProviderType } from '@/types/splitIntegration';
 
 /** Color palette and display label for each known provider type */
-const PROVIDER_CONFIG: Record<string, { label: string; color: string }> = {
-  splitwise: { label: 'Splitwise', color: 'teal' },
-  splitpro: { label: 'SplitPro', color: 'purple' },
+const PROVIDER_CONFIG: Record<SplitProviderType, { label: string; color: string }> = {
+  [SplitProviderType.SPLITWISE]: { label: 'Splitwise', color: 'teal' },
+  [SplitProviderType.SPLITPRO]: { label: 'SplitPro', color: 'purple' },
 };
 
 /** Small badge showing which split provider an expense belongs to */
-const ProviderBadge = ({ providerType }: { providerType?: string }) => {
+const ProviderBadge = ({ providerType }: { providerType?: SplitProviderType }) => {
   if (!providerType) return null;
   const config = PROVIDER_CONFIG[providerType] ?? { label: providerType, color: 'gray' };
   return (

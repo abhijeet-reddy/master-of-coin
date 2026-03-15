@@ -6,6 +6,7 @@ import { ErrorAlert } from '@/components/common';
 import { SplitwiseIntegrationCard } from './SplitwiseIntegrationCard';
 import { SplitProIntegrationCard } from './SplitProIntegrationCard';
 import { DriftDetectionModal } from './DriftDetectionModal';
+import { SplitProviderType } from '@/types/splitIntegration';
 
 /**
  * List of all available split provider integrations.
@@ -51,10 +52,10 @@ export const SplitIntegrationsList = () => {
       {!isLoading && !error && (
         <>
           <SplitwiseIntegrationCard
-            provider={providers.find((p) => p.provider_type === 'splitwise')}
+            provider={providers.find((p) => p.provider_type === SplitProviderType.SPLITWISE)}
           />
           <SplitProIntegrationCard
-            provider={providers.find((p) => p.provider_type === 'splitpro')}
+            provider={providers.find((p) => p.provider_type === SplitProviderType.SPLITPRO)}
           />
         </>
       )}

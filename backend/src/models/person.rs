@@ -4,6 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 
 use crate::schema::people;
+use crate::types::SplitProviderType;
 
 /// Deserialize a double-Option field: absent → None, null → Some(None), value → Some(Some(v)).
 /// Use with `#[serde(default, deserialize_with = "deserialize_optional_field")]`.
@@ -121,7 +122,7 @@ impl UpdatePersonRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PersonSplitConfigInfo {
     pub split_provider_id: Uuid,
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
     pub external_user_id: String,
 }
 

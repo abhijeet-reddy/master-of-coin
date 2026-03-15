@@ -27,7 +27,7 @@ use crate::services::split_provider::{
     CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, SplitProvider,
     UpdateExternalExpense, all_providers,
 };
-use crate::types::CurrencyCode;
+use crate::types::{CurrencyCode, SplitProviderType};
 use crate::utils::encryption;
 
 /// Maximum number of retry attempts for failed syncs
@@ -37,7 +37,7 @@ const MAX_RETRY_COUNT: i32 = 5;
 #[derive(Clone)]
 pub struct SplitSyncService {
     pool: DbPool,
-    providers: Arc<HashMap<String, Arc<dyn SplitProvider>>>,
+    providers: Arc<HashMap<SplitProviderType, Arc<dyn SplitProvider>>>,
 }
 
 impl SplitSyncService {

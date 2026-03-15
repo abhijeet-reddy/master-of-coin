@@ -1,7 +1,10 @@
 // Split provider integration types
 
 /** Supported split provider types */
-export type SplitProviderType = 'splitwise' | 'splitpro';
+export enum SplitProviderType {
+  SPLITWISE = 'splitwise',
+  SPLITPRO = 'splitpro',
+}
 
 /** Split provider configuration from the backend */
 export interface SplitProvider {
@@ -33,7 +36,7 @@ export interface PersonSplitConfig {
   id: string;
   person_id: string;
   split_provider_id: string;
-  provider_type: string;
+  provider_type: SplitProviderType;
   external_user_id: string;
   created_at: string;
   updated_at: string;
@@ -47,7 +50,7 @@ export interface ConnectSplitProRequest {
 /** Response from connecting SplitPro */
 export interface ConnectSplitProResponse {
   id: string;
-  provider_type: string;
+  provider_type: SplitProviderType;
   is_active: boolean;
   message: string;
 }
@@ -66,7 +69,7 @@ export interface SplitSyncStatus {
   id: string;
   transaction_split_id: string;
   split_provider_id: string;
-  provider_type: string;
+  provider_type: SplitProviderType;
   external_expense_id?: string;
   sync_status: SyncStatusType;
   last_sync_at?: string;

@@ -1,6 +1,6 @@
 use crate::{
     AppState, auth::context::AuthContext, errors::ApiError, models::NewSplitProvider, repositories,
-    services::split_provider::SplitProProvider, utils,
+    services::split_provider::SplitProProvider, types::SplitProviderType, utils,
 };
 use axum::{
     Json,
@@ -19,7 +19,7 @@ pub struct ConnectSplitProRequest {
 #[derive(Debug, Serialize)]
 pub struct ConnectSplitProResponse {
     pub id: String,
-    pub provider_type: String,
+    pub provider_type: SplitProviderType,
     pub is_active: bool,
     pub message: String,
 }
@@ -119,7 +119,7 @@ pub async fn connect_splitpro(
     // Upsert split_provider record
     let new_provider = NewSplitProvider {
         user_id,
-        provider_type: "splitpro".to_string(),
+        provider_type: SplitProviderType::SplitPro,
         credentials: credentials_value,
         is_active: true,
     };
@@ -129,7 +129,7 @@ pub async fn connect_splitpro(
 
     Ok(Json(ConnectSplitProResponse {
         id: saved_provider.id.to_string(),
-        provider_type: "splitpro".to_string(),
+        provider_type: SplitProviderType::SplitPro,
         is_active: true,
         message: "SplitPro connected successfully".to_string(),
     }))
@@ -238,10 +238,13 @@ pub async fn list_splitpro_friends(
     tracing::info!("Fetching SplitPro friends for user {}", user_id);
 
     // Get user's SplitPro provider
-    let provider =
-        repositories::split_provider::find_by_user_and_type(&state.db, user_id, "splitpro")
-            .await?
-            .ok_or_else(|| ApiError::NotFound("SplitPro not connected".to_string()))?;
+    let provider = repositories::split_provider::find_by_user_and_type(
+        &state.db,
+        user_id,
+        SplitProviderType::SplitPro,
+    )
+    .await?
+    .ok_or_else(|| ApiError::NotFound("SplitPro not connected".to_string()))?;
 
     if !provider.is_active {
         return Err(ApiError::BadRequest(

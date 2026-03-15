@@ -3,6 +3,7 @@ use crate::{
     errors::ApiError,
     models::{NewSplitProvider, SplitProvider},
     schema::split_providers,
+    types::SplitProviderType,
 };
 use diesel::prelude::*;
 use uuid::Uuid;
@@ -35,14 +36,12 @@ pub async fn find_by_id(pool: &DbPool, id: Uuid) -> Result<Option<SplitProvider>
 pub async fn find_by_user_and_type(
     pool: &DbPool,
     user_id: Uuid,
-    provider_type: &str,
+    provider_type: SplitProviderType,
 ) -> Result<Option<SplitProvider>, ApiError> {
     let mut conn = pool.get().map_err(|e| {
         tracing::error!("Failed to get DB connection: {}", e);
         ApiError::InternalWithMessage("Failed to get database connection".to_string())
     })?;
-
-    let provider_type = provider_type.to_string();
 
     tokio::task::spawn_blocking(move || {
         split_providers::table

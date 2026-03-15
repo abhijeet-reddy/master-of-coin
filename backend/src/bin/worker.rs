@@ -35,7 +35,7 @@ use master_of_coin_backend::repositories::schedule::ScheduleRepository;
 use master_of_coin_backend::services::investment_provider::{
     InvestmentProvider, Trading212Provider,
 };
-use master_of_coin_backend::services::split_provider::{SplitProvider, SplitwiseProvider};
+use master_of_coin_backend::services::split_provider::{SplitProvider, all_providers};
 use master_of_coin_backend::services::split_sync_service::SplitSyncService;
 use master_of_coin_backend::services::{
     bulk_sync_service, drift_detection_service, portfolio_sync_service,
@@ -184,17 +184,12 @@ async fn health_handler(
     }
 }
 
-/// Initialize split providers — same pattern as `SplitSyncService::new()`
+/// Initialize split providers from the canonical registry in `split_provider::all_providers()`.
+///
+/// All provider registrations live in one place (`split_provider/mod.rs`), so
+/// adding a new provider never requires touching the worker binary.
 fn init_split_providers() -> HashMap<String, Arc<dyn SplitProvider>> {
-    let mut providers: HashMap<String, Arc<dyn SplitProvider>> = HashMap::new();
-
-    // Register Splitwise provider
-    let splitwise = Arc::new(SplitwiseProvider::new());
-    providers.insert("splitwise".to_string(), splitwise);
-
-    // Future split providers can be added here
-
-    providers
+    all_providers()
 }
 
 /// Initialize investment providers for portfolio sync jobs

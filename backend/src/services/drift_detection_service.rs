@@ -70,12 +70,12 @@ pub async fn detect_drift(
     tracing::info!("Found {} local transactions with splits", local_txns.len());
 
     // Step 2: Fetch all external expenses from each active provider
-    let (external_expenses, current_user_external_id) =
+    let (external_expenses, current_user_external_ids) =
         fetch_all_external_expenses(pool, providers, user_id, start_date, end_date).await?;
     tracing::info!(
-        "Found {} external expenses (current user external ID: {})",
+        "Found {} external expenses (current user external IDs: {:?})",
         external_expenses.len(),
-        current_user_external_id.as_deref().unwrap_or("none")
+        current_user_external_ids
     );
 
     // Step 3: Build external user mapping (external_user_id -> person_name)
@@ -90,7 +90,7 @@ pub async fn detect_drift(
         &local_txns,
         &external_expenses,
         &user_mapping,
-        current_user_external_id.as_deref(),
+        &current_user_external_ids,
     );
 
     tracing::info!(
@@ -241,7 +241,7 @@ async fn fetch_all_external_expenses(
     user_id: Uuid,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
-) -> ApiResult<(Vec<ExternalExpenseDetail>, Option<String>)> {
+) -> ApiResult<(Vec<ExternalExpenseDetail>, Vec<String>)> {
     // Query active split_providers for this user
     let active_providers = {
         let mut conn = pool.get().map_err(|e| {
@@ -257,12 +257,14 @@ async fn fetch_all_external_expenses(
 
     if active_providers.is_empty() {
         tracing::info!("No active split providers for user {}", user_id);
-        return Ok((Vec::new(), None));
+        return Ok((Vec::new(), Vec::new()));
     }
 
     let mut all_expenses: Vec<ExternalExpenseDetail> = Vec::new();
     let mut seen_expense_ids: HashSet<String> = HashSet::new();
-    let mut current_user_external_id: Option<String> = None;
+    // Collect every provider-specific external ID for the current user so
+    // `classify()` can match the payer across any provider.
+    let mut current_user_external_ids: Vec<String> = Vec::new();
 
     let dated_after = start_date.format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let dated_before = end_date.format("%Y-%m-%dT%H:%M:%SZ").to_string();
@@ -291,20 +293,25 @@ async fn fetch_all_external_expenses(
             ApiError::InternalWithMessage(format!("Failed to decrypt credentials: {}", e))
         })?;
 
-        // Extract current user's external ID from credentials
-        // Supports both Splitwise (splitwise_user_id) and SplitPro (splitpro_user_id)
-        if current_user_external_id.is_none() {
-            current_user_external_id = credentials
-                .get("splitwise_user_id")
-                .or_else(|| credentials.get("splitpro_user_id"))
-                .and_then(|v| {
-                    v.as_i64()
-                        .map(|id| id.to_string())
-                        .or_else(|| v.as_str().map(|s| s.to_string()))
-                });
+        // Extract the current user's external ID **for this provider**.
+        // Each provider has its own user-ID namespace, so we must use the
+        // provider-specific ID when filtering expenses below.
+        let provider_ext_id: Option<String> = credentials
+            .get("splitwise_user_id")
+            .or_else(|| credentials.get("splitpro_user_id"))
+            .and_then(|v| {
+                v.as_i64()
+                    .map(|id| id.to_string())
+                    .or_else(|| v.as_str().map(|s| s.to_string()))
+            });
+
+        if let Some(ref id) = provider_ext_id {
+            if !current_user_external_ids.contains(id) {
+                current_user_external_ids.push(id.clone());
+            }
         }
 
-        let current_ext_id = current_user_external_id.clone().unwrap_or_default();
+        let current_ext_id = provider_ext_id.unwrap_or_default();
 
         // Fetch expenses with retry and pagination
         let mut offset = 0u32;
@@ -356,7 +363,7 @@ async fn fetch_all_external_expenses(
         }
     }
 
-    Ok((all_expenses, current_user_external_id))
+    Ok((all_expenses, current_user_external_ids))
 }
 
 /// Wraps a single `get_expenses()` call with exponential backoff retry.
@@ -460,7 +467,7 @@ pub fn classify(
     local_txns: &[LocalTransactionGroup],
     external_expenses: &[ExternalExpenseDetail],
     user_mapping: &HashMap<String, String>,
-    current_user_external_id: Option<&str>,
+    current_user_external_ids: &[String],
 ) -> DriftReport {
     // Build a lookup: external_expense_id -> &ExternalExpenseDetail
     let external_map: HashMap<&str, &ExternalExpenseDetail> = external_expenses
@@ -489,7 +496,7 @@ pub fn classify(
                 let external_expense = external_map[ext_id];
                 matched_external_ids.insert(ext_id.to_string());
 
-                let splits_match = compare_splits(txn, external_expense, current_user_external_id);
+                let splits_match = compare_splits(txn, external_expense, current_user_external_ids);
 
                 if splits_match {
                     synced_count += 1;
@@ -602,7 +609,10 @@ pub fn classify(
             .iter()
             .filter(|u| {
                 // Skip the current user — they don't need a mapping
-                if current_user_external_id == Some(u.external_user_id.as_str()) {
+                if current_user_external_ids
+                    .iter()
+                    .any(|id| id == &u.external_user_id)
+                {
                     return false;
                 }
                 // Check if this external user has a local mapping
@@ -661,7 +671,7 @@ pub fn classify(
 fn compare_splits(
     local_txn: &LocalTransactionGroup,
     external_expense: &ExternalExpenseDetail,
-    current_user_external_id: Option<&str>,
+    current_user_external_ids: &[String],
 ) -> bool {
     // Build a map of external_user_id → owed_share from the external expense
     let external_map: HashMap<&str, BigDecimal> = external_expense
@@ -697,13 +707,18 @@ fn compare_splits(
     let local_payer_share = &local_total - &local_splits_total;
 
     // The payer is the current user (the one with paid_share > 0)
-    // If the current user isn't in the external map, we can't compare payer share.
-    // This might happen if the expense structure is different. We'll consider it a match
+    // Try each known external ID for the current user — the matching one
+    // will be from the same provider as this expense.
+    // If none match, we can't compare payer share and consider it a match
     // for the split participants only.
-    if let Some(external_payer_owed) = current_user_external_id.and_then(|id| external_map.get(id))
-        && local_payer_share != *external_payer_owed
-    {
-        return false;
+    let external_payer_owed = current_user_external_ids
+        .iter()
+        .find_map(|id| external_map.get(id.as_str()));
+
+    if let Some(payer_owed) = external_payer_owed {
+        if local_payer_share != *payer_owed {
+            return false;
+        }
     }
 
     true

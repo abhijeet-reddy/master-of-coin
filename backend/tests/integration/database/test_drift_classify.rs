@@ -116,7 +116,7 @@ fn test_classify_all_synced() {
     let mut mapping = HashMap::new();
     mapping.insert("111".to_string(), "Alice".to_string());
 
-    let report = classify(&local, &external, &mapping, Some("999"));
+    let report = classify(&local, &external, &mapping, &["999".to_string()]);
 
     assert_eq!(report.summary.synced, 1);
     assert_eq!(report.summary.drifted, 0);
@@ -151,7 +151,7 @@ fn test_classify_drifted() {
     let mut mapping = HashMap::new();
     mapping.insert("111".to_string(), "Alice".to_string());
 
-    let report = classify(&local, &external, &mapping, Some("999"));
+    let report = classify(&local, &external, &mapping, &["999".to_string()]);
 
     assert_eq!(report.summary.synced, 0);
     assert_eq!(report.summary.drifted, 1);
@@ -179,7 +179,7 @@ fn test_classify_missing_on_external() {
     let mut mapping = HashMap::new();
     mapping.insert("222".to_string(), "Bob".to_string());
 
-    let report = classify(&local, &external, &mapping, Some("999"));
+    let report = classify(&local, &external, &mapping, &["999".to_string()]);
 
     assert_eq!(report.summary.synced, 0);
     assert_eq!(report.summary.drifted, 0);
@@ -208,7 +208,7 @@ fn test_classify_missing_on_local() {
     let mut mapping = HashMap::new();
     mapping.insert("111".to_string(), "Alice".to_string());
 
-    let report = classify(&local, &external, &mapping, Some("999"));
+    let report = classify(&local, &external, &mapping, &["999".to_string()]);
 
     assert_eq!(report.summary.synced, 0);
     assert_eq!(report.summary.drifted, 0);
@@ -240,7 +240,7 @@ fn test_classify_unmapped_users() {
     let mut mapping = HashMap::new();
     mapping.insert("111".to_string(), "Alice".to_string());
 
-    let report = classify(&local, &external, &mapping, Some("999"));
+    let report = classify(&local, &external, &mapping, &["999".to_string()]);
 
     assert_eq!(report.summary.missing_on_local, 1);
     assert_eq!(report.missing_on_local.len(), 1);
@@ -318,7 +318,7 @@ fn test_classify_count_invariants() {
     mapping.insert("111".to_string(), "Alice".to_string());
     mapping.insert("222".to_string(), "Bob".to_string());
 
-    let report = classify(&local, &external, &mapping, Some("999"));
+    let report = classify(&local, &external, &mapping, &["999".to_string()]);
 
     // Verify individual counts
     assert_eq!(report.summary.synced, 1, "Should have 1 synced");

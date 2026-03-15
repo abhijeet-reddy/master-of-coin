@@ -24,8 +24,8 @@ use crate::schema::{
     accounts, person_split_configs, split_providers, transaction_splits, transactions,
 };
 use crate::services::split_provider::{
-    CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, SplitProProvider, SplitProvider,
-    SplitwiseProvider, UpdateExternalExpense,
+    CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, SplitProvider,
+    UpdateExternalExpense, all_providers,
 };
 use crate::types::CurrencyCode;
 use crate::utils::encryption;
@@ -43,19 +43,9 @@ pub struct SplitSyncService {
 impl SplitSyncService {
     /// Create a new SplitSyncService with all available providers
     pub fn new(pool: DbPool) -> Self {
-        let mut providers: HashMap<String, Arc<dyn SplitProvider>> = HashMap::new();
-
-        // Register Splitwise provider
-        let splitwise = Arc::new(SplitwiseProvider::new());
-        providers.insert("splitwise".to_string(), splitwise);
-
-        // Register SplitPro provider
-        let splitpro = Arc::new(SplitProProvider::new());
-        providers.insert("splitpro".to_string(), splitpro);
-
         Self {
             pool,
-            providers: Arc::new(providers),
+            providers: Arc::new(all_providers()),
         }
     }
 

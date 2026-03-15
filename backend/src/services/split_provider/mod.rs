@@ -10,8 +10,33 @@ pub use types::{
     ExternalExpenseUser, SplitProviderError, UpdateExternalExpense,
 };
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde_json::Value;
+
+/// Build the canonical registry of **all** split-provider implementations.
+///
+/// Both the API server (`SplitSyncService`) and the background worker must use
+/// this single function so that every provider type stored in the database is
+/// guaranteed to have a matching runtime implementation.
+///
+/// To add a new provider:
+/// 1. Create the module under `split_provider/`
+/// 2. Implement the `SplitProvider` trait
+/// 3. Register it here — no other file needs to change.
+pub fn all_providers() -> HashMap<String, Arc<dyn SplitProvider>> {
+    let mut providers: HashMap<String, Arc<dyn SplitProvider>> = HashMap::new();
+
+    let splitwise = Arc::new(SplitwiseProvider::new());
+    providers.insert(splitwise.provider_type().to_string(), splitwise);
+
+    let splitpro = Arc::new(SplitProProvider::new());
+    providers.insert(splitpro.provider_type().to_string(), splitpro);
+
+    providers
+}
 
 /// Trait for split provider implementations (Splitwise, SplitPro, etc.)
 ///

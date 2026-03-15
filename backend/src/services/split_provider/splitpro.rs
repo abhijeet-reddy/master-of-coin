@@ -396,6 +396,39 @@ impl SplitProProvider {
             users,
         })
     }
+
+    /// Fetch all friend IDs from SplitPro's `user.getFriends` tRPC endpoint.
+    ///
+    /// Used when `get_expenses()` is called without a specific `friend_id` so
+    /// we can iterate over every friend and merge their expenses.
+    async fn fetch_friend_ids(
+        &self,
+        base_url: &str,
+        session_token: &str,
+    ) -> Result<Vec<i64>, SplitProviderError> {
+        let input = json!({});
+
+        let response = self
+            .make_query_request(base_url, session_token, "user.getFriends", &input, &[])
+            .await?;
+
+        let data = superjson::decode_response(&response).ok_or_else(|| {
+            SplitProviderError::InvalidResponse("Failed to decode getFriends response".to_string())
+        })?;
+
+        let friends_array = data.as_array().ok_or_else(|| {
+            SplitProviderError::InvalidResponse("Expected array of friends".to_string())
+        })?;
+
+        let ids: Vec<i64> = friends_array
+            .iter()
+            .filter_map(|f| f.get("id").and_then(|v| v.as_i64()))
+            .collect();
+
+        tracing::info!("SplitPro: discovered {} friends", ids.len());
+
+        Ok(ids)
+    }
 }
 
 impl Default for SplitProProvider {
@@ -626,57 +659,70 @@ impl SplitProvider for SplitProProvider {
         let base_url = Self::get_base_url(credentials)?;
         let session_token = Self::get_session_token(credentials)?;
 
-        // SplitPro requires a friend_id for getExpensesWithFriend
-        let friend_id_num: i64 = friend_id
-            .ok_or_else(|| {
-                SplitProviderError::ConfigurationError(
-                    "friend_id is required for SplitPro expense queries".to_string(),
-                )
-            })?
-            .parse()
-            .map_err(|_| {
+        // Build the list of friend IDs to query.
+        //
+        // SplitPro's API only supports `getExpensesWithFriend` (one friend at
+        // a time).  When a specific friend_id is provided we use it directly.
+        // When `None` is passed (e.g. drift detection fetching *all* expenses)
+        // we first call `user.getFriends` to discover every friend and then
+        // query each one, deduplicating by expense ID.
+        let friend_ids: Vec<i64> = if let Some(fid) = friend_id {
+            let parsed: i64 = fid.parse().map_err(|_| {
                 SplitProviderError::ConfigurationError("Invalid friend_id format".to_string())
             })?;
+            vec![parsed]
+        } else {
+            self.fetch_friend_ids(&base_url, &session_token).await?
+        };
 
-        let input = json!({ "friendId": friend_id_num });
+        if friend_ids.is_empty() {
+            tracing::info!("SplitPro: no friends found, returning empty expense list");
+            return Ok(Vec::new());
+        }
 
-        let response = self
-            .make_query_request(
-                &base_url,
-                &session_token,
-                "expense.getExpensesWithFriend",
-                &input,
-                &[],
-            )
-            .await?;
+        let mut all_expenses: Vec<ExternalExpenseDetail> = Vec::new();
+        let mut seen_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-        let data = superjson::decode_response(&response).ok_or_else(|| {
-            SplitProviderError::InvalidResponse("Failed to decode tRPC response".to_string())
-        })?;
+        for fid in &friend_ids {
+            let input = json!({ "friendId": *fid });
 
-        let expenses_array = data.as_array().ok_or_else(|| {
-            SplitProviderError::InvalidResponse("Expected array of expenses".to_string())
-        })?;
+            let response = self
+                .make_query_request(
+                    &base_url,
+                    &session_token,
+                    "expense.getExpensesWithFriend",
+                    &input,
+                    &[],
+                )
+                .await?;
 
-        let mut expenses: Vec<ExternalExpenseDetail> = expenses_array
-            .iter()
-            .filter_map(Self::parse_expense)
-            .collect();
+            let data = superjson::decode_response(&response).ok_or_else(|| {
+                SplitProviderError::InvalidResponse("Failed to decode tRPC response".to_string())
+            })?;
+
+            if let Some(expenses_array) = data.as_array() {
+                for expense in expenses_array.iter().filter_map(Self::parse_expense) {
+                    if seen_ids.insert(expense.external_expense_id.clone()) {
+                        all_expenses.push(expense);
+                    }
+                }
+            }
+        }
 
         // Apply date filtering client-side
         if let Some(after) = dated_after {
-            expenses.retain(|e| e.date.as_str() >= after);
+            all_expenses.retain(|e| e.date.as_str() >= after);
         }
         if let Some(before) = dated_before {
-            expenses.retain(|e| e.date.as_str() <= before);
+            all_expenses.retain(|e| e.date.as_str() <= before);
         }
 
         // Apply limit
         if let Some(lim) = limit {
-            expenses.truncate(lim as usize);
+            all_expenses.truncate(lim as usize);
         }
 
-        Ok(expenses)
+        Ok(all_expenses)
     }
 
     async fn get_expense_by_id(

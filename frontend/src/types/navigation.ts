@@ -10,6 +10,7 @@ export enum NavigationSourceType {
   ACCOUNT = 'ACCOUNT',
   CATEGORY = 'CATEGORY',
   BUDGET = 'BUDGET',
+  PERSON = 'PERSON',
   TRANSACTIONS = 'TRANSACTIONS',
 }
 

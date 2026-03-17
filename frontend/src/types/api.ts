@@ -31,6 +31,7 @@ export interface QueryParams {
   category_id?: string;
   account?: string;
   account_id?: string;
+  person_id?: string;
   limit?: number;
   offset?: number;
   sort?: string;

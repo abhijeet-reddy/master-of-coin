@@ -76,6 +76,7 @@ pub async fn check_duplicates(
             category_id: None,
             start_date: Some(start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()),
             end_date: Some(end_date.and_hms_opt(23, 59, 59).unwrap().and_utc()),
+            person_id: None,
             min_amount: None,
             max_amount: None,
             search: None,

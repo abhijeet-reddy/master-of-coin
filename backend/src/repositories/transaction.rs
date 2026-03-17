@@ -203,6 +203,14 @@ pub async fn list_transactions(
             query = query.filter(transactions::category_id.eq(category_id));
         }
 
+        if let Some(person_id) = filters.person_id {
+            // Subquery: find transaction IDs that have a split for this person
+            let split_txn_ids = transaction_splits::table
+                .filter(transaction_splits::person_id.eq(person_id))
+                .select(transaction_splits::transaction_id);
+            query = query.filter(transactions::id.eq_any(split_txn_ids));
+        }
+
         if let Some(start_date) = filters.start_date {
             query = query.filter(transactions::date.ge(start_date));
         }

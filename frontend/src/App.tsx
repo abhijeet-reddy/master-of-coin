@@ -16,6 +16,7 @@ import { BudgetDetailPage } from '@/pages/BudgetDetail';
 import { Categories } from '@/pages/Categories';
 import { CategoryDetailPage } from '@/pages/CategoryDetail';
 import { People } from '@/pages/People';
+import { PersonDetailPage } from '@/pages/PersonDetail';
 import Reports from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
 import { JobsPage } from '@/pages/Jobs';
@@ -57,6 +58,7 @@ function App() {
               <Route path="categories" element={<Categories />} />
               <Route path="categories/:id" element={<CategoryDetailPage />} />
               <Route path="people" element={<People />} />
+              <Route path="people/:id" element={<PersonDetailPage />} />
               <Route path="reports" element={<Reports />} />
               <Route path="jobs" element={<JobsPage />} />
               <Route path="jobs/:type/:id" element={<JobDetailPage />} />

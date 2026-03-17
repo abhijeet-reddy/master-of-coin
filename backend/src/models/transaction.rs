@@ -183,6 +183,9 @@ pub struct TransactionFilter {
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
 
+    /// Filter by person: returns transactions that have a split involving this person
+    pub person_id: Option<Uuid>,
+
     /// Minimum amount filter (can be negative)
     pub min_amount: Option<f64>,
 

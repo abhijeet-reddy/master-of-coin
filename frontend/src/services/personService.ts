@@ -19,8 +19,8 @@ export async function getPeople(): Promise<Person[]> {
  * Get a single person by ID
  */
 export async function getPerson(id: string): Promise<Person> {
-  const response = await apiClient.get<ApiResponse<Person>>(`/people/${id}`);
-  return response.data.data;
+  const response = await apiClient.get<Person>(`/people/${id}`);
+  return response.data;
 }
 
 /**

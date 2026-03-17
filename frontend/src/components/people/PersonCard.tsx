@@ -1,24 +1,6 @@
-import { useState } from 'react';
-import {
-  Badge,
-  Button,
-  Card,
-  HStack,
-  IconButton,
-  Text,
-  VStack,
-  Collapsible,
-  Box,
-} from '@chakra-ui/react';
-import {
-  FaUser,
-  FaEnvelope,
-  FaPhone,
-  FaEdit,
-  FaTrash,
-  FaChevronDown,
-  FaChevronUp,
-} from 'react-icons/fa';
+import { Badge, Button, Card, HStack, IconButton, Text, VStack, Box } from '@chakra-ui/react';
+import { FaUser, FaEnvelope, FaPhone, FaEdit, FaTrash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/utils/formatters';
 import type { Person } from '@/types';
 
@@ -30,7 +12,7 @@ interface PersonCardProps {
 }
 
 export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
 
   // Calculate debt amount and color
   const debtAmount = person.debt_summary ? parseFloat(person.debt_summary.net) : 0;
@@ -57,7 +39,13 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
                 <FaUser />
               </Text>
               <VStack align="start" gap={0}>
-                <Text fontSize="lg" fontWeight="semibold">
+                <Text
+                  fontSize="lg"
+                  fontWeight="semibold"
+                  cursor="pointer"
+                  _hover={{ textDecoration: 'underline' }}
+                  onClick={() => void navigate(`/people/${person.id}`)}
+                >
                   {person.name}
                 </Text>
                 <Badge
@@ -122,34 +110,18 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
             </Button>
           )}
 
-          {/* Transaction History Toggle */}
+          {/* Transaction History Link */}
           {person.transaction_count > 0 && (
             <Box>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsExpanded(!isExpanded)}
-                aria-label={`${isExpanded ? 'Hide' : 'Show'} transaction history for ${person.name}`}
-                aria-expanded={isExpanded}
+                onClick={() => void navigate(`/people/${person.id}`)}
+                aria-label={`View transactions for ${person.name}`}
               >
-                <HStack gap={2}>
-                  <Text>
-                    {person.transaction_count}{' '}
-                    {person.transaction_count === 1 ? 'Transaction' : 'Transactions'}
-                  </Text>
-                  {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
-                </HStack>
+                {person.transaction_count}{' '}
+                {person.transaction_count === 1 ? 'Transaction' : 'Transactions'} →
               </Button>
-
-              <Collapsible.Root open={isExpanded}>
-                <Collapsible.Content>
-                  <VStack align="start" gap={2} mt={3} pl={4}>
-                    <Text fontSize="sm" color="fg.muted">
-                      View detailed transaction history in the Transactions page
-                    </Text>
-                  </VStack>
-                </Collapsible.Content>
-              </Collapsible.Root>
             </Box>
           )}
 

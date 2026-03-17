@@ -23,3 +23,4 @@ export { default as usePortfolioSyncTrigger } from './usePortfolioSyncTrigger';
 export { default as useBankProviderConnection } from './useBankProviderConnection';
 export { default as useBankSync } from './useBankSync';
 export { default as useBankSyncTrigger } from './useBankSyncTrigger';
+export { default as usePersonDetail } from './usePersonDetail';

@@ -40,6 +40,12 @@ export interface ParseResponse {
   errors?: string[];
 }
 
+/** Bank sync metadata to link imported transactions to their external bank IDs */
+export interface BankSyncMetadata {
+  bank_provider_id: string;
+  external_transaction_ids: string[];
+}
+
 export interface BulkCreateRequest {
   account_id: string;
   transactions: Array<{
@@ -50,6 +56,8 @@ export interface BulkCreateRequest {
     date: string;
     notes?: string;
   }>;
+  /** Optional bank sync metadata for creating bank_sync_records alongside transactions */
+  bank_sync_metadata?: BankSyncMetadata;
 }
 
 export interface BulkCreateResponse {

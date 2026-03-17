@@ -537,6 +537,25 @@ nursery = "warn"
 - **Audit dependencies regularly**: Use `cargo audit`.
 - **Prefer well-maintained crates**: Check last update date and issue count.
 
+## Database Migrations
+
+### 16. Migration Best Practices
+
+- **Always use `diesel migration generate`**: Never create migration folders manually. Use `diesel migration generate <name>` to create the folder with the correct timestamp format and empty `up.sql`/`down.sql` files.
+- **Write both up and down**: Every migration must have a reversible `down.sql`.
+- **Test migrations**: Run `diesel migration run` followed by `diesel migration revert` to verify both directions work.
+- **Keep migrations small**: One logical change per migration.
+
+**Example:**
+
+```bash
+# ✅ Good: Use diesel CLI to generate migration folders
+cd backend && diesel migration generate add_user_email_column
+
+# ❌ Bad: Manually creating migration folders
+mkdir -p backend/migrations/2026-01-01-000000_add_user_email_column
+```
+
 ## Summary Checklist
 
 Before committing Rust code, verify:
@@ -552,6 +571,7 @@ Before committing Rust code, verify:
 - [ ] Public APIs are documented
 - [ ] `cargo clippy` passes with no warnings
 - [ ] Code is formatted with `cargo fmt`
+- [ ] Database migrations created with `diesel migration generate` (not manually)
 
 ---
 

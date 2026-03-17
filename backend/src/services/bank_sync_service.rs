@@ -385,6 +385,7 @@ pub async fn sync_bank_transactions(
             .external_account_id
             .unwrap_or_else(|| "Unknown".to_string()),
         bank_provider_id: bank_provider_id.to_string(),
+        account_id: provider_record.account_id.to_string(),
         balance,
         transactions: fetched_transactions,
         summary: BankSyncSummary {

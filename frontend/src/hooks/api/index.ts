@@ -99,7 +99,6 @@ export {
   useDisconnectBankProvider,
   useStartBankSync,
   useBankSyncJob,
-  useImportBankTransactions,
   useBankBalance,
   useExternalBankAccounts,
   useLinkExternalAccount,

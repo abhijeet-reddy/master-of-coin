@@ -19,6 +19,8 @@ interface ImportStatementModalProps {
   onClose: () => void;
   accounts: Account[];
   categories: Category[];
+  /** Optional external hook instance for shared state (used by bank sync import) */
+  importState?: ReturnType<typeof useImportStatement>;
 }
 
 const STEPS = ['upload', 'preview', 'confirmation'] as const;
@@ -29,7 +31,11 @@ export const ImportStatementModal = ({
   onClose,
   accounts,
   categories,
+  importState: externalState,
 }: ImportStatementModalProps) => {
+  const internalState = useImportStatement();
+  const state = externalState ?? internalState;
+
   const {
     currentStep,
     isProcessing,
@@ -40,7 +46,7 @@ export const ImportStatementModal = ({
     handleImport,
     handleBack,
     resetState,
-  } = useImportStatement();
+  } = state;
 
   const handleClose = () => {
     resetState();
@@ -69,44 +75,46 @@ export const ImportStatementModal = ({
         </DialogHeader>
 
         <DialogBody>
-          {/* Progress Indicator */}
-          <HStack justify="center" mb={6} gap={4}>
-            {STEPS.map((step, index) => {
-              const isActive = step === currentStep;
-              const isCompleted = index < currentStepIndex;
+          {/* Progress Indicator — only show for CSV upload flow */}
+          {currentStep === 'upload' && (
+            <HStack justify="center" mb={6} gap={4}>
+              {STEPS.map((step, index) => {
+                const isActive = step === currentStep;
+                const isCompleted = index < currentStepIndex;
 
-              return (
-                <HStack key={step} gap={2}>
-                  <Box
-                    w={8}
-                    h={8}
-                    borderRadius="full"
-                    bg={isActive ? 'blue.500' : isCompleted ? 'green.500' : 'gray.300'}
-                    color="white"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontWeight="bold"
-                  >
-                    {index + 1}
-                  </Box>
-                  <Text
-                    fontSize="sm"
-                    fontWeight={isActive ? 'bold' : 'normal'}
-                    color={isActive ? 'blue.600' : 'gray.600'}
-                  >
-                    {STEP_LABELS[step]}
-                  </Text>
-                </HStack>
-              );
-            })}
-          </HStack>
+                return (
+                  <HStack key={step} gap={2}>
+                    <Box
+                      w={8}
+                      h={8}
+                      borderRadius="full"
+                      bg={isActive ? 'blue.500' : isCompleted ? 'green.500' : 'gray.300'}
+                      color="white"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      fontWeight="bold"
+                    >
+                      {index + 1}
+                    </Box>
+                    <Text
+                      fontSize="sm"
+                      fontWeight={isActive ? 'bold' : 'normal'}
+                      color={isActive ? 'blue.600' : 'gray.600'}
+                    >
+                      {STEP_LABELS[step]}
+                    </Text>
+                  </HStack>
+                );
+              })}
+            </HStack>
+          )}
 
           {/* Step Content */}
           {currentStep === 'upload' && (
             <FileUploadStep
               accounts={accounts}
-              onUpload={handleFileUpload}
+              onUpload={(file, accountId) => void handleFileUpload(file, accountId)}
               isProcessing={isProcessing}
             />
           )}
@@ -116,7 +124,7 @@ export const ImportStatementModal = ({
               transactions={parsedTransactions}
               accountId={selectedAccountId}
               categories={categories}
-              onImport={handleImport}
+              onImport={(txns) => void handleImport(txns)}
               onBack={handleBack}
               isProcessing={isProcessing}
             />

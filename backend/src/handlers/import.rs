@@ -163,6 +163,7 @@ pub async fn bulk_create_transactions(
         user_id,
         request.account_id,
         request.transactions,
+        request.bank_sync_metadata,
     )
     .await?;
 

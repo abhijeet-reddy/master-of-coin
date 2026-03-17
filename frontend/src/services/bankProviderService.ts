@@ -7,8 +7,6 @@ import type {
   BankSyncRequest,
   StartBankSyncResponse,
   BankSyncJobResponse,
-  BankSyncImportRequest,
-  BankImportResult,
   BankBalanceResponse,
   ExternalBankAccount,
   LinkExternalAccountRequest,
@@ -67,24 +65,6 @@ export async function startSync(
  */
 export async function getSyncJob(jobId: string): Promise<BankSyncJobResponse> {
   const response = await apiClient.get<BankSyncJobResponse>(`/bank-providers/sync/${jobId}`);
-  return response.data;
-}
-
-/**
- * Import selected transactions from a sync job result
- * @param jobId - Job ID containing the sync results
- * @param transactionIds - External transaction IDs to import
- * @returns Import result with counts
- */
-export async function importTransactions(
-  jobId: string,
-  transactionIds: string[]
-): Promise<BankImportResult> {
-  const request: BankSyncImportRequest = { transaction_ids: transactionIds };
-  const response = await apiClient.post<BankImportResult>(
-    `/bank-providers/sync/${jobId}/import`,
-    request
-  );
   return response.data;
 }
 

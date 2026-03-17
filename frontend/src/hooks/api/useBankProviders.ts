@@ -5,7 +5,6 @@ import {
   disconnectProvider,
   startSync,
   getSyncJob,
-  importTransactions,
   getBalance,
   listExternalAccounts,
   linkExternalAccount,
@@ -73,24 +72,6 @@ export function useBankSyncJob(jobId: string | null, enabled = true) {
       // Poll every 2 seconds while job is pending/running
       if (status === 'PENDING' || status === 'RUNNING') return 2000;
       return false;
-    },
-  });
-}
-
-/**
- * Import selected transactions from a sync job result
- * Invalidates bank-providers and transactions on success
- */
-export function useImportBankTransactions() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ jobId, transactionIds }: { jobId: string; transactionIds: string[] }) =>
-      importTransactions(jobId, transactionIds),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['bank-providers'] });
-      void queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      void queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
   });
 }

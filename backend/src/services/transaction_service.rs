@@ -10,8 +10,8 @@ use crate::{
     config::Config,
     errors::ApiError,
     models::{
-        CreateTransactionRequest, NewTransaction, NewTransactionSplit, TransactionFilter,
-        TransactionResponse, UpdateTransactionRequest,
+        BankSyncMetadata, CreateTransactionRequest, NewBankSyncRecord, NewTransaction,
+        NewTransactionSplit, TransactionFilter, TransactionResponse, UpdateTransactionRequest,
     },
     repositories,
 };
@@ -726,9 +726,21 @@ pub async fn bulk_create_transactions(
     user_id: Uuid,
     account_id: Uuid,
     requests: Vec<CreateTransactionRequest>,
+    bank_sync_metadata: Option<BankSyncMetadata>,
 ) -> Result<Vec<TransactionResponse>, ApiError> {
     if requests.is_empty() {
         return Ok(Vec::new());
+    }
+
+    // Validate bank sync metadata array length matches transactions
+    if let Some(ref metadata) = bank_sync_metadata {
+        if metadata.external_transaction_ids.len() != requests.len() {
+            return Err(ApiError::Validation(format!(
+                "bank_sync_metadata.external_transaction_ids length ({}) must match transactions length ({})",
+                metadata.external_transaction_ids.len(),
+                requests.len()
+            )));
+        }
     }
 
     // 1. Validate all requests upfront
@@ -796,7 +808,29 @@ pub async fn bulk_create_transactions(
         account_id
     );
 
-    // 5. Convert to response DTOs
+    // 5. Create bank sync records if metadata is present
+    if let Some(metadata) = bank_sync_metadata {
+        let sync_records: Vec<NewBankSyncRecord> = transactions
+            .iter()
+            .zip(metadata.external_transaction_ids.iter())
+            .map(|(txn, external_id)| NewBankSyncRecord {
+                bank_provider_id: metadata.bank_provider_id,
+                external_transaction_id: external_id.clone(),
+                transaction_id: Some(txn.id),
+            })
+            .collect();
+
+        let record_count = sync_records.len();
+        repositories::bank_sync::create_records(pool, sync_records).await?;
+
+        tracing::info!(
+            "Created {} bank sync records for provider {}",
+            record_count,
+            metadata.bank_provider_id
+        );
+    }
+
+    // 6. Convert to response DTOs
     let responses: Vec<TransactionResponse> = transactions
         .into_iter()
         .map(TransactionResponse::from)

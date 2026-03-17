@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Box, VStack, HStack, Text, Button, Badge, Card, Checkbox } from '@chakra-ui/react';
-import { useImportBankTransactions } from '@/hooks/api/useBankProviders';
-import { toaster } from '@/components/ui/toaster';
+import { VStack, HStack, Text, Button, Badge, Card, Box } from '@chakra-ui/react';
+import { ImportStatementModal } from '@/components/transactions/import';
+import { useImportStatement } from '@/hooks/usecase/useImportStatement';
+import { useAccounts, useCategories } from '@/hooks/api';
+import { bankTxnToParsed, buildBankSyncMetadata } from '@/utils/bankTransactionConverter';
 import type { BankSyncReport, FetchedBankTransaction } from '@/types/bankProvider';
 
 interface BankSyncReportViewProps {
@@ -10,60 +12,29 @@ interface BankSyncReportViewProps {
 }
 
 /**
- * Displays a bank sync report with transaction review and import functionality.
- * Used in the Job Detail page for BANK_SYNC jobs.
+ * Displays a bank sync report with transaction list and import functionality.
+ * Clicking "Import" opens the same ImportStatementModal used by CSV import,
+ * pre-loaded with bank transactions for editing.
  */
-export const BankSyncReportView = ({ report, jobId }: BankSyncReportViewProps) => {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const importMutation = useImportBankTransactions();
+export const BankSyncReportView = ({ report }: BankSyncReportViewProps) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const importState = useImportStatement();
+  const { data: accounts } = useAccounts();
+  const { data: categories } = useCategories();
 
   const newTransactions = report.transactions.filter((t) => !t.already_imported);
 
-  const toggleTransaction = (externalId: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(externalId)) {
-        next.delete(externalId);
-      } else {
-        next.add(externalId);
-      }
-      return next;
-    });
+  const handleImportClick = () => {
+    if (newTransactions.length === 0) return;
+    const parsed = newTransactions.map(bankTxnToParsed);
+    const metadata = buildBankSyncMetadata(report.bank_provider_id, newTransactions);
+    importState.loadTransactions(parsed, report.account_id, metadata);
+    setIsModalOpen(true);
   };
 
-  const selectAllNew = () => {
-    setSelectedIds(new Set(newTransactions.map((t) => t.external_id)));
-  };
-
-  const deselectAll = () => {
-    setSelectedIds(new Set());
-  };
-
-  const handleImport = () => {
-    if (selectedIds.size === 0) return;
-    importMutation.mutate(
-      { jobId, transactionIds: Array.from(selectedIds) },
-      {
-        onSuccess: (result) => {
-          toaster.create({
-            title: 'Import Complete',
-            description: `${result.imported_count} transaction(s) imported.${
-              result.skipped_count > 0 ? ` ${result.skipped_count} skipped.` : ''
-            }`,
-            type: 'success',
-          });
-          setSelectedIds(new Set());
-        },
-        onError: (error) => {
-          const message = error instanceof Error ? error.message : 'Could not import transactions.';
-          toaster.create({
-            title: 'Import Failed',
-            description: message,
-            type: 'error',
-          });
-        },
-      }
-    );
+  const handleModalClose = () => {
+    importState.resetState();
+    setIsModalOpen(false);
   };
 
   return (
@@ -116,23 +87,9 @@ export const BankSyncReportView = ({ report, jobId }: BankSyncReportViewProps) =
             <VStack align="stretch" gap={3}>
               <HStack justify="space-between">
                 <Text fontWeight="semibold">New Transactions ({newTransactions.length})</Text>
-                <HStack gap={2}>
-                  <Button size="xs" variant="ghost" onClick={selectAllNew}>
-                    Select All
-                  </Button>
-                  <Button size="xs" variant="ghost" onClick={deselectAll}>
-                    Deselect All
-                  </Button>
-                  <Button
-                    colorPalette="green"
-                    size="xs"
-                    onClick={handleImport}
-                    loading={importMutation.isPending}
-                    disabled={selectedIds.size === 0}
-                  >
-                    Import ({selectedIds.size})
-                  </Button>
-                </HStack>
+                <Button colorPalette="green" size="sm" onClick={handleImportClick}>
+                  Import
+                </Button>
               </HStack>
 
               <Box maxH="500px" overflowY="auto">
@@ -145,25 +102,15 @@ export const BankSyncReportView = ({ report, jobId }: BankSyncReportViewProps) =
                     opacity={txn.already_imported ? 0.5 : 1}
                     _last={{ borderBottomWidth: 0 }}
                   >
-                    <HStack gap={3}>
-                      <Checkbox.Root
-                        checked={selectedIds.has(txn.external_id)}
-                        onCheckedChange={() => toggleTransaction(txn.external_id)}
-                        disabled={txn.already_imported}
-                      >
-                        <Checkbox.HiddenInput />
-                        <Checkbox.Control />
-                      </Checkbox.Root>
-                      <VStack align="start" gap={0}>
-                        <Text fontSize="sm" fontWeight="medium">
-                          {txn.description}
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted">
-                          {new Date(txn.date).toLocaleDateString()}
-                          {txn.merchant_name && ` · ${txn.merchant_name}`}
-                        </Text>
-                      </VStack>
-                    </HStack>
+                    <VStack align="start" gap={0}>
+                      <Text fontSize="sm" fontWeight="medium">
+                        {txn.description}
+                      </Text>
+                      <Text fontSize="xs" color="fg.muted">
+                        {new Date(txn.date).toLocaleDateString()}
+                        {txn.merchant_name && ` · ${txn.merchant_name}`}
+                      </Text>
+                    </VStack>
                     <HStack gap={2}>
                       <Text
                         fontSize="sm"
@@ -202,6 +149,15 @@ export const BankSyncReportView = ({ report, jobId }: BankSyncReportViewProps) =
           </Card.Body>
         </Card.Root>
       )}
+
+      {/* Reuse the same ImportStatementModal, sharing the hook state */}
+      <ImportStatementModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        accounts={accounts ?? []}
+        categories={categories ?? []}
+        importState={importState}
+      />
     </VStack>
   );
 };

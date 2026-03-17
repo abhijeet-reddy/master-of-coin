@@ -70,6 +70,8 @@ export interface BankSyncReport {
   provider_type: BankProviderType;
   account_name: string;
   bank_provider_id: string;
+  /** The local account ID linked to this bank provider */
+  account_id: string;
   balance: BankBalanceInfo | null;
   transactions: FetchedBankTransaction[];
   summary: BankSyncSummary;

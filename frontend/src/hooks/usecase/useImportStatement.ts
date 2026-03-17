@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ParsedTransaction } from '@/types';
+import type { ParsedTransaction, BankSyncMetadata } from '@/types';
 import { parseCSV, bulkCreateTransactions } from '@/services/statementImportService';
 import { toaster } from '@/components/ui/toaster';
 
@@ -31,6 +31,12 @@ interface UseImportStatementReturn {
   ) => Promise<void>;
   handleBack: () => void;
   resetState: () => void;
+  /** Pre-load transactions and jump directly to preview step (used by bank sync import) */
+  loadTransactions: (
+    transactions: ParsedTransaction[],
+    accountId: string,
+    bankSyncMetadata?: BankSyncMetadata
+  ) => void;
 }
 
 export const useImportStatement = (): UseImportStatementReturn => {
@@ -40,6 +46,7 @@ export const useImportStatement = (): UseImportStatementReturn => {
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [bankSyncMeta, setBankSyncMeta] = useState<BankSyncMetadata | undefined>(undefined);
 
   const handleFileUpload = useCallback(async (file: File, accountId: string) => {
     setIsProcessing(true);
@@ -75,6 +82,16 @@ export const useImportStatement = (): UseImportStatementReturn => {
     }
   }, []);
 
+  const loadTransactions = useCallback(
+    (transactions: ParsedTransaction[], accountId: string, metadata?: BankSyncMetadata) => {
+      setParsedTransactions(transactions);
+      setSelectedAccountId(accountId);
+      setBankSyncMeta(metadata);
+      setCurrentStep('preview');
+    },
+    []
+  );
+
   const handleImport = useCallback(
     async (
       transactions: Array<{
@@ -88,9 +105,37 @@ export const useImportStatement = (): UseImportStatementReturn => {
       setIsProcessing(true);
 
       try {
+        // Rebuild bank_sync_metadata to match only the imported transactions.
+        // TransactionPreviewStep may filter out deselected transactions, so the
+        // metadata must be rebuilt to stay parallel with the transactions array.
+        let filteredMeta: BankSyncMetadata | undefined = undefined;
+        if (bankSyncMeta && parsedTransactions.length > 0) {
+          // Build a lookup: temp_id → external_id (temp_id IS the external_id)
+          // Match imported transactions back to parsedTransactions by title+date
+          const importedExternalIds: string[] = [];
+          for (const txn of transactions) {
+            const match = parsedTransactions.find(
+              (p) =>
+                p.title === txn.title &&
+                p.date.startsWith(txn.date.split('T')[0]) &&
+                Math.abs(parseFloat(p.amount) - txn.amount) < 0.01
+            );
+            if (match) {
+              importedExternalIds.push(match.temp_id);
+            }
+          }
+          if (importedExternalIds.length === transactions.length) {
+            filteredMeta = {
+              bank_provider_id: bankSyncMeta.bank_provider_id,
+              external_transaction_ids: importedExternalIds,
+            };
+          }
+        }
+
         const response = await bulkCreateTransactions({
           account_id: selectedAccountId,
           transactions,
+          bank_sync_metadata: filteredMeta,
         });
 
         if (response.success && response.data) {
@@ -100,8 +145,13 @@ export const useImportStatement = (): UseImportStatementReturn => {
           });
           setCurrentStep('confirmation');
 
-          // Invalidate transactions query to refresh the list
+          // Invalidate queries to refresh lists
           void queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          void queryClient.invalidateQueries({ queryKey: ['accounts'] });
+          if (bankSyncMeta) {
+            void queryClient.invalidateQueries({ queryKey: ['bank-providers'] });
+            void queryClient.invalidateQueries({ queryKey: ['bank-sync-job'] });
+          }
 
           toaster.create({
             title: 'Import Complete',
@@ -126,12 +176,13 @@ export const useImportStatement = (): UseImportStatementReturn => {
         setIsProcessing(false);
       }
     },
-    [selectedAccountId]
+    [selectedAccountId, bankSyncMeta, parsedTransactions]
   );
 
   const handleBack = useCallback(() => {
     setCurrentStep('upload');
     setParsedTransactions([]);
+    setBankSyncMeta(undefined);
   }, []);
 
   const resetState = useCallback(() => {
@@ -140,6 +191,7 @@ export const useImportStatement = (): UseImportStatementReturn => {
     setParsedTransactions([]);
     setImportSummary(null);
     setIsProcessing(false);
+    setBankSyncMeta(undefined);
   }, []);
 
   return {
@@ -152,5 +204,6 @@ export const useImportStatement = (): UseImportStatementReturn => {
     handleImport,
     handleBack,
     resetState,
+    loadTransactions,
   };
 };

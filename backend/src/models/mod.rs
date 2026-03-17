@@ -105,7 +105,7 @@ pub use api_key::{ApiKeyScopes, OperationType, ResourceType, ScopePermission};
 
 // Re-export import models
 pub use bulk_transaction::{
-    BulkCreateData, BulkCreateError, BulkCreateRequest, BulkCreateResponse,
+    BankSyncMetadata, BulkCreateData, BulkCreateError, BulkCreateRequest, BulkCreateResponse,
 };
 pub use import::{DuplicateMatch, ImportSummary, ParseData, ParseResponse, ParsedTransaction};
 

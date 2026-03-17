@@ -35,6 +35,8 @@ pub struct BankSyncReport {
     pub provider_type: BankProviderType,
     pub account_name: String,
     pub bank_provider_id: String,
+    /// The local account ID linked to this bank provider
+    pub account_id: String,
     pub balance: Option<BankBalanceInfo>,
     pub transactions: Vec<FetchedBankTransaction>,
     pub summary: BankSyncSummary,

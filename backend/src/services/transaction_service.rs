@@ -695,3 +695,112 @@ pub async fn permanent_delete_transaction(
 
     Ok(())
 }
+
+/// Bulk create transactions using a single multi-row INSERT.
+///
+/// This function validates all requests upfront, verifies account and category
+/// ownership in batch, then inserts all transactions in a single SQL statement.
+/// The insert is atomic — all succeed or none do.
+///
+/// **Note:** This function does NOT support splits. CSV imports typically don't
+/// include splits. If splits are needed, use `create_transaction()` individually.
+///
+/// # Arguments
+///
+/// * `pool` - Database connection pool
+/// * `user_id` - Authenticated user ID
+/// * `account_id` - Target account ID (pre-verified by caller)
+/// * `requests` - Vector of transaction creation requests
+///
+/// # Returns
+///
+/// Returns all created `TransactionResponse` objects on success.
+///
+/// # Errors
+///
+/// Returns `ApiError::Validation` if any request fails validation.
+/// Returns `ApiError::Unauthorized` if any category doesn't belong to the user.
+/// Returns `ApiError` from the database if the bulk insert fails.
+pub async fn bulk_create_transactions(
+    pool: &DbPool,
+    user_id: Uuid,
+    account_id: Uuid,
+    requests: Vec<CreateTransactionRequest>,
+) -> Result<Vec<TransactionResponse>, ApiError> {
+    if requests.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // 1. Validate all requests upfront
+    for (index, request) in requests.iter().enumerate() {
+        request.validate().map_err(|e| {
+            tracing::warn!(
+                "Bulk create: validation failed for transaction at index {}: {}",
+                index,
+                e
+            );
+            ApiError::Validation(format!("Transaction at index {}: {}", index, e))
+        })?;
+    }
+
+    // 2. Batch-verify category ownership: collect unique category IDs, verify each once
+    let unique_category_ids: HashSet<Uuid> =
+        requests.iter().filter_map(|r| r.category_id).collect();
+
+    for category_id in &unique_category_ids {
+        let category = repositories::category::find_by_id(pool, *category_id).await?;
+        if category.user_id != user_id {
+            tracing::warn!(
+                "Bulk create: user {} attempted to use category {} owned by {}",
+                user_id,
+                category_id,
+                category.user_id
+            );
+            return Err(ApiError::Unauthorized(
+                "Category does not belong to user".to_string(),
+            ));
+        }
+    }
+
+    // 3. Build NewTransaction structs
+    let new_transactions: Vec<NewTransaction> = requests
+        .iter()
+        .map(|request| {
+            let amount = BigDecimal::from_str(&request.amount.to_string()).map_err(|e| {
+                tracing::error!("Failed to convert amount: {}", e);
+                ApiError::Validation("Invalid amount".to_string())
+            })?;
+
+            Ok(NewTransaction {
+                user_id,
+                account_id,
+                category_id: request.category_id,
+                title: request.title.clone(),
+                amount,
+                date: request.date,
+                notes: request.notes.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>, ApiError>>()?;
+
+    let count = new_transactions.len();
+
+    // 4. Single multi-row INSERT
+    let transactions =
+        repositories::transaction::bulk_create_transactions(pool, new_transactions).await?;
+
+    tracing::info!(
+        "Bulk created {} transactions for user {} in account {}",
+        count,
+        user_id,
+        account_id
+    );
+
+    // 5. Convert to response DTOs
+    let responses: Vec<TransactionResponse> = transactions
+        .into_iter()
+        .map(TransactionResponse::from)
+        .collect();
+
+    Ok(responses)
+}

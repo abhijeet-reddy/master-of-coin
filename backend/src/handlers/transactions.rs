@@ -159,8 +159,12 @@ pub async fn restore(
     Ok((StatusCode::OK, Json(response)))
 }
 
-/// Bulk create transactions
+/// Bulk create transactions using a single multi-row INSERT.
+///
 /// POST /transactions/bulk-create
+///
+/// Validates all transactions upfront, verifies ownership in batch,
+/// then inserts all rows in a single atomic SQL statement.
 pub async fn bulk_create(
     State(state): State<AppState>,
     Extension(auth_context): Extension<AuthContext>,
@@ -176,39 +180,24 @@ pub async fn bulk_create(
     // Verify account belongs to user
     crate::services::account_service::get_account(&state.db, request.account_id, user_id).await?;
 
-    let mut created_transactions = Vec::new();
-    let mut errors = Vec::new();
+    // Use bulk insert service — single multi-row INSERT, atomic
+    let created_transactions = transaction_service::bulk_create_transactions(
+        &state.db,
+        user_id,
+        request.account_id,
+        request.transactions,
+    )
+    .await?;
 
-    // Create transactions one by one
-    for (index, transaction_request) in request.transactions.iter().enumerate() {
-        match transaction_service::create_transaction(
-            &state.db,
-            user_id,
-            (*transaction_request).clone(),
-        )
-        .await
-        {
-            Ok(transaction) => created_transactions.push(transaction),
-            Err(e) => {
-                errors.push(crate::models::BulkCreateError {
-                    index,
-                    error: e.to_string(),
-                });
-            }
-        }
-    }
+    let count = created_transactions.len();
 
     Ok(Json(crate::models::BulkCreateResponse {
-        success: errors.is_empty(),
+        success: true,
         data: crate::models::BulkCreateData {
-            created: created_transactions.len(),
-            failed: errors.len(),
+            created: count,
+            failed: 0,
             transactions: created_transactions,
-            errors: if errors.is_empty() {
-                None
-            } else {
-                Some(errors)
-            },
+            errors: None,
         },
     }))
 }

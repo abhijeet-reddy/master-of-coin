@@ -50,6 +50,55 @@ pub async fn create_transaction(
     })?
 }
 
+/// Bulk create multiple transactions in a single INSERT statement.
+///
+/// Uses Diesel's multi-row insert (`INSERT INTO ... VALUES (...), (...), ...`)
+/// which is atomic — all rows succeed or none do.
+///
+/// # Arguments
+///
+/// * `pool` - Database connection pool
+/// * `new_transactions` - Vector of transactions to insert
+///
+/// # Returns
+///
+/// Returns all created `Transaction` rows on success.
+///
+/// # Errors
+///
+/// Returns `ApiError` if the insert fails (e.g. constraint violation).
+/// The entire batch is rolled back on any failure.
+pub async fn bulk_create_transactions(
+    pool: &DbPool,
+    new_transactions: Vec<NewTransaction>,
+) -> Result<Vec<Transaction>, ApiError> {
+    if new_transactions.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    let count = new_transactions.len();
+
+    tokio::task::spawn_blocking(move || {
+        diesel::insert_into(transactions::table)
+            .values(&new_transactions)
+            .get_results(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to bulk create {} transactions: {}", count, e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
 /// Find transaction by ID with optional debt metadata via LEFT JOIN.
 pub async fn find_by_id(
     pool: &DbPool,

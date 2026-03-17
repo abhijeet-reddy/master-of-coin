@@ -5,6 +5,7 @@ export enum JobType {
   DRIFT_DETECTION = 'DRIFT_DETECTION',
   BULK_SYNC = 'BULK_SYNC',
   PORTFOLIO_SYNC = 'PORTFOLIO_SYNC',
+  BANK_SYNC = 'BANK_SYNC',
 }
 
 /** Background job status values */

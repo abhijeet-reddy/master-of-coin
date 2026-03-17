@@ -30,9 +30,11 @@ interface AccountInfoCardProps {
   account: Account;
   onEdit: () => void;
   onDelete: () => void;
-  /** Show the Sync Portfolio button (Investment accounts with connected provider) */
+  /** Show the sync button */
   showSyncButton?: boolean;
-  /** Handler for the Sync Portfolio button */
+  /** Label for the sync button (defaults to "Sync Portfolio") */
+  syncLabel?: string;
+  /** Handler for the sync button */
   onSync?: () => void;
   /** Whether a sync is currently in progress */
   isSyncing?: boolean;
@@ -98,6 +100,7 @@ export const AccountInfoCard = ({
   onEdit,
   onDelete,
   showSyncButton,
+  syncLabel,
   onSync,
   isSyncing,
   syncFailed,
@@ -145,7 +148,9 @@ export const AccountInfoCard = ({
                     disabled={isSyncing}
                   >
                     <FaSync />
-                    <Text display={{ base: 'none', md: 'block' }}>Sync Portfolio</Text>
+                    <Text display={{ base: 'none', md: 'block' }}>
+                      {syncLabel ?? 'Sync Portfolio'}
+                    </Text>
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={onEdit}>

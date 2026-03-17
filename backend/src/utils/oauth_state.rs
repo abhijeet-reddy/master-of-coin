@@ -146,3 +146,100 @@ pub fn verify_signed_state(state: &str) -> Result<Uuid, OAuthStateError> {
     Uuid::parse_str(user_id_str)
         .map_err(|_| OAuthStateError::ValidationFailed("Invalid user_id in state".to_string()))
 }
+
+/// Create a signed OAuth state parameter that embeds user_id and account_id.
+///
+/// Used by bank provider OAuth flows where both IDs need to survive the redirect.
+/// Format: base64url([12-byte nonce][AES-GCM encrypted "user_id:account_id:random_hex"])
+pub fn create_bank_oauth_state(user_id: Uuid, account_id: Uuid) -> Result<String, OAuthStateError> {
+    let key_bytes = get_key()?;
+    if key_bytes.len() != 32 {
+        return Err(OAuthStateError::InvalidKeyFormat(format!(
+            "Key must be 32 bytes, got {}",
+            key_bytes.len()
+        )));
+    }
+
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+        .map_err(|e| OAuthStateError::CreationFailed(e.to_string()))?;
+
+    let mut nonce_bytes = [0u8; 12];
+    OsRng.fill_bytes(&mut nonce_bytes);
+    let nonce = Nonce::from_slice(&nonce_bytes);
+
+    let mut random_pad = [0u8; 8];
+    OsRng.fill_bytes(&mut random_pad);
+    let random_hex: String = random_pad.iter().map(|b| format!("{:02x}", b)).collect();
+
+    // Plaintext: "user_id:account_id:random_hex"
+    let plaintext = format!("{}:{}:{}", user_id, account_id, random_hex);
+
+    let ciphertext = cipher
+        .encrypt(nonce, plaintext.as_bytes())
+        .map_err(|e| OAuthStateError::CreationFailed(e.to_string()))?;
+
+    let mut result = nonce_bytes.to_vec();
+    result.extend_from_slice(&ciphertext);
+
+    Ok(BASE64URL.encode(&result))
+}
+
+/// Verify and extract user_id + account_id from a bank OAuth state parameter.
+///
+/// # Returns
+///
+/// Tuple of (user_id, account_id)
+pub fn verify_bank_oauth_state(state: &str) -> Result<(Uuid, Uuid), OAuthStateError> {
+    let key_bytes = get_key()?;
+    if key_bytes.len() != 32 {
+        return Err(OAuthStateError::InvalidKeyFormat(format!(
+            "Key must be 32 bytes, got {}",
+            key_bytes.len()
+        )));
+    }
+
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+        .map_err(|e| OAuthStateError::ValidationFailed(e.to_string()))?;
+
+    let encrypted_bytes = BASE64URL
+        .decode(state.trim())
+        .map_err(|e| OAuthStateError::ValidationFailed(format!("Base64 decode error: {}", e)))?;
+
+    if encrypted_bytes.len() < 12 {
+        return Err(OAuthStateError::ValidationFailed(
+            "State too short".to_string(),
+        ));
+    }
+
+    let (nonce_bytes, ciphertext) = encrypted_bytes.split_at(12);
+    let nonce = Nonce::from_slice(nonce_bytes);
+
+    let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|_| {
+        OAuthStateError::ValidationFailed(
+            "Decryption failed - invalid or tampered state".to_string(),
+        )
+    })?;
+
+    let plaintext_str = String::from_utf8(plaintext)
+        .map_err(|_| OAuthStateError::ValidationFailed("Invalid UTF-8 in state".to_string()))?;
+
+    // Parse "user_id:account_id:random_hex" — split from the end
+    let last_colon = plaintext_str
+        .rfind(':')
+        .ok_or_else(|| OAuthStateError::ValidationFailed("Invalid state format".to_string()))?;
+    let before_last = &plaintext_str[..last_colon];
+    let second_colon = before_last
+        .rfind(':')
+        .ok_or_else(|| OAuthStateError::ValidationFailed("Invalid state format".to_string()))?;
+
+    let user_id_str = &before_last[..second_colon];
+    let account_id_str = &before_last[second_colon + 1..];
+
+    let user_id = Uuid::parse_str(user_id_str)
+        .map_err(|_| OAuthStateError::ValidationFailed("Invalid user_id in state".to_string()))?;
+    let account_id = Uuid::parse_str(account_id_str).map_err(|_| {
+        OAuthStateError::ValidationFailed("Invalid account_id in state".to_string())
+    })?;
+
+    Ok((user_id, account_id))
+}

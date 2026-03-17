@@ -91,3 +91,16 @@ export {
   usePortfolioSyncJob,
   useRetryPortfolioSync,
 } from './usePortfolioSync';
+
+// Bank provider hooks
+export {
+  useBankProviders,
+  useGetBankAuthUrl,
+  useDisconnectBankProvider,
+  useStartBankSync,
+  useBankSyncJob,
+  useImportBankTransactions,
+  useBankBalance,
+  useExternalBankAccounts,
+  useLinkExternalAccount,
+} from './useBankProviders';

@@ -20,3 +20,6 @@ export { default as useBudgetDetail } from './useBudgetDetail';
 export { default as useTransactionSplitState } from './useTransactionSplitState';
 export { default as useInvestmentProviderConnection } from './useInvestmentProviderConnection';
 export { default as usePortfolioSyncTrigger } from './usePortfolioSyncTrigger';
+export { default as useBankProviderConnection } from './useBankProviderConnection';
+export { default as useBankSync } from './useBankSync';
+export { default as useBankSyncTrigger } from './useBankSyncTrigger';

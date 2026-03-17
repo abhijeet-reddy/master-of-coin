@@ -2,6 +2,8 @@
 pub mod account;
 pub mod api_key;
 pub mod background_job;
+pub mod bank_provider;
+pub mod bank_sync;
 pub mod budget;
 pub mod category;
 pub mod debt_transaction_metadata;

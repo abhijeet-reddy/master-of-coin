@@ -2,6 +2,7 @@
 pub mod accounts;
 pub mod api_keys;
 pub mod auth;
+pub mod bank_providers;
 pub mod budgets;
 pub mod bulk_sync;
 pub mod categories;

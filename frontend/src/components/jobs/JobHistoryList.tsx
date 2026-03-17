@@ -19,6 +19,7 @@ const jobTypeToRoute: Record<JobType, string> = {
   [JobType.DRIFT_DETECTION]: 'drift-detection',
   [JobType.BULK_SYNC]: 'sync',
   [JobType.PORTFOLIO_SYNC]: 'portfolio-sync',
+  [JobType.BANK_SYNC]: 'bank-sync',
 };
 
 function extractSummaryText(job: BackgroundJobSummary): string {

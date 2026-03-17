@@ -10,6 +10,10 @@ pub mod sql_types {
     pub struct ApiKeyStatus;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "bank_provider_type"))]
+    pub struct BankProviderType;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "budget_period"))]
     pub struct BudgetPeriod;
 
@@ -92,6 +96,36 @@ diesel::table! {
         created_at -> Timestamptz,
         started_at -> Nullable<Timestamptz>,
         completed_at -> Nullable<Timestamptz>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::BankProviderType;
+
+    bank_providers (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        account_id -> Uuid,
+        provider_type -> BankProviderType,
+        credentials -> Jsonb,
+        #[max_length = 255]
+        external_account_id -> Nullable<Varchar>,
+        is_active -> Bool,
+        last_sync_at -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    bank_sync_records (id) {
+        id -> Uuid,
+        bank_provider_id -> Uuid,
+        #[max_length = 255]
+        external_transaction_id -> Varchar,
+        transaction_id -> Nullable<Uuid>,
+        imported_at -> Timestamptz,
     }
 }
 
@@ -303,6 +337,10 @@ diesel::table! {
 diesel::joinable!(accounts -> users (user_id));
 diesel::joinable!(api_keys -> users (user_id));
 diesel::joinable!(background_jobs -> users (user_id));
+diesel::joinable!(bank_providers -> accounts (account_id));
+diesel::joinable!(bank_providers -> users (user_id));
+diesel::joinable!(bank_sync_records -> bank_providers (bank_provider_id));
+diesel::joinable!(bank_sync_records -> transactions (transaction_id));
 diesel::joinable!(budget_ranges -> budgets (budget_id));
 diesel::joinable!(budgets -> users (user_id));
 diesel::joinable!(categories -> users (user_id));
@@ -327,6 +365,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     accounts,
     api_keys,
     background_jobs,
+    bank_providers,
+    bank_sync_records,
     budget_ranges,
     budgets,
     categories,

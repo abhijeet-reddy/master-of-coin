@@ -33,16 +33,19 @@ use master_of_coin_backend::models::drift_detection::DriftDetectionRequest;
 use master_of_coin_backend::repositories;
 use master_of_coin_backend::repositories::background_job::BackgroundJobRepository;
 use master_of_coin_backend::repositories::schedule::ScheduleRepository;
+use master_of_coin_backend::services::bank_provider::{
+    self as bank_provider_registry, BankProvider,
+};
 use master_of_coin_backend::services::investment_provider::{
     InvestmentProvider, Trading212Provider,
 };
 use master_of_coin_backend::services::split_provider::{SplitProvider, all_providers};
 use master_of_coin_backend::services::split_sync_service::SplitSyncService;
 use master_of_coin_backend::services::{
-    bulk_sync_service, drift_detection_service, portfolio_sync_service,
+    bank_sync_service, bulk_sync_service, drift_detection_service, portfolio_sync_service,
 };
 use master_of_coin_backend::types::{
-    InvestmentProviderType, JobStatus, JobType, SplitProviderType,
+    BankProviderType, InvestmentProviderType, JobStatus, JobType, SplitProviderType,
 };
 use master_of_coin_backend::utils::cron::compute_next_run_after;
 
@@ -105,7 +108,11 @@ async fn main() {
         investment_providers.len()
     );
 
-    // 7. Initialize SplitSyncService for bulk sync jobs
+    // 7. Initialize bank providers
+    let bank_providers = bank_provider_registry::all_bank_providers();
+    tracing::info!("Initialized {} bank provider(s)", bank_providers.len());
+
+    // 8. Initialize SplitSyncService for bulk sync jobs
     let sync_service = SplitSyncService::new(pool.clone());
     tracing::info!("SplitSyncService initialized for bulk sync jobs");
 
@@ -129,7 +136,7 @@ async fn main() {
         _ = run_health_server(health_pool) => {
             tracing::error!("Health check server exited unexpectedly");
         }
-        _ = run_poll_loop(pool, split_providers, investment_providers, sync_service, poll_interval_secs) => {
+        _ = run_poll_loop(pool, split_providers, investment_providers, bank_providers, sync_service, poll_interval_secs) => {
             tracing::error!("Poll loop exited unexpectedly");
         }
     }
@@ -412,11 +419,13 @@ async fn run_poll_loop(
     pool: DbPool,
     split_providers: HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
     investment_providers: HashMap<InvestmentProviderType, Arc<dyn InvestmentProvider>>,
+    bank_providers: HashMap<BankProviderType, Arc<dyn BankProvider>>,
     sync_service: SplitSyncService,
     poll_interval_secs: u64,
 ) {
     let split_providers = Arc::new(split_providers);
     let investment_providers = Arc::new(investment_providers);
+    let bank_providers = Arc::new(bank_providers);
     let running_types: Arc<RwLock<HashSet<JobType>>> = Arc::new(RwLock::new(HashSet::new()));
     let mut last_cleanup_date = Utc::now().date_naive();
 
@@ -483,6 +492,7 @@ async fn run_poll_loop(
                 let pool_clone = pool.clone();
                 let split_providers_clone = Arc::clone(&split_providers);
                 let investment_providers_clone = Arc::clone(&investment_providers);
+                let bank_providers_clone = Arc::clone(&bank_providers);
                 let sync_service_clone = sync_service.clone();
                 let running_types_clone = Arc::clone(&running_types);
 
@@ -491,6 +501,7 @@ async fn run_poll_loop(
                         &pool_clone,
                         &split_providers_clone,
                         &investment_providers_clone,
+                        &bank_providers_clone,
                         &sync_service_clone,
                         job_id,
                         job_type,
@@ -660,6 +671,22 @@ fn build_job_input(
 
             input
         }
+        JobType::BankSync => {
+            // Include schedule_id and merge any parameters from the schedule
+            let mut input = schedule
+                .parameters
+                .clone()
+                .unwrap_or_else(|| serde_json::json!({}));
+
+            if let Some(obj) = input.as_object_mut() {
+                obj.insert(
+                    "schedule_id".to_string(),
+                    serde_json::Value::String(schedule_id),
+                );
+            }
+
+            input
+        }
     }
 }
 
@@ -668,6 +695,7 @@ async fn execute_job(
     pool: &DbPool,
     split_providers: &HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
     investment_providers: &HashMap<InvestmentProviderType, Arc<dyn InvestmentProvider>>,
+    bank_providers: &HashMap<BankProviderType, Arc<dyn BankProvider>>,
     sync_service: &SplitSyncService,
     job_id: uuid::Uuid,
     job_type: JobType,
@@ -684,6 +712,7 @@ async fn execute_job(
         JobType::PortfolioSync => {
             execute_portfolio_sync_job(pool, investment_providers, user_id, input).await
         }
+        JobType::BankSync => execute_bank_sync_job(pool, &bank_providers, user_id, input).await,
     };
 
     match result {
@@ -812,4 +841,60 @@ async fn execute_portfolio_sync_job(
     tracing::info!("Running portfolio sync for user {}", user_id);
 
     portfolio_sync_service::execute_portfolio_sync(pool, investment_providers, user_id, input).await
+}
+
+/// Execute a bank sync job.
+///
+/// Parses the input to extract `bank_provider_id` and optional date range,
+/// calls `bank_sync_service::sync_bank_transactions()`, and returns the
+/// serialized `BankSyncReport` or an error message.
+async fn execute_bank_sync_job(
+    pool: &DbPool,
+    bank_providers: &HashMap<BankProviderType, Arc<dyn BankProvider>>,
+    user_id: uuid::Uuid,
+    input: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let input_json = input.ok_or_else(|| "Missing input for bank sync job".to_string())?;
+
+    let bank_provider_id_str = input_json
+        .get("bank_provider_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Missing bank_provider_id in input".to_string())?;
+
+    let bank_provider_id = uuid::Uuid::parse_str(bank_provider_id_str)
+        .map_err(|e| format!("Invalid bank_provider_id: {}", e))?;
+
+    let from_date = input_json
+        .get("from_date")
+        .and_then(|v| v.as_str())
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc));
+
+    let to_date = input_json
+        .get("to_date")
+        .and_then(|v| v.as_str())
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc));
+
+    tracing::info!(
+        "Running bank sync for user {} provider {} (from: {:?}, to: {:?})",
+        user_id,
+        bank_provider_id,
+        from_date,
+        to_date
+    );
+
+    let report = bank_sync_service::sync_bank_transactions(
+        pool,
+        bank_providers,
+        user_id,
+        bank_provider_id,
+        from_date,
+        to_date,
+    )
+    .await
+    .map_err(|e| format!("Bank sync failed: {}", e))?;
+
+    serde_json::to_value(&report)
+        .map_err(|e| format!("Failed to serialize bank sync report: {}", e))
 }

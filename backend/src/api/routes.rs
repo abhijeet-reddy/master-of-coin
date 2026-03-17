@@ -82,6 +82,12 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/integrations/splitwise/callback",
             get(handlers::splitwise_integration::oauth_callback),
+        )
+        // TrueLayer OAuth callback - must be public since it's a browser redirect from TrueLayer
+        // User identity is verified via encrypted state parameter (embeds user_id + account_id)
+        .route(
+            "/bank-providers/truelayer/callback",
+            get(handlers::bank_providers::truelayer_oauth_callback),
         );
 
     // Protected routes (authentication required)
@@ -736,6 +742,43 @@ pub fn create_router(state: AppState) -> Router {
                     )
                 },
             )),
+        )
+        // Bank providers - Open Banking integrations (no scope check - always accessible)
+        .route(
+            "/bank-providers",
+            get(handlers::bank_providers::list_bank_providers),
+        )
+        .route(
+            "/bank-providers/truelayer/auth-url",
+            get(handlers::bank_providers::get_truelayer_auth_url),
+        )
+        .route(
+            "/bank-providers/sync/:job_id",
+            get(handlers::bank_providers::get_sync_job),
+        )
+        .route(
+            "/bank-providers/sync/:job_id/import",
+            post(handlers::bank_providers::import_transactions),
+        )
+        .route(
+            "/bank-providers/:id",
+            delete(handlers::bank_providers::disconnect_bank_provider),
+        )
+        .route(
+            "/bank-providers/:id/sync",
+            post(handlers::bank_providers::start_sync),
+        )
+        .route(
+            "/bank-providers/:id/balance",
+            get(handlers::bank_providers::get_balance),
+        )
+        .route(
+            "/bank-providers/:id/accounts",
+            get(handlers::bank_providers::list_external_accounts),
+        )
+        .route(
+            "/bank-providers/:id/link-account",
+            put(handlers::bank_providers::link_external_account),
         )
         // Portfolio sync - async job-based (uses Accounts scope)
         .route(

@@ -6,14 +6,17 @@ import { JobProgressCard, JobStatusBadge, PortfolioSyncReportView } from '@/comp
 import { DriftReportView } from '@/components/drift';
 import { BulkSyncReportView } from '@/components/sync';
 import { SyncWizard } from '@/components/sync/wizard';
+import { BankSyncReportView } from '@/components/bank';
 import { useDriftJob, useRetryDriftJob } from '@/hooks/api/useDriftDetection';
 import { useBulkSyncJob, useRetryBulkSync } from '@/hooks/api/useBulkSync';
 import { usePortfolioSyncJob, useRetryPortfolioSync } from '@/hooks/api/usePortfolioSync';
+import { useBankSyncJob } from '@/hooks/api/useBankProviders';
 import { useDocumentTitle } from '@/hooks/effects';
 import { JobStatus } from '@/types';
 import type { DriftReport, PortfolioSyncReport } from '@/types';
+import type { BankSyncReport } from '@/types/bankProvider';
 
-type JobDetailType = 'drift-detection' | 'sync' | 'portfolio-sync';
+type JobDetailType = 'drift-detection' | 'sync' | 'portfolio-sync' | 'bank-sync';
 
 /** Format an ISO date string to a human-readable date/time */
 const formatDateTime = (iso: string): string => {
@@ -368,10 +371,71 @@ const PortfolioSyncJobDetail = ({ id, pageTitle }: { id: string; pageTitle: stri
   );
 };
 
+const BankSyncJobDetail = ({ id, pageTitle }: { id: string; pageTitle: string }) => {
+  const { data: job, isLoading, error } = useBankSyncJob(id, true);
+
+  if (isLoading) return <LoadingSpinner message="Loading bank sync job..." />;
+  if (error) return <ErrorAlert title="Failed to load job" error={error} />;
+  if (!job)
+    return <ErrorAlert title="Job not found" error={new Error('Job data is unavailable.')} />;
+
+  const jobStatus = job.status as JobStatus;
+
+  if (jobStatus === JobStatus.PENDING || jobStatus === JobStatus.RUNNING) {
+    return (
+      <VStack gap={4} alignItems="stretch">
+        <JobHeaderCard
+          title={pageTitle}
+          status={jobStatus}
+          createdAt={job.created_at}
+          startedAt={job.started_at}
+        />
+        <JobProgressCard status={jobStatus} />
+      </VStack>
+    );
+  }
+
+  if (jobStatus === JobStatus.FAILED) {
+    return (
+      <VStack gap={4} alignItems="stretch">
+        <JobHeaderCard
+          title={pageTitle}
+          status={jobStatus}
+          createdAt={job.created_at}
+          startedAt={job.started_at}
+          completedAt={job.completed_at}
+        />
+        <ErrorAlert title="Bank sync failed" error={new Error(job.error ?? 'Unknown error')} />
+      </VStack>
+    );
+  }
+
+  if (jobStatus === JobStatus.COMPLETED && job.result) {
+    const report: BankSyncReport = job.result;
+    return (
+      <VStack gap={4} alignItems="stretch">
+        <JobHeaderCard
+          title={pageTitle}
+          status={jobStatus}
+          createdAt={job.created_at}
+          startedAt={job.started_at}
+          completedAt={job.completed_at}
+        />
+        <BankSyncReportView report={report} jobId={id} />
+      </VStack>
+    );
+  }
+
+  return (
+    <ErrorAlert title="Unexpected state" error={new Error('Job is in an unexpected state.')} />
+  );
+};
+
 const titleMap: Record<JobDetailType, string> = {
   'drift-detection': 'Drift Detection',
   sync: 'Bulk Sync',
   'portfolio-sync': 'Portfolio Sync',
+  'bank-sync': 'Bank Sync',
 };
 
 export const JobDetailPage = () => {
@@ -391,7 +455,10 @@ export const JobDetailPage = () => {
   }
 
   const isValidType =
-    jobType === 'drift-detection' || jobType === 'sync' || jobType === 'portfolio-sync';
+    jobType === 'drift-detection' ||
+    jobType === 'sync' ||
+    jobType === 'portfolio-sync' ||
+    jobType === 'bank-sync';
 
   return (
     <Box>
@@ -406,6 +473,8 @@ export const JobDetailPage = () => {
         <DriftJobDetail id={id} pageTitle={pageTitle} />
       ) : jobType === 'portfolio-sync' ? (
         <PortfolioSyncJobDetail id={id} pageTitle={pageTitle} />
+      ) : jobType === 'bank-sync' ? (
+        <BankSyncJobDetail id={id} pageTitle={pageTitle} />
       ) : (
         <SyncJobDetail id={id} pageTitle={pageTitle} />
       )}

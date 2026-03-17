@@ -12,6 +12,7 @@ const jobTypeFilters = createListCollection({
     { label: 'Drift Detection', value: JobType.DRIFT_DETECTION },
     { label: 'Bulk Sync', value: JobType.BULK_SYNC },
     { label: 'Portfolio Sync', value: JobType.PORTFOLIO_SYNC },
+    { label: 'Bank Sync', value: JobType.BANK_SYNC },
   ],
 });
 

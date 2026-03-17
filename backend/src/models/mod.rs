@@ -1,6 +1,8 @@
 pub mod account;
 pub mod api_key;
 pub mod background_job;
+pub mod bank_provider;
+pub mod bank_sync;
 pub mod budget;
 pub mod budget_range;
 pub mod bulk_sync;
@@ -27,6 +29,8 @@ pub mod user;
 // Re-export base models
 pub use account::{Account, CreateAccount, UpdateAccount};
 pub use api_key::ApiKey;
+pub use bank_provider::{BankProviderRecord, NewBankProvider};
+pub use bank_sync::{BankSyncRecord, NewBankSyncRecord};
 pub use budget::{Budget, CreateBudget, UpdateBudget};
 pub use budget_range::{BudgetRange, CreateBudgetRange, UpdateBudgetRange};
 pub use category::{Category, CreateCategory, UpdateCategory};
@@ -107,7 +111,8 @@ pub use import::{DuplicateMatch, ImportSummary, ParseData, ParseResponse, Parsed
 
 // Re-export types from types module for convenience
 pub use crate::types::{
-    AccountType, ApiKeyStatus, BudgetPeriod, ConfidenceLevel, CurrencyCode, InvestmentProviderType,
+    AccountType, ApiKeyStatus, BankProviderType, BudgetPeriod, ConfidenceLevel, CurrencyCode,
+    InvestmentProviderType,
 };
 pub use crate::types::{JobStatus, JobType};
 
@@ -129,6 +134,16 @@ pub use bulk_sync::{
 
 // Re-export job summary models
 pub use job_summary::{BackgroundJobSummary, ListJobsQuery};
+
+// Re-export bank provider models
+pub use bank_provider::{
+    BankAuthUrlResponse, BankBalanceResponse, BankProviderResponse, BankSyncImportRequest,
+    BankSyncRequest, ExternalBankAccountResponse, LinkExternalAccountRequest,
+};
+pub use bank_sync::{
+    BankImportResult, BankSyncJobResponse, BankSyncReport, BankSyncSummary, FetchedBankTransaction,
+    StartBankSyncResponse,
+};
 
 // Re-export schedule models
 pub use schedule::{

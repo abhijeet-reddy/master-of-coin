@@ -13,6 +13,7 @@ import {
   useAccountDetail,
   useInvestmentProviderConnection,
   usePortfolioSyncTrigger,
+  useBankSyncTrigger,
 } from '@/hooks/usecase';
 import {
   useDocumentTitle,
@@ -60,6 +61,17 @@ export const AccountDetailPage = () => {
   const isInvestment = account?.account_type === AccountType.INVESTMENT;
   const { isConnected: isProviderConnected } = useInvestmentProviderConnection(id ?? '');
   const { syncJob, isSyncing, handleSync } = usePortfolioSyncTrigger(id ?? '');
+
+  // Bank sync: available for checking, savings, credit card accounts with connected bank
+  const isBankConnectable =
+    account?.account_type === AccountType.CHECKING ||
+    account?.account_type === AccountType.SAVINGS ||
+    account?.account_type === AccountType.CREDIT_CARD;
+  const {
+    canSync: canBankSync,
+    isSyncing: isBankSyncing,
+    handleSync: handleBankSync,
+  } = useBankSyncTrigger(id ?? '');
 
   useDocumentTitle(account ? `${account.name} — Account` : 'Account');
 
@@ -141,9 +153,10 @@ export const AccountDetailPage = () => {
         account={account}
         onEdit={() => setIsEditOpen(true)}
         onDelete={() => setShowDeleteDialog(true)}
-        showSyncButton={isInvestment && isProviderConnected}
-        onSync={handleSync}
-        isSyncing={isSyncing}
+        showSyncButton={(isInvestment && isProviderConnected) || (isBankConnectable && canBankSync)}
+        syncLabel="Sync"
+        onSync={isBankConnectable && canBankSync ? handleBankSync : handleSync}
+        isSyncing={isSyncing || isBankSyncing}
         syncFailed={syncJob?.status === (JobStatus.FAILED as string)}
         syncError={syncJob?.error}
         syncJobId={syncJob?.job_id}

@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { Field } from '@/components/ui/field';
 import { ErrorAlert } from '@/components/common';
 import { BrokerageConnectionConfig } from './BrokerageConnectionConfig';
+import { BankConnectionConfig } from '@/components/bank';
 import { ConnectProviderForm } from './ConnectProviderForm';
 import useCreateAccount from '@/hooks/api/useCreateAccount';
 import useUpdateAccount from '@/hooks/api/useUpdateAccount';
@@ -302,6 +303,12 @@ export const AccountFormModal = ({
           {watchedType === AccountType.INVESTMENT && account && (
             <BrokerageConnectionConfig accountId={account.id} />
           )}
+
+          {/* Bank Connection Section (Checking/Savings/Credit Card accounts) */}
+          {(watchedType === AccountType.CHECKING ||
+            watchedType === AccountType.SAVINGS ||
+            watchedType === AccountType.CREDIT_CARD) &&
+            account && <BankConnectionConfig accountId={account.id} />}
 
           {/* Create mode: show connect form to collect credentials */}
           {watchedType === AccountType.INVESTMENT && !account && (

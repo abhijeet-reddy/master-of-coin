@@ -1,8 +1,6 @@
-import { useMemo } from 'react';
 import { VStack, Skeleton } from '@chakra-ui/react';
 import { EmptyState } from '@/components/common';
 import { PersonCard } from './PersonCard';
-import { useTransactions, usePersonDebts } from '@/hooks';
 import type { Person } from '@/types';
 
 interface PeopleListProps {
@@ -10,21 +8,9 @@ interface PeopleListProps {
   isLoading?: boolean;
   onEdit: (person: Person) => void;
   onDelete: (person: Person) => void;
-  onSettle: (person: Person) => void;
 }
 
-export const PeopleList = ({ people, isLoading, onEdit, onDelete, onSettle }: PeopleListProps) => {
-  const { data: transactionsResponse } = useTransactions();
-  const transactions = transactionsResponse?.pages.flatMap((page) => page.data) ?? [];
-  const personDebts = usePersonDebts(people, transactions);
-
-  // Enrich people with debt summaries
-  const enrichedPeople = useMemo(() => {
-    return people.map((person) => ({
-      ...person,
-      debt_summary: personDebts.get(person.id),
-    }));
-  }, [people, personDebts]);
+export const PeopleList = ({ people, isLoading, onEdit, onDelete }: PeopleListProps) => {
   // Loading state
   if (isLoading) {
     return (
@@ -47,7 +33,7 @@ export const PeopleList = ({ people, isLoading, onEdit, onDelete, onSettle }: Pe
   }
 
   // Sort people by debt amount (highest first)
-  const sortedPeople = [...enrichedPeople].sort((a, b) => {
+  const sortedPeople = [...people].sort((a, b) => {
     const aNet = Math.abs(parseFloat(a.debt_summary?.net || '0'));
     const bNet = Math.abs(parseFloat(b.debt_summary?.net || '0'));
     return bNet - aNet;
@@ -61,7 +47,6 @@ export const PeopleList = ({ people, isLoading, onEdit, onDelete, onSettle }: Pe
           person={person}
           onEdit={() => onEdit(person)}
           onDelete={() => onDelete(person)}
-          onSettle={() => onSettle(person)}
         />
       ))}
     </VStack>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Box, Button } from '@chakra-ui/react';
 import { PageHeader, ConfirmDialog, ErrorAlert } from '@/components/common';
-import { DebtSummary, PeopleList, PersonFormModal, SettleDebtModal } from '@/components/people';
+import { DebtSummary, PeopleList, PersonFormModal } from '@/components/people';
 import { useDocumentTitle, usePeople, useDeletePerson } from '@/hooks';
 import type { Person } from '@/types';
 
@@ -9,7 +9,6 @@ export const People = () => {
   useDocumentTitle('People');
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isSettleOpen, setIsSettleOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | undefined>(undefined);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; person: Person | null }>({
     isOpen: false,
@@ -66,10 +65,6 @@ export const People = () => {
         onDelete={(person) => {
           setDeleteDialog({ isOpen: true, person });
         }}
-        onSettle={(person) => {
-          setSelectedPerson(person);
-          setIsSettleOpen(true);
-        }}
       />
 
       {/* Person Form Modal */}
@@ -85,23 +80,6 @@ export const People = () => {
           setSelectedPerson(undefined);
         }}
       />
-
-      {/* Settle Debt Modal */}
-      {selectedPerson && (
-        <SettleDebtModal
-          isOpen={isSettleOpen}
-          onClose={() => {
-            setIsSettleOpen(false);
-            setSelectedPerson(undefined);
-          }}
-          person={selectedPerson}
-          debtAmount={parseFloat(selectedPerson.debt_summary?.net || '0')}
-          onSuccess={() => {
-            setIsSettleOpen(false);
-            setSelectedPerson(undefined);
-          }}
-        />
-      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

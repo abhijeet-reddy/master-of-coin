@@ -46,7 +46,16 @@ export const PersonInfoCard = ({ person, onEdit, onDelete, onSettle }: PersonInf
                 </Text>
               </VStack>
             </HStack>
-            <HStack gap={1}>
+            <HStack gap={2}>
+              {debtAmount !== 0 && (
+                <Button
+                  colorPalette={debtAmount > 0 ? 'green' : 'red'}
+                  size="sm"
+                  onClick={onSettle}
+                >
+                  Settle Up
+                </Button>
+              )}
               <IconButton aria-label="Edit person" size="sm" variant="ghost" onClick={onEdit}>
                 <LuPencil />
               </IconButton>
@@ -78,8 +87,8 @@ export const PersonInfoCard = ({ person, onEdit, onDelete, onSettle }: PersonInf
             )}
           </HStack>
 
-          {/* Debt Summary */}
-          <HStack gap={6} flexWrap="wrap">
+          {/* Debt Summary with Settle Up */}
+          <HStack gap={6} flexWrap="wrap" align="flex-end">
             {person.debt_summary && (
               <>
                 <VStack align="start" gap={0} minW="120px">
@@ -109,22 +118,6 @@ export const PersonInfoCard = ({ person, onEdit, onDelete, onSettle }: PersonInf
               </Text>
             </VStack>
           </HStack>
-
-          {/* Settle Up Button */}
-          {debtAmount !== 0 && (
-            <Box>
-              <Button colorPalette={debtAmount > 0 ? 'green' : 'red'} size="sm" onClick={onSettle}>
-                Settle Up
-              </Button>
-            </Box>
-          )}
-
-          {/* Notes */}
-          {person.notes && (
-            <Text fontSize="sm" color="fg.muted">
-              {person.notes}
-            </Text>
-          )}
         </VStack>
       </Card.Body>
     </Card.Root>

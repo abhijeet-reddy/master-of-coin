@@ -118,6 +118,14 @@ impl UpdatePersonRequest {
 
 // Response DTOs
 
+/// Debt summary for a person (owes_me, i_owe, net)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebtSummaryResponse {
+    pub owes_me: String,
+    pub i_owe: String,
+    pub net: String,
+}
+
 /// Split config info included in PersonResponse
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PersonSplitConfigInfo {
@@ -134,6 +142,11 @@ pub struct PersonResponse {
     pub email: Option<String>,
     pub phone: Option<String>,
     pub notes: Option<String>,
+    /// Debt summary (owes_me, i_owe, net)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debt_summary: Option<DebtSummaryResponse>,
+    /// Number of transactions involving this person
+    pub transaction_count: i64,
     /// Optional split provider configuration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub split_config: Option<PersonSplitConfigInfo>,
@@ -148,7 +161,9 @@ impl From<Person> for PersonResponse {
             email: person.email,
             phone: person.phone,
             notes: person.notes,
-            split_config: None, // Populated separately when needed
+            debt_summary: None,   // Populated by handler
+            transaction_count: 0, // Populated by handler
+            split_config: None,   // Populated separately when needed
         }
     }
 }

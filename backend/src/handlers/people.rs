@@ -1,10 +1,16 @@
+use std::collections::HashMap;
+
+use bigdecimal::BigDecimal;
+use uuid::Uuid;
+
 use crate::{
     AppState,
     auth::context::AuthContext,
     errors::ApiError,
     models::{
-        CreatePersonRequest, NewPerson, NewPersonSplitConfig, PersonResponse,
-        PersonSplitConfigResponse, SetPersonSplitConfigRequest, UpdatePerson, UpdatePersonRequest,
+        CreatePersonRequest, DebtSummaryResponse, NewPerson, NewPersonSplitConfig, PersonResponse,
+        PersonSplitConfigResponse, SetPersonSplitConfigRequest, TransactionSplit, UpdatePerson,
+        UpdatePersonRequest,
     },
     repositories, services,
 };
@@ -14,7 +20,6 @@ use axum::{
     http::StatusCode,
 };
 use serde::Deserialize;
-use uuid::Uuid;
 use validator::Validate;
 
 /// Request DTO for settling debt
@@ -35,7 +40,35 @@ pub async fn list(
 
     let people = repositories::person::list_by_user(&state.db, user_id).await?;
 
-    let responses: Vec<PersonResponse> = people.into_iter().map(|p| p.into()).collect();
+    // Batch-fetch all splits for all people (2 queries total, no N+1)
+    let person_ids: Vec<Uuid> = people.iter().map(|p| p.id).collect();
+    let all_splits = repositories::person::list_splits_for_people(&state.db, person_ids).await?;
+
+    // Group splits by person_id
+    let mut splits_by_person: HashMap<Uuid, Vec<&TransactionSplit>> = HashMap::new();
+    for split in &all_splits {
+        splits_by_person
+            .entry(split.person_id)
+            .or_default()
+            .push(split);
+    }
+
+    // Build responses with debt summaries
+    let responses: Vec<PersonResponse> = people
+        .into_iter()
+        .map(|p| {
+            let person_id = p.id;
+            let mut response: PersonResponse = p.into();
+            let splits = splits_by_person
+                .get(&person_id)
+                .cloned()
+                .unwrap_or_default();
+            let (debt_summary, transaction_count) = calculate_debt_summary(&splits);
+            response.debt_summary = Some(debt_summary);
+            response.transaction_count = transaction_count;
+            response
+        })
+        .collect();
 
     Ok(Json(responses))
 }
@@ -89,7 +122,14 @@ pub async fn get(
         ));
     }
 
-    let response = person.into();
+    // Fetch splits and calculate debt summary
+    let splits = repositories::person::list_splits_for_person(&state.db, id).await?;
+    let split_refs: Vec<&TransactionSplit> = splits.iter().collect();
+    let (debt_summary, transaction_count) = calculate_debt_summary(&split_refs);
+
+    let mut response: PersonResponse = person.into();
+    response.debt_summary = Some(debt_summary);
+    response.transaction_count = transaction_count;
 
     Ok(Json(response))
 }
@@ -317,4 +357,44 @@ pub async fn delete_split_config(
     repositories::person_split_config::delete_config(&state.db, person_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+// --- Private helpers ---
+
+/// Calculate debt summary and transaction count from a set of splits.
+///
+/// Returns `(DebtSummaryResponse, transaction_count)`.
+/// - `owes_me`: sum of positive split amounts (they owe you)
+/// - `i_owe`: sum of absolute values of negative split amounts (you owe them)
+/// - `net`: total sum of all split amounts
+/// - `transaction_count`: number of distinct transactions
+fn calculate_debt_summary(splits: &[&TransactionSplit]) -> (DebtSummaryResponse, i64) {
+    use std::collections::HashSet;
+
+    let zero = BigDecimal::from(0);
+    let mut owes_me = zero.clone();
+    let mut i_owe = zero.clone();
+    let mut net = zero.clone();
+    let mut transaction_ids = HashSet::new();
+
+    for split in splits {
+        let amount = &split.amount;
+        net += amount;
+
+        if *amount > zero {
+            owes_me += amount;
+        } else if *amount < zero {
+            i_owe += amount.abs();
+        }
+
+        transaction_ids.insert(split.transaction_id);
+    }
+
+    let summary = DebtSummaryResponse {
+        owes_me: owes_me.to_string(),
+        i_owe: i_owe.to_string(),
+        net: net.to_string(),
+    };
+
+    (summary, transaction_ids.len() as i64)
 }

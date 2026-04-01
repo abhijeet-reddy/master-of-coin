@@ -1,4 +1,4 @@
-import { Badge, Button, Card, HStack, IconButton, Text, VStack, Box } from '@chakra-ui/react';
+import { Badge, Card, HStack, IconButton, Text, VStack } from '@chakra-ui/react';
 import { FaUser, FaEnvelope, FaPhone, FaEdit, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/utils/formatters';
@@ -8,10 +8,9 @@ interface PersonCardProps {
   person: Person;
   onEdit: () => void;
   onDelete: () => void;
-  onSettle: () => void;
 }
 
-export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardProps) => {
+export const PersonCard = ({ person, onEdit, onDelete }: PersonCardProps) => {
   const navigate = useNavigate();
 
   // Calculate debt amount and color
@@ -29,7 +28,12 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
   };
 
   return (
-    <Card.Root>
+    <Card.Root
+      cursor="pointer"
+      onClick={() => void navigate(`/people/${person.id}`)}
+      _hover={{ shadow: 'md', borderColor: 'blue.200' }}
+      transition="all 0.2s"
+    >
       <Card.Body>
         <VStack align="stretch" gap={3}>
           {/* Header with icon and actions */}
@@ -39,13 +43,7 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
                 <FaUser />
               </Text>
               <VStack align="start" gap={0}>
-                <Text
-                  fontSize="lg"
-                  fontWeight="semibold"
-                  cursor="pointer"
-                  _hover={{ textDecoration: 'underline' }}
-                  onClick={() => void navigate(`/people/${person.id}`)}
-                >
+                <Text fontSize="lg" fontWeight="semibold">
                   {person.name}
                 </Text>
                 <Badge
@@ -57,7 +55,15 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
               </VStack>
             </HStack>
             <HStack gap={1}>
-              <IconButton aria-label="Edit person" size="sm" variant="ghost" onClick={onEdit}>
+              <IconButton
+                aria-label="Edit person"
+                size="sm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
                 <FaEdit />
               </IconButton>
               <IconButton
@@ -65,7 +71,10 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
                 size="sm"
                 variant="ghost"
                 colorScheme="red"
-                onClick={onDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
               >
                 <FaTrash />
               </IconButton>
@@ -98,37 +107,11 @@ export const PersonCard = ({ person, onEdit, onDelete, onSettle }: PersonCardPro
             </Text>
           </VStack>
 
-          {/* Settle Up Button */}
-          {debtAmount !== 0 && (
-            <Button
-              colorScheme={debtAmount > 0 ? 'green' : 'red'}
-              size="sm"
-              onClick={onSettle}
-              aria-label={`Settle debt with ${person.name}`}
-            >
-              Settle Up
-            </Button>
-          )}
-
-          {/* Transaction History Link */}
+          {/* Transaction count */}
           {person.transaction_count > 0 && (
-            <Box>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void navigate(`/people/${person.id}`)}
-                aria-label={`View transactions for ${person.name}`}
-              >
-                {person.transaction_count}{' '}
-                {person.transaction_count === 1 ? 'Transaction' : 'Transactions'} →
-              </Button>
-            </Box>
-          )}
-
-          {/* Notes preview */}
-          {person.notes && (
-            <Text fontSize="sm" color="fg.muted" lineClamp={2}>
-              {person.notes}
+            <Text fontSize="sm" color="fg.muted">
+              {person.transaction_count}{' '}
+              {person.transaction_count === 1 ? 'transaction' : 'transactions'}
             </Text>
           )}
         </VStack>

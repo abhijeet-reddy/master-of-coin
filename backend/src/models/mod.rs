@@ -88,7 +88,7 @@ pub use category::CategoryResponse;
 pub use debt_transaction_metadata::DebtMetadataResponse;
 pub use exchange_rate::ExchangeRateResponse;
 pub use investment_provider::InvestmentProviderResponse;
-pub use person::PersonResponse;
+pub use person::{DebtSummaryResponse, PersonResponse};
 pub use person_split_config::PersonSplitConfigResponse;
 pub use portfolio_sync::{
     AccountSyncResult, PortfolioSyncJobResponse, PortfolioSyncReport, StartPortfolioSyncResponse,

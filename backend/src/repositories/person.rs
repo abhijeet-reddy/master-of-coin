@@ -227,3 +227,36 @@ pub async fn list_splits_for_person(
         ApiError::Internal
     })?
 }
+
+/// Get all splits for multiple people in a single batch query (avoids N+1)
+pub async fn list_splits_for_people(
+    pool: &DbPool,
+    person_ids: Vec<Uuid>,
+) -> Result<Vec<crate::models::TransactionSplit>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        use crate::schema::transaction_splits;
+
+        transaction_splits::table
+            .filter(transaction_splits::person_id.eq_any(&person_ids))
+            .order(transaction_splits::created_at.asc())
+            .load(&mut conn)
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to get splits for {} people: {}",
+                    person_ids.len(),
+                    e
+                );
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}

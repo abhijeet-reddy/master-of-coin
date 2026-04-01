@@ -6,14 +6,14 @@ import {
 } from "../../helpers/assertions";
 
 /**
- * Split payment visibility tests for income vs expense transactions.
+ * Split payment visibility tests for income and expense transactions.
  *
  * Verifies that the "Enable Split Payment" button is:
- * - Hidden when transaction type is "Income"
+ * - Visible when transaction type is "Income" (splits allowed on income)
  * - Visible when transaction type is "Expense"
- * - Cleared when switching from Expense to Income
+ * - Preserved when switching between Income and Expense
  *
- * GitHub Issue: #53
+ * GitHub Issue: #53, #59
  */
 
 const screenshotHelper = new ScreenshotHelper();
@@ -53,8 +53,8 @@ async function selectTransactionType(
   await select.selectOption(type);
 }
 
-test.describe("Split Payment - Income Transactions (#53)", () => {
-  test("split toggle is hidden when transaction type is income", async ({
+test.describe("Split Payment - Income Transactions (#53, #59)", () => {
+  test("split toggle is visible when transaction type is income", async ({
     authenticatedPage,
   }) => {
     const errors = collectConsoleErrors(authenticatedPage);
@@ -65,17 +65,17 @@ test.describe("Split Payment - Income Transactions (#53)", () => {
     await selectTransactionType(authenticatedPage, "income");
     await authenticatedPage.waitForTimeout(300);
 
-    // The "Enable Split Payment" button should NOT be visible
+    // The "Enable Split Payment" button should be visible (splits allowed on income)
     const splitButton = authenticatedPage
       .locator("button")
       .filter({ hasText: /split payment/i });
-    await expect(splitButton).toBeHidden();
+    await expect(splitButton).toBeVisible({ timeout: 5000 });
 
     expectNoConsoleErrors(errors);
 
     await screenshotHelper.capturePageScreenshot(
       authenticatedPage,
-      "split-income-hidden",
+      "split-income-visible",
     );
   });
 
@@ -100,7 +100,7 @@ test.describe("Split Payment - Income Transactions (#53)", () => {
     );
   });
 
-  test("switching from expense to income clears split state", async ({
+  test("split toggle remains visible when switching from expense to income", async ({
     authenticatedPage,
   }) => {
     await openAddTransactionModal(authenticatedPage);
@@ -113,10 +113,7 @@ test.describe("Split Payment - Income Transactions (#53)", () => {
     await splitButton.click();
     await authenticatedPage.waitForTimeout(300);
 
-    // Verify split form appeared (look for split-related text)
-    const splitForm = authenticatedPage.locator("text=Split this transaction");
-    // The form may or may not show this text depending on implementation
-    // At minimum, the button should now say "Disable"
+    // The button should now say "Disable"
     const disableButton = authenticatedPage
       .locator("button")
       .filter({ hasText: /disable split/i });
@@ -126,17 +123,19 @@ test.describe("Split Payment - Income Transactions (#53)", () => {
     await selectTransactionType(authenticatedPage, "income");
     await authenticatedPage.waitForTimeout(300);
 
-    // Split toggle and form should be hidden
-    await expect(splitButton).toBeHidden();
-    await expect(disableButton).toBeHidden();
+    // Split toggle should still be visible (splits allowed on income)
+    const splitButtonAfterSwitch = authenticatedPage
+      .locator("button")
+      .filter({ hasText: /split payment/i });
+    await expect(splitButtonAfterSwitch).toBeVisible({ timeout: 5000 });
 
     await screenshotHelper.capturePageScreenshot(
       authenticatedPage,
-      "split-cleared-on-income-switch",
+      "split-visible-after-income-switch",
     );
   });
 
-  test("switching back to expense restores split toggle", async ({
+  test("split toggle stays visible when switching between types", async ({
     authenticatedPage,
   }) => {
     await openAddTransactionModal(authenticatedPage);
@@ -145,22 +144,22 @@ test.describe("Split Payment - Income Transactions (#53)", () => {
     await selectTransactionType(authenticatedPage, "income");
     await authenticatedPage.waitForTimeout(300);
 
-    // Verify split toggle is hidden
+    // Verify split toggle is visible for income
     const splitButton = authenticatedPage
       .locator("button")
       .filter({ hasText: /split payment/i });
-    await expect(splitButton).toBeHidden();
+    await expect(splitButton).toBeVisible({ timeout: 5000 });
 
     // Switch back to Expense
     await selectTransactionType(authenticatedPage, "expense");
     await authenticatedPage.waitForTimeout(300);
 
-    // Split toggle should be visible again
+    // Split toggle should still be visible
     await expect(splitButton).toBeVisible({ timeout: 5000 });
 
     await screenshotHelper.capturePageScreenshot(
       authenticatedPage,
-      "split-restored-on-expense-switch",
+      "split-visible-after-type-switch",
     );
   });
 });

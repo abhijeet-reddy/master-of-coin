@@ -138,9 +138,8 @@ export const TransactionFormModal = ({
 
   const amount = watch('amount');
   const payerMode = watch('payer_mode') as PayerMode;
-  const transactionType = watch('transaction_type');
 
-  // Split state managed by custom hook (income-aware)
+  // Split state managed by custom hook
   const {
     isSplitEnabled,
     splits,
@@ -150,7 +149,6 @@ export const TransactionFormModal = ({
     clearSplits,
     initFromTransaction,
   } = useTransactionSplitState({
-    transactionType,
     payerMode,
     isDebtTransaction: !!transaction?.debt_metadata,
   });
@@ -556,7 +554,7 @@ export const TransactionFormModal = ({
                 </Box>
               )}
 
-              {/* Split Payment Toggle (only for expenses when "I paid") */}
+              {/* Split Payment Toggle (when "I paid" mode) */}
               {canSplit && (
                 <Box>
                   <Button

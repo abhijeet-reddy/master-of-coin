@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import type { TransactionSplitRequest, PayerMode } from '@/types';
 
 interface UseTransactionSplitStateProps {
-  transactionType: 'income' | 'expense';
   payerMode: PayerMode;
   isDebtTransaction?: boolean;
 }
@@ -22,22 +21,21 @@ interface UseTransactionSplitStateReturn {
 /**
  * Manages split payment state for the transaction form.
  *
- * Encapsulates the income-awareness logic:
- * - `canSplit` is false when transaction type is income, payer mode is 'other', or it's a debt transaction
+ * - `canSplit` is false when payer mode is 'other' or it's a debt transaction
  * - The component uses `canSplit` to conditionally render the split toggle/form
  * - When `canSplit` is false, splits are simply hidden (not sent on submit)
+ * - Splits are allowed on both income and expense transactions
  *
  * CONSTRAINT: Uses exactly 2 useState hooks (within hook limits)
  */
 export default function useTransactionSplitState({
-  transactionType,
   payerMode,
   isDebtTransaction = false,
 }: UseTransactionSplitStateProps): UseTransactionSplitStateReturn {
   const [isSplitEnabled, setIsSplitEnabled] = useState(false);
   const [splits, setSplits] = useState<TransactionSplitRequest[]>([]);
 
-  const canSplit = transactionType === 'expense' && payerMode === 'self' && !isDebtTransaction;
+  const canSplit = payerMode === 'self' && !isDebtTransaction;
 
   const clearSplits = useCallback(() => {
     setIsSplitEnabled(false);

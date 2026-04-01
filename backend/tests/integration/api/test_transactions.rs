@@ -1900,13 +1900,13 @@ async fn test_full_transaction_crud_flow() {
 // Splits on Income Validation Tests
 // ============================================================================
 
-/// Test that creating an income transaction with splits is rejected.
+/// Test that creating an income transaction with splits is allowed.
 ///
 /// Verifies that:
-/// - Status code is 422 (validation error)
-/// - Splits are not allowed on income transactions (positive amount)
+/// - Status code is 201 (created)
+/// - Splits are allowed on income transactions (positive amount)
 #[tokio::test]
-async fn test_create_income_transaction_with_splits_rejected() {
+async fn test_create_income_transaction_with_splits_allowed() {
     let server = create_test_server().await;
     let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
 
@@ -1923,7 +1923,7 @@ async fn test_create_income_transaction_with_splits_rejected() {
     let category = create_test_category(&server, &auth.token, "Test Category").await;
     let person = create_test_person(&server, &auth.token, "Person 1").await;
 
-    // Attempt to create an income transaction (positive amount) with splits
+    // Create an income transaction (positive amount) with splits
     let request = json!({
         "account_id": account.id,
         "category_id": category.id,
@@ -1936,16 +1936,21 @@ async fn test_create_income_transaction_with_splits_rejected() {
     });
 
     let response = post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
-    assert_status(&response, 422);
+    assert_status(&response, 201);
+
+    let transaction: TransactionResponse = extract_json(response);
+    let splits = transaction.splits.expect("splits should be present");
+    assert_eq!(splits.len(), 1);
+    assert_eq!(splits[0].person_id, person.id);
 }
 
-/// Test that updating a transaction to income while it has splits is rejected.
+/// Test that updating a transaction to income while it has splits is allowed.
 ///
 /// Verifies that:
 /// - Updating an expense transaction's amount to positive (income) while providing splits
-///   returns a validation error
+///   succeeds
 #[tokio::test]
-async fn test_update_to_income_with_splits_rejected() {
+async fn test_update_to_income_with_splits_allowed() {
     let server = create_test_server().await;
     let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
 
@@ -1984,7 +1989,7 @@ async fn test_update_to_income_with_splits_rejected() {
     assert_status(&create_response, 201);
     let transaction: TransactionResponse = extract_json(create_response);
 
-    // Attempt to update amount to positive (income) while keeping splits
+    // Update amount to positive (income) while keeping splits — should succeed
     let update_request = json!({
         "amount": 100.00,
         "splits": [
@@ -2000,6 +2005,67 @@ async fn test_update_to_income_with_splits_rejected() {
     )
     .await;
 
-    // Should be rejected — splits not allowed on income
-    assert_status(&update_response, 422);
+    // Should succeed — splits are allowed on income transactions
+    assert_status(&update_response, 200);
+}
+
+/// Test that updating an income transaction with an empty splits array succeeds.
+///
+/// This is the exact scenario from issue #59: the frontend sends `splits: []`
+/// when editing an income transaction (to clear any existing splits), and the
+/// backend should accept it without error.
+#[tokio::test]
+async fn test_update_income_transaction_with_empty_splits_succeeds() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("issue59_{}", timestamp),
+        &format!("issue59_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Issue 59 Test User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+
+    // Create an income transaction (positive amount, no splits)
+    let create_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Salary",
+        "amount": 3000.00,
+        "date": Utc::now().to_rfc3339()
+    });
+
+    let create_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &create_request,
+    )
+    .await;
+    assert_status(&create_response, 201);
+    let transaction: TransactionResponse = extract_json(create_response);
+
+    // Update the income transaction with empty splits array (what the frontend sends)
+    let update_request = json!({
+        "title": "Updated Salary",
+        "splits": []
+    });
+
+    let update_response = put_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+        &update_request,
+    )
+    .await;
+
+    // Should succeed — empty splits on income is fine (issue #59 fix)
+    assert_status(&update_response, 200);
+    let updated: TransactionResponse = extract_json(update_response);
+    assert_eq!(updated.title, "Updated Salary");
 }

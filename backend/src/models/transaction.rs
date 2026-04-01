@@ -117,13 +117,6 @@ fn validate_transaction_request(
     req: &CreateTransactionRequest,
 ) -> Result<(), validator::ValidationError> {
     if let Some(ref splits) = req.splits {
-        // Reject splits on income transactions (positive amount)
-        if !splits.is_empty() && req.amount > 0.0 {
-            let mut error = validator::ValidationError::new("splits_on_income");
-            error.message = Some("Splits are not allowed on income transactions".into());
-            return Err(error);
-        }
-
         // Validate each split
         for split in splits {
             split.validate().map_err(|_| {

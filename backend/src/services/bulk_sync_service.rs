@@ -17,6 +17,7 @@ use crate::models::bulk_sync::{
 use crate::repositories::split_sync_record::SplitSyncRecordRepository;
 use crate::schema::transaction_splits;
 use crate::services::split_sync_service::SplitSyncService;
+use crate::types::SplitProviderType;
 
 /// Execute a bulk sync job.
 ///
@@ -56,6 +57,7 @@ pub async fn execute_bulk_sync(
                             action: SyncAction::Push,
                             transaction_id: None,
                             external_expense_id: None,
+                            provider_type: None,
                             status: "failed".to_string(),
                             detail: None,
                             error: Some("push action requires transaction_id".to_string()),
@@ -75,6 +77,7 @@ pub async fn execute_bulk_sync(
                             action: SyncAction::Pull,
                             transaction_id: None,
                             external_expense_id: item.external_expense_id.clone(),
+                            provider_type: item.provider_type.clone(),
                             status: "failed".to_string(),
                             detail: None,
                             error: Some("pull action requires external_expense_id".to_string()),
@@ -84,7 +87,7 @@ pub async fn execute_bulk_sync(
                     }
                 };
 
-                execute_pull(sync_service, pool, user_id, &ext_id).await
+                execute_pull(sync_service, pool, user_id, &ext_id, item.provider_type).await
             }
         };
 
@@ -103,6 +106,7 @@ pub async fn execute_bulk_sync(
                     action,
                     transaction_id,
                     external_expense_id,
+                    provider_type: item.provider_type.clone(),
                     status: "failed".to_string(),
                     detail: None,
                     error: Some(error_msg),
@@ -162,6 +166,7 @@ async fn execute_push(
             action: SyncAction::Push,
             transaction_id: Some(transaction_id),
             external_expense_id: Some(ext_id.to_string()),
+            provider_type: None,
             status: "success".to_string(),
             detail: Some(serde_json::json!({
                 "sync_status": resolve_status,
@@ -181,6 +186,7 @@ async fn execute_push(
         action: SyncAction::Push,
         transaction_id: Some(transaction_id),
         external_expense_id: ext_id.clone(),
+        provider_type: None,
         status: "success".to_string(),
         detail: Some(serde_json::json!({
             "sync_status": status,
@@ -202,6 +208,7 @@ async fn execute_pull(
     pool: &DbPool,
     user_id: Uuid,
     external_expense_id: &str,
+    provider_type: Option<SplitProviderType>,
 ) -> Result<SyncItemResult, String> {
     // Check if this external expense is already linked to a local transaction
     let existing_records =
@@ -239,6 +246,7 @@ async fn execute_pull(
             action: SyncAction::Pull,
             transaction_id: Some(transaction_id),
             external_expense_id: Some(external_expense_id.to_string()),
+            provider_type: provider_type.clone(),
             status: "success".to_string(),
             detail: Some(serde_json::json!({
                 "sync_status": resolve_status,
@@ -254,10 +262,16 @@ async fn execute_pull(
         .await
         .map_err(|e| format!("Failed to list split providers: {}", e))?;
 
-    let provider = providers
-        .into_iter()
-        .find(|p| p.is_active)
-        .ok_or_else(|| "No active split provider configured for user".to_string())?;
+    let provider = match provider_type {
+        Some(ref pt) => providers
+            .into_iter()
+            .find(|p| p.is_active && p.provider_type == *pt)
+            .ok_or_else(|| format!("No active {} provider configured for user", pt))?,
+        None => providers
+            .into_iter()
+            .find(|p| p.is_active)
+            .ok_or_else(|| "No active split provider configured for user".to_string())?,
+    };
 
     let provider_id = provider.id;
 
@@ -293,6 +307,7 @@ async fn execute_pull(
         action: SyncAction::Pull,
         transaction_id,
         external_expense_id: Some(external_expense_id.to_string()),
+        provider_type,
         status: "success".to_string(),
         detail: Some(serde_json::json!({
             "sync_status": import_status,

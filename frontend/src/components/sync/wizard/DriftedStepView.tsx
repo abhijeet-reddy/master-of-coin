@@ -19,9 +19,14 @@ import type { SplitDiff } from '@/utils/driftHelpers';
 interface DriftedStepViewProps {
   items: DriftedItem[];
   selected: Map<string, DriftedSelection>;
-  onToggle: (id: string, action: SyncAction, externalExpenseId: string) => void;
+  onToggle: (
+    id: string,
+    action: SyncAction,
+    externalExpenseId: string,
+    providerType?: string
+  ) => void;
   onSelectAll: (
-    entries: Array<{ id: string; externalExpenseId: string }>,
+    entries: Array<{ id: string; externalExpenseId: string; providerType?: string }>,
     action: SyncAction
   ) => void;
 }
@@ -41,6 +46,7 @@ export const DriftedStepView = ({
       items.map((i) => ({
         id: i.transaction_id,
         externalExpenseId: i.external_expense_id,
+        providerType: i.provider_type,
       })),
     [items]
   );
@@ -91,7 +97,12 @@ export const DriftedStepView = ({
                   <Checkbox.Root
                     checked={isSelected}
                     onCheckedChange={() =>
-                      onToggle(item.transaction_id, currentAction, item.external_expense_id)
+                      onToggle(
+                        item.transaction_id,
+                        currentAction,
+                        item.external_expense_id,
+                        item.provider_type
+                      )
                     }
                   >
                     <Checkbox.HiddenInput />
@@ -158,7 +169,12 @@ export const DriftedStepView = ({
                     size="xs"
                     value={currentAction}
                     onValueChange={(e) =>
-                      onToggle(item.transaction_id, e.value as SyncAction, item.external_expense_id)
+                      onToggle(
+                        item.transaction_id,
+                        e.value as SyncAction,
+                        item.external_expense_id,
+                        item.provider_type
+                      )
                     }
                   >
                     <SegmentGroup.Indicator />

@@ -220,6 +220,7 @@ pub async fn retry_bulk_sync(
             action: item.action.clone(),
             transaction_id: item.transaction_id,
             external_expense_id: item.external_expense_id.clone(),
+            provider_type: item.provider_type.clone(),
         })
         .collect();
 

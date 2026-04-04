@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useReducer } from 'react';
 import { SyncAction } from '@/types';
-import type { DriftedSelection, SyncItem } from '@/types';
+import type { DriftedSelection, DriftReport, SyncItem } from '@/types';
 
 /** Wizard steps: 1=Drifted, 2=MissingExternal, 3=MissingLocal, 4=Review */
 type WizardStep = 1 | 2 | 3 | 4;
@@ -19,12 +19,18 @@ type WizardAction =
   | { type: 'NEXT_STEP' }
   | { type: 'PREV_STEP' }
   | { type: 'SKIP_STEP' }
-  | { type: 'TOGGLE_DRIFTED'; id: string; action: SyncAction; externalExpenseId: string }
+  | {
+      type: 'TOGGLE_DRIFTED';
+      id: string;
+      action: SyncAction;
+      externalExpenseId: string;
+      providerType?: string;
+    }
   | { type: 'TOGGLE_MISSING_EXTERNAL'; id: string }
   | { type: 'TOGGLE_MISSING_LOCAL'; id: string }
   | {
       type: 'SELECT_ALL_DRIFTED';
-      entries: Array<{ id: string; externalExpenseId: string }>;
+      entries: Array<{ id: string; externalExpenseId: string; providerType?: string }>;
       action: SyncAction;
     }
   | { type: 'SELECT_ALL_MISSING_EXTERNAL'; ids: string[] }
@@ -55,6 +61,7 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
         next.set(action.id, {
           action: action.action,
           externalExpenseId: action.externalExpenseId,
+          providerType: action.providerType,
         });
       }
       return { ...state, selectedDrifted: next };
@@ -86,6 +93,7 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
         next.set(entry.id, {
           action: action.action,
           externalExpenseId: entry.externalExpenseId,
+          providerType: entry.providerType,
         });
       }
       return { ...state, selectedDrifted: next };
@@ -137,8 +145,8 @@ export default function useSyncWizard() {
   const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
 
   const toggleDriftedItem = useCallback(
-    (id: string, action: SyncAction, externalExpenseId: string) => {
-      dispatch({ type: 'TOGGLE_DRIFTED', id, action, externalExpenseId });
+    (id: string, action: SyncAction, externalExpenseId: string, providerType?: string) => {
+      dispatch({ type: 'TOGGLE_DRIFTED', id, action, externalExpenseId, providerType });
     },
     []
   );
@@ -152,7 +160,10 @@ export default function useSyncWizard() {
   }, []);
 
   const selectAllDrifted = useCallback(
-    (entries: Array<{ id: string; externalExpenseId: string }>, action: SyncAction) => {
+    (
+      entries: Array<{ id: string; externalExpenseId: string; providerType?: string }>,
+      action: SyncAction
+    ) => {
       dispatch({ type: 'SELECT_ALL_DRIFTED', entries, action });
     },
     []
@@ -175,38 +186,48 @@ export default function useSyncWizard() {
     [state.selectedDrifted, state.selectedMissingExternal, state.selectedMissingLocal]
   );
 
-  /** Build SyncItem array from all selections */
-  const buildSyncItems = useCallback((): SyncItem[] => {
-    const items: SyncItem[] = [];
+  /** Build SyncItem array from all selections, using the drift report to look up provider_type */
+  const buildSyncItems = useCallback(
+    (report?: DriftReport): SyncItem[] => {
+      const items: SyncItem[] = [];
 
-    // Drifted items: user-selected push or pull per item
-    // Both transaction_id and external_expense_id are always sent for drifted items
-    for (const [transactionId, selection] of state.selectedDrifted) {
-      items.push({
-        action: selection.action,
-        transaction_id: transactionId,
-        external_expense_id: selection.externalExpenseId,
-      });
-    }
+      // Drifted items: user-selected push or pull per item
+      // Both transaction_id and external_expense_id are always sent for drifted items
+      for (const [transactionId, selection] of state.selectedDrifted) {
+        items.push({
+          action: selection.action,
+          transaction_id: transactionId,
+          external_expense_id: selection.externalExpenseId,
+          provider_type: selection.providerType,
+        });
+      }
 
-    // Missing on external: always push with transaction_id
-    for (const transactionId of state.selectedMissingExternal) {
-      items.push({
-        action: SyncAction.PUSH,
-        transaction_id: transactionId,
-      });
-    }
+      // Missing on external: always push with transaction_id
+      for (const transactionId of state.selectedMissingExternal) {
+        items.push({
+          action: SyncAction.PUSH,
+          transaction_id: transactionId,
+        });
+      }
 
-    // Missing on local: always pull with external_expense_id
-    for (const externalExpenseId of state.selectedMissingLocal) {
-      items.push({
-        action: SyncAction.PULL,
-        external_expense_id: externalExpenseId,
-      });
-    }
+      // Missing on local: always pull with external_expense_id
+      for (const externalExpenseId of state.selectedMissingLocal) {
+        // Look up provider_type from the drift report's missing_on_local items
+        const providerType = report?.missing_on_local.find(
+          (m) => m.external_expense_id === externalExpenseId
+        )?.provider_type;
 
-    return items;
-  }, [state.selectedDrifted, state.selectedMissingExternal, state.selectedMissingLocal]);
+        items.push({
+          action: SyncAction.PULL,
+          external_expense_id: externalExpenseId,
+          provider_type: providerType,
+        });
+      }
+
+      return items;
+    },
+    [state.selectedDrifted, state.selectedMissingExternal, state.selectedMissingLocal]
+  );
 
   return {
     step: state.step,

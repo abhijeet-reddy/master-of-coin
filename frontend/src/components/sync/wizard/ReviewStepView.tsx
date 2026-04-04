@@ -18,7 +18,7 @@ interface ReviewStepViewProps {
   selectedDrifted: Map<string, DriftedSelection>;
   selectedMissingExternal: Set<string>;
   selectedMissingLocal: Set<string>;
-  buildSyncItems: () => SyncItem[];
+  buildSyncItems: (report?: DriftReport) => SyncItem[];
   onSubmit: (items: SyncItem[]) => void;
   isSubmitting: boolean;
 }
@@ -36,7 +36,7 @@ export const ReviewStepView = ({
   onSubmit,
   isSubmitting,
 }: ReviewStepViewProps) => {
-  const syncItems = useMemo(() => buildSyncItems(), [buildSyncItems]);
+  const syncItems = useMemo(() => buildSyncItems(report), [buildSyncItems, report]);
 
   const pushItems = useMemo(
     () => syncItems.filter((i) => i.action === SyncAction.PUSH),

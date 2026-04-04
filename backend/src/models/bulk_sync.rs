@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::types::JobStatus;
+use crate::types::{JobStatus, SplitProviderType};
 
 /// Request body for POST /api/v1/sync
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -20,6 +20,8 @@ pub struct SyncItem {
     pub transaction_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_expense_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_type: Option<SplitProviderType>,
 }
 
 /// The action to perform for a sync item
@@ -78,6 +80,8 @@ pub struct SyncItemResult {
     pub transaction_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_expense_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_type: Option<SplitProviderType>,
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<serde_json::Value>,

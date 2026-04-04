@@ -12,6 +12,7 @@ export enum SyncAction {
 export interface DriftedSelection {
   action: SyncAction;
   externalExpenseId: string;
+  providerType?: string;
 }
 
 /** A single item to sync */
@@ -19,6 +20,7 @@ export interface SyncItem {
   action: SyncAction;
   transaction_id?: string;
   external_expense_id?: string;
+  provider_type?: string;
 }
 
 /** Request body for POST /sync */
@@ -63,6 +65,7 @@ export interface SyncItemResult {
   action: SyncAction;
   transaction_id?: string;
   external_expense_id?: string;
+  provider_type?: string;
   status: string;
   detail?: Record<string, unknown>;
   error?: string;

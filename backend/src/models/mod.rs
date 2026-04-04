@@ -60,7 +60,7 @@ pub use transaction_split::NewTransactionSplit;
 pub use user::NewUser;
 
 // Re-export Request DTOs
-pub use account::{CreateAccountRequest, UpdateAccountRequest};
+pub use account::{CreateAccountRequest, SetBalanceRequest, UpdateAccountRequest};
 pub use api_key::{CreateApiKeyRequest, UpdateApiKeyRequest};
 pub use budget::{CreateBudgetRequest, UpdateBudgetRequest};
 pub use budget_range::{CreateBudgetRangeRequest, UpdateBudgetRangeRequest};

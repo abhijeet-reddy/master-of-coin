@@ -21,6 +21,7 @@ import {
   usePeople,
   useCreateTransaction,
   useCreateDebtTransaction,
+  useUpdateAccountBalance,
 } from '@/hooks';
 import { NavigationSourceType, AccountType, JobStatus } from '@/types';
 import type { CreateTransactionRequest, CreateDebtTransactionRequest } from '@/types';
@@ -56,6 +57,9 @@ export const AccountDetailPage = () => {
 
   const createMutation = useCreateTransaction();
   const debtMutation = useCreateDebtTransaction();
+
+  // Investment account: manual balance update
+  const balanceMutation = useUpdateAccountBalance();
 
   // Investment account: provider connection and portfolio sync
   const isInvestment = account?.account_type === AccountType.INVESTMENT;
@@ -125,18 +129,29 @@ export const AccountDetailPage = () => {
     );
   }
 
+  const handleUpdateValue = (newBalance: number) => {
+    if (!id || !account) return;
+    balanceMutation.mutate({
+      id,
+      balance: newBalance,
+    });
+  };
+
   return (
     <Box>
       <PageHeader
         breadcrumbs={[{ label: 'Accounts', href: '/accounts' }, { label: account.name }]}
         actions={
           <HStack gap={2}>
-            <Button variant="outline" onClick={onAddTxnOpen}>
-              <HStack gap={2}>
-                <FiPlus />
-                <Box display={{ base: 'none', md: 'block' }}>Add Transaction</Box>
-              </HStack>
-            </Button>
+            {/* Hide Add Transaction for investment accounts */}
+            {!isInvestment && (
+              <Button variant="outline" onClick={onAddTxnOpen}>
+                <HStack gap={2}>
+                  <FiPlus />
+                  <Box display={{ base: 'none', md: 'block' }}>Add Transaction</Box>
+                </HStack>
+              </Button>
+            )}
             <IconButton
               aria-label="Toggle filters"
               variant={showFilters ? 'solid' : 'outline'}
@@ -160,6 +175,9 @@ export const AccountDetailPage = () => {
         syncFailed={syncJob?.status === (JobStatus.FAILED as string)}
         syncError={syncJob?.error}
         syncJobId={syncJob?.job_id}
+        isInvestment={isInvestment}
+        onUpdateValue={handleUpdateValue}
+        isUpdatingValue={balanceMutation.isPending}
       />
 
       {/* Delete Error Alert */}
@@ -192,17 +210,19 @@ export const AccountDetailPage = () => {
         }}
       />
 
-      {/* Add Transaction Modal (account pre-selected) */}
-      <TransactionFormModal
-        isOpen={isAddTxnOpen}
-        onClose={onAddTxnClose}
-        accounts={accountsData || []}
-        categories={categories}
-        people={peopleData || []}
-        defaultAccountId={account.id}
-        onSubmit={handleCreateSubmit}
-        onSubmitDebt={handleDebtSubmit}
-      />
+      {/* Add Transaction Modal (account pre-selected) — hidden for investment accounts */}
+      {!isInvestment && (
+        <TransactionFormModal
+          isOpen={isAddTxnOpen}
+          onClose={onAddTxnClose}
+          accounts={accountsData || []}
+          categories={categories}
+          people={peopleData || []}
+          defaultAccountId={account.id}
+          onSubmit={handleCreateSubmit}
+          onSubmitDebt={handleDebtSubmit}
+        />
+      )}
 
       {/* Edit Account Modal */}
       <AccountFormModal

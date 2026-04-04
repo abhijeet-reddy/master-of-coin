@@ -71,6 +71,15 @@ pub struct UpdateAccountRequest {
     pub notes: Option<String>,
 }
 
+/// Request to manually set the balance of an investment account.
+/// The server calculates the difference between the current balance and the
+/// requested balance, then creates an adjustment transaction if needed.
+#[derive(Debug, Deserialize, validator::Validate)]
+pub struct SetBalanceRequest {
+    /// The new total balance for the account
+    pub balance: f64,
+}
+
 // Response DTOs
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AccountResponse {

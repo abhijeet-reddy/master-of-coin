@@ -461,6 +461,18 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        .route(
+            "/accounts/:id/balance",
+            put(handlers::accounts::set_balance).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Accounts,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
         // Budgets - with scope enforcement
         .route(
             "/budgets",

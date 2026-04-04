@@ -2,7 +2,7 @@ use crate::{
     AppState,
     auth::context::AuthContext,
     errors::ApiError,
-    models::{AccountResponse, CreateAccountRequest, UpdateAccountRequest},
+    models::{AccountResponse, CreateAccountRequest, SetBalanceRequest, UpdateAccountRequest},
     services::account_service,
 };
 use axum::{
@@ -85,4 +85,20 @@ pub async fn delete(
     account_service::delete_account(&state.db, id, user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Set the balance of an investment account
+/// PUT /accounts/:id/balance
+pub async fn set_balance(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(id): Path<Uuid>,
+    Json(request): Json<SetBalanceRequest>,
+) -> Result<Json<AccountResponse>, ApiError> {
+    let user_id = auth_context.user_id();
+    tracing::info!("Setting balance for account {} by user {}", id, user_id);
+
+    let account = account_service::set_balance(&state.db, id, user_id, request).await?;
+
+    Ok(Json(account))
 }

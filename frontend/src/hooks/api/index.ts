@@ -16,6 +16,7 @@ export { default as useAccount } from './useAccount';
 export { default as useCreateAccount } from './useCreateAccount';
 export { default as useUpdateAccount } from './useUpdateAccount';
 export { default as useDeleteAccount } from './useDeleteAccount';
+export { default as useUpdateAccountBalance } from './useUpdateAccountBalance';
 
 // Budget hooks
 export { default as useBudgets } from './useBudgets';

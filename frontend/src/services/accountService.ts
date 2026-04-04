@@ -53,3 +53,13 @@ export async function updateAccount(
 export async function deleteAccount(id: string): Promise<void> {
   await apiClient.delete(`/accounts/${id}`);
 }
+
+/**
+ * Set the balance of an investment account.
+ * The server calculates the difference between the current balance and the
+ * requested balance, then creates an adjustment transaction if needed.
+ */
+export async function updateAccountBalance(id: string, balance: number): Promise<Account> {
+  const response = await apiClient.put<Account>(`/accounts/${id}/balance`, { balance });
+  return response.data;
+}

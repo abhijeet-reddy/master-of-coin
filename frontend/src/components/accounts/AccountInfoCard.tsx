@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -7,6 +8,7 @@ import {
   Card,
   HStack,
   IconButton,
+  Input,
   Text,
   VStack,
 } from '@chakra-ui/react';
@@ -22,6 +24,7 @@ import {
   FaSync,
   FaExternalLinkAlt,
 } from 'react-icons/fa';
+import { MdEdit } from 'react-icons/md';
 import { formatCurrency } from '@/utils/formatters';
 import { AccountType } from '@/types';
 import type { Account } from '@/types';
@@ -44,6 +47,12 @@ interface AccountInfoCardProps {
   syncError?: string;
   /** Job ID of the failed sync (for linking to job detail) */
   syncJobId?: string | null;
+  /** Whether this is an investment account (enables Update Value) */
+  isInvestment?: boolean;
+  /** Handler for updating the investment value */
+  onUpdateValue?: (newBalance: number) => void;
+  /** Whether a value update is in progress */
+  isUpdatingValue?: boolean;
 }
 
 /** Map account types to icons */
@@ -106,11 +115,58 @@ export const AccountInfoCard = ({
   syncFailed,
   syncError,
   syncJobId,
+  isInvestment,
+  onUpdateValue,
+  isUpdatingValue,
 }: AccountInfoCardProps) => {
   const navigate = useNavigate();
   const Icon = getAccountIcon(account.account_type);
   const colorScheme = getColorScheme(account.account_type);
   const balance = account.balance;
+
+  // Inline edit state for investment value update
+  const [isEditingValue, setIsEditingValue] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditingValue && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditingValue]);
+
+  // Exit edit mode when update completes
+  useEffect(() => {
+    if (!isUpdatingValue && isEditingValue) {
+      setIsEditingValue(false);
+    }
+  }, [isUpdatingValue]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleStartEdit = () => {
+    setEditValue(balance.toString());
+    setIsEditingValue(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingValue(false);
+    setEditValue('');
+  };
+
+  const handleSubmitValue = () => {
+    const newBalance = parseFloat(editValue);
+    if (isNaN(newBalance)) return;
+    onUpdateValue?.(newBalance);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmitValue();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
 
   return (
     <>
@@ -174,11 +230,60 @@ export const AccountInfoCard = ({
             {/* Balance */}
             <Box>
               <Text fontSize="sm" color="fg.muted" mb={1}>
-                Current Balance
+                {isInvestment ? 'Portfolio Value' : 'Current Balance'}
               </Text>
-              <Text fontSize="3xl" fontWeight="bold" color={balance >= 0 ? 'green.600' : 'red.600'}>
-                {formatCurrency(balance, account.currency)}
-              </Text>
+              {isEditingValue ? (
+                <HStack gap={2}>
+                  <Input
+                    ref={inputRef}
+                    type="number"
+                    step="0.01"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    size="lg"
+                    fontWeight="bold"
+                    width="200px"
+                  />
+                  <Button
+                    size="sm"
+                    colorPalette="green"
+                    onClick={handleSubmitValue}
+                    loading={isUpdatingValue}
+                    disabled={isUpdatingValue || editValue === '' || isNaN(parseFloat(editValue))}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelEdit}
+                    disabled={isUpdatingValue}
+                  >
+                    Cancel
+                  </Button>
+                </HStack>
+              ) : (
+                <HStack gap={2} align="baseline">
+                  <Text
+                    fontSize="3xl"
+                    fontWeight="bold"
+                    color={balance >= 0 ? 'green.600' : 'red.600'}
+                  >
+                    {formatCurrency(balance, account.currency)}
+                  </Text>
+                  {isInvestment && onUpdateValue && (
+                    <IconButton
+                      aria-label="Update value"
+                      size="xs"
+                      variant="ghost"
+                      onClick={handleStartEdit}
+                    >
+                      <MdEdit />
+                    </IconButton>
+                  )}
+                </HStack>
+              )}
             </Box>
 
             {/* Notes */}

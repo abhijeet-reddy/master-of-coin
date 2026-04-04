@@ -7,7 +7,8 @@ use crate::{
     DbPool,
     errors::ApiError,
     models::{
-        AccountResponse, CreateAccountRequest, NewAccount, NewTransaction, UpdateAccountRequest,
+        AccountResponse, CreateAccountRequest, NewAccount, NewTransaction, SetBalanceRequest,
+        UpdateAccountRequest,
     },
     repositories,
     types::AccountType,
@@ -267,6 +268,100 @@ pub async fn delete_account(
     tracing::info!("Deleted account {} for user {}", account_id, user_id);
 
     Ok(())
+}
+
+/// Manually set the balance of an investment account.
+///
+/// Calculates the difference between the current balance (sum of all transactions)
+/// and the requested balance, then creates an adjustment transaction if needed.
+pub async fn set_balance(
+    pool: &DbPool,
+    account_id: Uuid,
+    user_id: Uuid,
+    request: SetBalanceRequest,
+) -> Result<AccountResponse, ApiError> {
+    // Validate request
+    request.validate().map_err(|e| {
+        tracing::warn!("Set balance validation failed: {}", e);
+        ApiError::Validation(e.to_string())
+    })?;
+
+    // Fetch account and verify ownership
+    let account = repositories::account::find_by_id(pool, account_id).await?;
+
+    if account.user_id != user_id {
+        tracing::warn!(
+            "User {} attempted to set balance on account {} owned by {}",
+            user_id,
+            account_id,
+            account.user_id
+        );
+        return Err(ApiError::Forbidden("Access denied".to_string()));
+    }
+
+    // Only investment accounts support manual balance updates
+    if account.account_type != AccountType::Investment {
+        tracing::warn!(
+            "User {} attempted to set balance on non-investment account {} (type: {:?})",
+            user_id,
+            account_id,
+            account.account_type
+        );
+        return Err(ApiError::BadRequest(
+            "Manual balance updates are only supported for investment accounts".to_string(),
+        ));
+    }
+
+    // Calculate current balance from sum of all transactions
+    let current_balance = calculate_account_balance(pool, account_id).await?;
+
+    // Calculate adjustment amount
+    let new_balance = BigDecimal::from_str(&request.balance.to_string()).map_err(|e| {
+        tracing::error!("Failed to convert balance: {}", e);
+        ApiError::Validation("Invalid balance".to_string())
+    })?;
+
+    let adjustment = &new_balance - &current_balance;
+
+    // Only create a transaction if the balance actually needs to change
+    if adjustment != BigDecimal::from(0) {
+        let adjustment_transaction = NewTransaction {
+            user_id,
+            account_id,
+            category_id: None,
+            title: "Balance Adjustment".to_string(),
+            amount: adjustment,
+            date: chrono::Utc::now(),
+            notes: Some("Manual investment value update".to_string()),
+        };
+
+        repositories::transaction::create_transaction(pool, user_id, adjustment_transaction)
+            .await?;
+
+        tracing::info!(
+            "Created balance adjustment transaction for investment account {}",
+            account_id
+        );
+    } else {
+        tracing::debug!(
+            "No adjustment needed for account {} — balance already matches",
+            account_id
+        );
+    }
+
+    // Recalculate and return the updated balance
+    let final_balance = calculate_account_balance(pool, account_id).await?;
+
+    Ok(AccountResponse {
+        id: account.id,
+        user_id: account.user_id,
+        name: account.name,
+        account_type: account.account_type,
+        currency: account.currency,
+        balance: final_balance.to_string().parse::<f64>().unwrap_or(0.0),
+        is_active: true,
+        notes: account.notes,
+    })
 }
 
 /// Helper function to calculate account balance

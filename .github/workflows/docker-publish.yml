@@ -145,3 +145,52 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.inspect.outputs.digest }}
           push-to-registry: true
+
+  # ============================================================================
+  # Trigger Iron Fleet stack redeployment via webhook
+  # ============================================================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: merge
+    if: success()
+
+    steps:
+      - name: Trigger deployment webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.IRON_FLEET_WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.IRON_FLEET_WEBHOOK_SECRET }}
+        run: |
+          # Build a minimal GitHub-style webhook payload
+          PAYLOAD=$(cat <<'EOF'
+          {
+            "action": "published",
+            "repository": {
+              "full_name": "${{ github.repository }}"
+            },
+            "sender": {
+              "login": "${{ github.actor }}"
+            }
+          }
+          EOF
+          )
+
+          # Compute HMAC-SHA256 signature (GitHub webhook format)
+          SIGNATURE="sha256=$(echo -n "${PAYLOAD}" | openssl dgst -sha256 -hmac "${WEBHOOK_SECRET}" | awk '{print $2}')"
+
+          HTTP_STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: ${SIGNATURE}" \
+            -H "X-GitHub-Event: release" \
+            -d "${PAYLOAD}" \
+            "${WEBHOOK_URL}")
+
+          echo "HTTP Status: ${HTTP_STATUS}"
+          cat /tmp/response.txt
+
+          if [ "${HTTP_STATUS}" -lt 200 ] || [ "${HTTP_STATUS}" -ge 300 ]; then
+            echo "::error::Deployment webhook failed with HTTP ${HTTP_STATUS}"
+            exit 1
+          fi
+
+          echo "✅ Deployment webhook triggered successfully"

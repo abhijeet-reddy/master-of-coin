@@ -25,6 +25,7 @@ import type {
   Person,
   PayerMode,
   Transaction,
+  TransactionFormDefaultValues,
   ExpenseParticipantInput,
   CreateTransactionRequest,
   CreateDebtTransactionRequest,
@@ -90,6 +91,8 @@ interface TransactionFormModalProps {
   onSubmit: (data: CreateTransactionRequest) => Promise<void>;
   onSubmitDebt?: (data: CreateDebtTransactionRequest) => Promise<void>;
   defaultAccountId?: string;
+  /** Pre-fill form values for duplicate (create mode, not edit mode) */
+  defaultValues?: TransactionFormDefaultValues;
   onSubmitDebtMetadata?: (
     transactionId: string,
     data: UpdateExpenseDetailsRequest
@@ -106,6 +109,7 @@ export const TransactionFormModal = ({
   onSubmit,
   onSubmitDebt,
   defaultAccountId,
+  defaultValues,
   onSubmitDebtMetadata,
 }: TransactionFormModalProps) => {
   const [expenseParticipants, setExpenseParticipants] = useState<ExpenseParticipantInput[]>([]);
@@ -196,6 +200,23 @@ export const TransactionFormModal = ({
         } else {
           setExpenseParticipants([]);
         }
+      } else if (defaultValues) {
+        // Duplicate mode: pre-fill from source transaction with today's date/time
+        reset({
+          title: defaultValues.title || '',
+          amount: defaultValues.amount || '',
+          transaction_type: defaultValues.transaction_type || 'expense',
+          payer_mode: defaultValues.payer_mode || 'self',
+          account_id: defaultValues.account_id || defaultAccountId || '',
+          payer_person_id: defaultValues.payer_person_id || '',
+          payer_currency: defaultValues.payer_currency || CurrencyCode.EUR,
+          category_id: defaultValues.category_id || '',
+          date: new Date().toISOString().split('T')[0],
+          time: new Date().toTimeString().slice(0, 5),
+          notes: defaultValues.notes || '',
+        });
+        clearSplits();
+        setExpenseParticipants([]);
       } else {
         reset({
           title: '',
@@ -214,7 +235,7 @@ export const TransactionFormModal = ({
         setExpenseParticipants([]);
       }
     }
-  }, [isOpen, transaction, reset, initFromTransaction, clearSplits]);
+  }, [isOpen, transaction, defaultValues, reset, initFromTransaction, clearSplits]);
 
   // Track which participant index is the current user.
   // Identified at form open by matching owed_share to the transaction amount.

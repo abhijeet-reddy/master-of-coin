@@ -24,7 +24,12 @@ import {
   useUpdateAccountBalance,
 } from '@/hooks';
 import { NavigationSourceType, AccountType, JobStatus } from '@/types';
-import type { CreateTransactionRequest, CreateDebtTransactionRequest } from '@/types';
+import type {
+  CreateTransactionRequest,
+  CreateDebtTransactionRequest,
+  EnrichedTransaction,
+} from '@/types';
+import { buildDuplicateDefaults } from '@/utils/transactionDuplicate';
 
 export const AccountDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +59,9 @@ export const AccountDetailPage = () => {
   const { data: accountsData } = useAccounts();
   const { data: peopleData } = usePeople();
   const { open: isAddTxnOpen, onOpen: onAddTxnOpen, onClose: onAddTxnClose } = useDisclosure();
+  const [duplicateTransaction, setDuplicateTransaction] = useState<EnrichedTransaction | null>(
+    null
+  );
 
   const createMutation = useCreateTransaction();
   const debtMutation = useCreateDebtTransaction();
@@ -91,11 +99,23 @@ export const AccountDetailPage = () => {
 
   const handleCreateSubmit = async (data: CreateTransactionRequest) => {
     await createMutation.mutateAsync(data);
+    setDuplicateTransaction(null);
     onAddTxnClose();
   };
 
   const handleDebtSubmit = async (data: CreateDebtTransactionRequest) => {
     await debtMutation.mutateAsync(data);
+    setDuplicateTransaction(null);
+    onAddTxnClose();
+  };
+
+  const handleDuplicateTransaction = (transaction: EnrichedTransaction) => {
+    setDuplicateTransaction(transaction);
+    onAddTxnOpen();
+  };
+
+  const handleAddTxnClose = () => {
+    setDuplicateTransaction(null);
     onAddTxnClose();
   };
 
@@ -200,6 +220,7 @@ export const AccountDetailPage = () => {
       <TransactionList
         transactions={filteredTransactions}
         isLoading={isTransactionsLoading}
+        onTransactionDuplicate={!isInvestment ? handleDuplicateTransaction : undefined}
         onLoadMore={() => {
           void fetchNextPage();
         }}
@@ -214,11 +235,14 @@ export const AccountDetailPage = () => {
       {!isInvestment && (
         <TransactionFormModal
           isOpen={isAddTxnOpen}
-          onClose={onAddTxnClose}
+          onClose={handleAddTxnClose}
           accounts={accountsData || []}
           categories={categories}
           people={peopleData || []}
           defaultAccountId={account.id}
+          defaultValues={
+            duplicateTransaction ? buildDuplicateDefaults(duplicateTransaction) : undefined
+          }
           onSubmit={handleCreateSubmit}
           onSubmitDebt={handleDebtSubmit}
         />

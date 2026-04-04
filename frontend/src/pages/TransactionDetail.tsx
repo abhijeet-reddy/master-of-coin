@@ -11,6 +11,8 @@ import { TransactionFormModal } from '@/components/transactions';
 import {
   useUpdateTransaction,
   useDeleteTransaction,
+  useCreateTransaction,
+  useCreateDebtTransaction,
   useAccounts,
   useCategories,
   usePeople,
@@ -18,10 +20,12 @@ import {
 } from '@/hooks';
 import { useTransactionDetail, useSplitSync } from '@/hooks/usecase';
 import { updateDebtExpenseDetails } from '@/services/transactionService';
+import { buildDuplicateDefaults } from '@/utils/transactionDuplicate';
 import { useQueryClient } from '@tanstack/react-query';
 import { NavigationSourceType } from '@/types';
 import type {
   CreateTransactionRequest,
+  CreateDebtTransactionRequest,
   UpdateExpenseDetailsRequest,
   TransactionNavigationState,
 } from '@/types';
@@ -93,9 +97,16 @@ export const TransactionDetailPage = () => {
   const { data: peopleData } = usePeople();
 
   const { open: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  const {
+    open: isDuplicateOpen,
+    onOpen: onDuplicateOpen,
+    onClose: onDuplicateClose,
+  } = useDisclosure();
 
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
+  const createMutation = useCreateTransaction();
+  const debtMutation = useCreateDebtTransaction();
 
   // Split sync
   const { handleSync, handleResolve, closeMismatchModal, mismatchResult, isSyncing, isResolving } =
@@ -137,6 +148,20 @@ export const TransactionDetailPage = () => {
     onEditClose();
   };
 
+  const handleDuplicate = () => {
+    onDuplicateOpen();
+  };
+
+  const handleDuplicateSubmit = async (data: CreateTransactionRequest) => {
+    await createMutation.mutateAsync(data);
+    onDuplicateClose();
+  };
+
+  const handleDuplicateDebtSubmit = async (data: CreateDebtTransactionRequest) => {
+    await debtMutation.mutateAsync(data);
+    onDuplicateClose();
+  };
+
   if (isLoading) {
     return <LoadingSpinner message="Loading transaction..." />;
   }
@@ -176,6 +201,7 @@ export const TransactionDetailPage = () => {
           <TransactionActions
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onDuplicate={!transaction.transfer_info ? handleDuplicate : undefined}
             isDeleting={deleteMutation.isPending}
           />
         }
@@ -220,6 +246,28 @@ export const TransactionDetailPage = () => {
         people={peopleData || []}
         onSubmit={handleSubmit}
         onSubmitDebtMetadata={handleDebtMetadataSubmit}
+      />
+
+      {/* Duplicate Modal */}
+      <TransactionFormModal
+        isOpen={isDuplicateOpen}
+        onClose={onDuplicateClose}
+        defaultValues={
+          transaction
+            ? buildDuplicateDefaults({
+                ...transaction,
+                amount: transaction.amount,
+                date: transaction.date,
+                created_at: transaction.created_at,
+                updated_at: transaction.updated_at,
+              })
+            : undefined
+        }
+        accounts={accountsData || []}
+        categories={categoriesData || []}
+        people={peopleData || []}
+        onSubmit={handleDuplicateSubmit}
+        onSubmitDebt={handleDuplicateDebtSubmit}
       />
 
       {/* Delete Confirmation */}

@@ -8,6 +8,7 @@ import {
   FiTrash2,
   FiRepeat,
 } from 'react-icons/fi';
+import { HiOutlineDocumentDuplicate } from 'react-icons/hi';
 import { FaEuroSign } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { AccountType } from '@/types';
@@ -21,6 +22,8 @@ interface TransactionRowProps {
   /** Called on Shift+Click to open the edit modal inline */
   onEdit?: (transaction: EnrichedTransaction) => void;
   onDelete?: (transaction: EnrichedTransaction) => void;
+  /** Called to duplicate this transaction (open form pre-filled) */
+  onDuplicate?: (transaction: EnrichedTransaction) => void;
   /** Navigation context passed to the transaction detail page for breadcrumbs */
   navigationState?: TransactionNavigationState;
 }
@@ -43,6 +46,7 @@ export const TransactionRow = ({
   onClick,
   onEdit,
   onDelete,
+  onDuplicate,
   navigationState,
 }: TransactionRowProps) => {
   const navigate = useNavigate();
@@ -85,6 +89,11 @@ export const TransactionRow = ({
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete?.(transaction);
+  };
+
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDuplicate?.(transaction);
   };
 
   return (
@@ -206,19 +215,36 @@ export const TransactionRow = ({
           </Text>
         </VStack>
 
-        {/* Delete button */}
-        {onDelete && (
-          <IconButton
-            aria-label="Delete transaction"
-            size="sm"
-            variant="ghost"
-            colorScheme="red"
-            onClick={handleDelete}
-            _hover={{ bg: 'red.50' }}
-          >
-            <Icon as={FiTrash2} />
-          </IconButton>
-        )}
+        {/* Action buttons */}
+        <HStack gap={0}>
+          {/* Duplicate button — hidden for transfers */}
+          {onDuplicate && !transaction.transfer_info && (
+            <IconButton
+              aria-label="Duplicate transaction"
+              size="sm"
+              variant="ghost"
+              colorScheme="blue"
+              onClick={handleDuplicate}
+              _hover={{ bg: 'blue.50' }}
+            >
+              <Icon as={HiOutlineDocumentDuplicate} />
+            </IconButton>
+          )}
+
+          {/* Delete button */}
+          {onDelete && (
+            <IconButton
+              aria-label="Delete transaction"
+              size="sm"
+              variant="ghost"
+              colorScheme="red"
+              onClick={handleDelete}
+              _hover={{ bg: 'red.50' }}
+            >
+              <Icon as={FiTrash2} />
+            </IconButton>
+          )}
+        </HStack>
       </HStack>
     </Box>
   );

@@ -1,13 +1,30 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, HStack, IconButton } from '@chakra-ui/react';
+import { Box, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { FiFilter } from 'react-icons/fi';
 import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/components/common';
 import { CategoryInfoCard, CategoryFormModal } from '@/components/categories';
-import { TransactionList, TransactionFilters } from '@/components/transactions';
+import {
+  TransactionList,
+  TransactionFilters,
+  TransactionFormModal,
+} from '@/components/transactions';
 import { useCategoryDetail } from '@/hooks/usecase';
-import { useDocumentTitle } from '@/hooks';
+import {
+  useDocumentTitle,
+  useAccounts,
+  useCategories,
+  usePeople,
+  useCreateTransaction,
+  useCreateDebtTransaction,
+} from '@/hooks';
 import { NavigationSourceType } from '@/types';
+import type {
+  EnrichedTransaction,
+  CreateTransactionRequest,
+  CreateDebtTransactionRequest,
+} from '@/types';
+import { buildDuplicateDefaults } from '@/utils/transactionDuplicate';
 
 export const CategoryDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +50,44 @@ export const CategoryDetailPage = () => {
     deleteMutation,
   } = useCategoryDetail(id ?? '');
 
+  // Data & mutations for duplicate modal
+  const { data: accountsData } = useAccounts();
+  const { data: categoriesData } = useCategories();
+  const { data: peopleData } = usePeople();
+  const createMutation = useCreateTransaction();
+  const debtMutation = useCreateDebtTransaction();
+  const {
+    open: isDuplicateOpen,
+    onOpen: onDuplicateOpen,
+    onClose: onDuplicateClose,
+  } = useDisclosure();
+  const [duplicateTransaction, setDuplicateTransaction] = useState<EnrichedTransaction | null>(
+    null
+  );
+
   useDocumentTitle(category ? `${category.name} — Category` : 'Category');
+
+  const handleDuplicateTransaction = (transaction: EnrichedTransaction) => {
+    setDuplicateTransaction(transaction);
+    onDuplicateOpen();
+  };
+
+  const handleDuplicateSubmit = async (data: CreateTransactionRequest) => {
+    await createMutation.mutateAsync(data);
+    setDuplicateTransaction(null);
+    onDuplicateClose();
+  };
+
+  const handleDuplicateDebtSubmit = async (data: CreateDebtTransactionRequest) => {
+    await debtMutation.mutateAsync(data);
+    setDuplicateTransaction(null);
+    onDuplicateClose();
+  };
+
+  const handleDuplicateClose = () => {
+    setDuplicateTransaction(null);
+    onDuplicateClose();
+  };
 
   const handleConfirmDelete = () => {
     if (!id) return;
@@ -114,6 +168,7 @@ export const CategoryDetailPage = () => {
       <TransactionList
         transactions={filteredTransactions}
         isLoading={isTransactionsLoading}
+        onTransactionDuplicate={handleDuplicateTransaction}
         onLoadMore={() => {
           void fetchNextPage();
         }}
@@ -122,6 +177,20 @@ export const CategoryDetailPage = () => {
         navigationState={{
           from: { type: NavigationSourceType.CATEGORY, id: category.id, name: category.name },
         }}
+      />
+
+      {/* Duplicate Transaction Modal */}
+      <TransactionFormModal
+        isOpen={isDuplicateOpen}
+        onClose={handleDuplicateClose}
+        accounts={accountsData || []}
+        categories={categoriesData || []}
+        people={peopleData || []}
+        defaultValues={
+          duplicateTransaction ? buildDuplicateDefaults(duplicateTransaction) : undefined
+        }
+        onSubmit={handleDuplicateSubmit}
+        onSubmitDebt={handleDuplicateDebtSubmit}
       />
 
       <CategoryFormModal

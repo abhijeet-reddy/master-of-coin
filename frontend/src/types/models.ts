@@ -217,6 +217,19 @@ export interface ExpenseParticipantInput {
   owed_share: string;
 }
 
+// Default values for pre-filling the transaction form (used by duplicate)
+export interface TransactionFormDefaultValues {
+  title?: string;
+  amount?: string;
+  transaction_type?: 'income' | 'expense';
+  account_id?: string;
+  category_id?: string;
+  notes?: string;
+  payer_mode?: PayerMode;
+  payer_person_id?: string;
+  payer_currency?: string;
+}
+
 export interface UpdateTransactionRequest {
   title?: string;
   amount?: number; // Backend expects f64 (number)

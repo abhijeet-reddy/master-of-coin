@@ -26,6 +26,7 @@ import {
 } from '@/hooks';
 import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
 import { updateDebtExpenseDetails } from '@/services/transactionService';
+import { buildDuplicateDefaults } from '@/utils/transactionDuplicate';
 import { useQueryClient } from '@tanstack/react-query';
 import type {
   EnrichedTransaction,
@@ -39,6 +40,9 @@ export const TransactionsPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showFilters, setShowFilters] = useState(false);
   const [editTransaction, setEditTransaction] = useState<EnrichedTransaction | null>(null);
+  const [duplicateTransaction, setDuplicateTransaction] = useState<EnrichedTransaction | null>(
+    null
+  );
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean;
     transaction: EnrichedTransaction | null;
@@ -180,16 +184,25 @@ export const TransactionsPage = () => {
 
   const handleAddTransaction = () => {
     setEditTransaction(null);
+    setDuplicateTransaction(null);
     onModalOpen();
   };
 
   const handleEditTransaction = (transaction: EnrichedTransaction) => {
     setEditTransaction(transaction);
+    setDuplicateTransaction(null);
+    onModalOpen();
+  };
+
+  const handleDuplicateTransaction = (transaction: EnrichedTransaction) => {
+    setEditTransaction(null);
+    setDuplicateTransaction(transaction);
     onModalOpen();
   };
 
   const handleModalClose = () => {
     setEditTransaction(null);
+    setDuplicateTransaction(null);
     onModalClose();
   };
 
@@ -310,6 +323,7 @@ export const TransactionsPage = () => {
         isLoading={isLoading}
         onTransactionEdit={handleEditTransaction}
         onTransactionDelete={handleDeleteTransaction}
+        onTransactionDuplicate={handleDuplicateTransaction}
         onLoadMore={() => {
           void fetchNextPage();
         }}
@@ -317,7 +331,7 @@ export const TransactionsPage = () => {
         isFetchingMore={isFetchingNextPage}
       />
 
-      {/* Transaction Form Modal (create & edit) */}
+      {/* Transaction Form Modal (create, edit & duplicate) */}
       <TransactionFormModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
@@ -339,6 +353,9 @@ export const TransactionsPage = () => {
                 updated_at: editTransaction.updated_at,
               }
             : undefined
+        }
+        defaultValues={
+          duplicateTransaction ? buildDuplicateDefaults(duplicateTransaction) : undefined
         }
         accounts={accountsData || []}
         categories={categoriesData || []}

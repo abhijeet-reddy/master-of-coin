@@ -12,6 +12,7 @@ interface TransactionListProps {
   onTransactionClick?: (transaction: EnrichedTransaction) => void;
   onTransactionEdit?: (transaction: EnrichedTransaction) => void;
   onTransactionDelete?: (transaction: EnrichedTransaction) => void;
+  onTransactionDuplicate?: (transaction: EnrichedTransaction) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
   isFetchingMore?: boolean;
@@ -29,6 +30,7 @@ export const TransactionList = ({
   onTransactionClick,
   onTransactionEdit,
   onTransactionDelete,
+  onTransactionDuplicate,
   onLoadMore,
   hasMore,
   isFetchingMore,
@@ -152,6 +154,7 @@ export const TransactionList = ({
                   onClick={onTransactionClick ? () => onTransactionClick(transaction) : undefined}
                   onEdit={onTransactionEdit}
                   onDelete={onTransactionDelete}
+                  onDuplicate={onTransactionDuplicate}
                   navigationState={navigationState}
                 />
               ))}

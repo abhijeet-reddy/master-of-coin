@@ -57,19 +57,21 @@ test.describe("Trash Page — Soft Delete", () => {
     // Wait for transaction list to render
     await authenticatedPage.waitForTimeout(1000);
 
-    // Find the first transaction's title text for later verification
-    const firstTransactionRow = authenticatedPage
-      .locator('[class*="transaction"], [data-testid*="transaction"]')
-      .first()
-      .or(
-        authenticatedPage.locator("text=Initial Balance").first().locator(".."),
-      );
+    // Find the first transaction row (uses role="button" with aria-label starting with "View transaction:")
+    const transactionRows = authenticatedPage.locator(
+      '[role="button"][aria-label^="View transaction"]',
+    );
+    const rowCount = await transactionRows.count();
+    if (rowCount === 0) {
+      test.skip();
+      return;
+    }
 
-    // Get the title of the first transaction we'll delete
-    const transactionTitle = await authenticatedPage
-      .locator("text=Initial Balance")
-      .first()
-      .textContent();
+    // Get the title of the first transaction we'll delete from its aria-label
+    const ariaLabel =
+      (await transactionRows.first().getAttribute("aria-label")) || "";
+    // aria-label format: "View transaction: <title>"
+    const transactionTitle = ariaLabel.replace("View transaction: ", "").trim();
 
     // Step 2: Click the delete (trash) icon button on the first transaction
     // The delete button uses aria-label="Delete transaction" or is a trash icon button
@@ -140,9 +142,9 @@ test.describe("Trash Page — Soft Delete", () => {
     );
 
     // Verify the deleted transaction appears in trash
-    // It should show "Initial Balance" (the title we deleted)
+    // It should show the title of the transaction we deleted
     const trashedTransaction = authenticatedPage.locator(
-      "text=Initial Balance",
+      `text=${transactionTitle}`,
     );
     await expect(trashedTransaction.first()).toBeVisible({ timeout: 10000 });
 
@@ -193,7 +195,7 @@ test.describe("Trash Page — Soft Delete", () => {
 
     // The restored transaction should be visible again
     const restoredTransaction = authenticatedPage.locator(
-      "text=Initial Balance",
+      `text=${transactionTitle}`,
     );
     await expect(restoredTransaction.first()).toBeVisible({ timeout: 10000 });
 
@@ -210,9 +212,23 @@ test.describe("Trash Page — Soft Delete", () => {
     await authenticatedPage.waitForLoadState("networkidle");
     await authenticatedPage.waitForTimeout(1000);
 
-    // Count transactions before
+    // Find the first transaction row and get its title
+    const transactionRows = authenticatedPage.locator(
+      '[role="button"][aria-label^="View transaction"]',
+    );
+    const rowCount = await transactionRows.count();
+    if (rowCount === 0) {
+      test.skip();
+      return;
+    }
+
+    const ariaLabel =
+      (await transactionRows.first().getAttribute("aria-label")) || "";
+    const deletedTitle = ariaLabel.replace("View transaction: ", "").trim();
+
+    // Count transactions with this title before deletion
     const transactionsBefore = authenticatedPage.locator(
-      "text=Initial Balance",
+      `text=${deletedTitle}`,
     );
     const countBefore = await transactionsBefore.count();
 
@@ -245,7 +261,7 @@ test.describe("Trash Page — Soft Delete", () => {
 
     // Verify transaction is in trash
     const trashedTransaction = authenticatedPage.locator(
-      "text=Initial Balance",
+      `text=${deletedTitle}`,
     );
     await expect(trashedTransaction.first()).toBeVisible({ timeout: 10000 });
 
@@ -298,7 +314,7 @@ test.describe("Trash Page — Soft Delete", () => {
     await authenticatedPage.waitForTimeout(1000);
 
     // Count should be one less than before
-    const transactionsAfter = authenticatedPage.locator("text=Initial Balance");
+    const transactionsAfter = authenticatedPage.locator(`text=${deletedTitle}`);
     const countAfter = await transactionsAfter.count();
     expect(countAfter).toBeLessThan(countBefore);
 

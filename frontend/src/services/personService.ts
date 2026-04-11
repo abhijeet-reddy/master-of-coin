@@ -73,6 +73,7 @@ export async function deletePerson(id: string): Promise<void> {
 export async function settleDebt(
   personId: string,
   data: {
+    amount: number;
     account_id: string;
     notes?: string;
   }

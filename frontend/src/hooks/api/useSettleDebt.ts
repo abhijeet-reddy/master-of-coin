@@ -17,6 +17,7 @@ export default function useSettleDebt() {
     }: {
       personId: string;
       data: {
+        amount: number;
         account_id: string;
         notes?: string;
       };

@@ -13,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Field } from '@/components/ui/field';
+import { ErrorAlert } from '@/components/common';
 import { useSettleDebt, useAccounts } from '@/hooks';
 import { formatCurrency } from '@/utils/formatters';
 import type { Person } from '@/types';
@@ -61,6 +62,7 @@ export const SettleDebtModal = ({
       {
         personId: person.id,
         data: {
+          amount: Math.abs(debtAmount),
           account_id: data.account_id,
           notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
         },
@@ -76,6 +78,7 @@ export const SettleDebtModal = ({
   };
 
   const isSubmitting = settleMutation.isPending;
+  const mutationError = settleMutation.error;
 
   // Determine debt direction
   const isOwedToMe = debtAmount > 0;
@@ -114,6 +117,9 @@ export const SettleDebtModal = ({
 
         <DialogBody>
           <VStack align="stretch" gap={4}>
+            {/* Error Alert */}
+            {mutationError && <ErrorAlert title="Failed to settle debt" error={mutationError} />}
+
             {/* Debt Amount Display */}
             <VStack align="start" gap={2} p={4} bg="bg.muted" borderRadius="md">
               <Text fontSize="sm" color="fg.muted">

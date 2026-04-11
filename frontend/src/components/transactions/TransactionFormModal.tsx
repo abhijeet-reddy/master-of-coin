@@ -279,8 +279,9 @@ export const TransactionFormModal = ({
       const signedAmount = data.transaction_type === 'income' ? amountValue : -amountValue;
 
       if (data.payer_mode === 'other') {
-        // Editing a debt transaction with expense participants
         if (transaction && isDebtWithParticipants && onSubmitDebtMetadata) {
+          // Editing a debt transaction with expense participants:
+          // 1) Update metadata (total_cost + participants)
           const totalCost = expenseParticipants.reduce(
             (sum, p) => sum + (parseFloat(p.owed_share) || 0),
             0
@@ -290,6 +291,31 @@ export const TransactionFormModal = ({
             expense_participants: expenseParticipants,
           };
           await onSubmitDebtMetadata(transaction.id, metadataData);
+
+          // 2) Also update core transaction fields (title, category, date, notes, amount)
+          const coreData: CreateTransactionRequest = {
+            title: data.title,
+            amount: signedAmount,
+            date: formattedDate,
+            account_id: transaction.account_id,
+            category_id:
+              data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
+            notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
+          };
+          await onSubmit(coreData);
+        } else if (transaction) {
+          // Editing a debt transaction WITHOUT expense participants:
+          // Update core transaction fields via the normal update endpoint
+          const coreData: CreateTransactionRequest = {
+            title: data.title,
+            amount: signedAmount,
+            date: formattedDate,
+            account_id: transaction.account_id,
+            category_id:
+              data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
+            notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
+          };
+          await onSubmit(coreData);
         } else if (onSubmitDebt) {
           // Creating a new debt transaction
           const debtData: CreateDebtTransactionRequest = {

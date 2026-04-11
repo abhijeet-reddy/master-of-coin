@@ -145,7 +145,6 @@ export const TransactionDetailPage = () => {
     await updateDebtExpenseDetails(transactionId, data);
     await queryClient.invalidateQueries({ queryKey: ['transactions'] });
     await queryClient.invalidateQueries({ queryKey: ['transaction', id] });
-    onEditClose();
   };
 
   const handleDuplicate = () => {

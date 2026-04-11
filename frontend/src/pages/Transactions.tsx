@@ -9,7 +9,6 @@ import {
   TransactionFilters,
   TransactionFormModal,
   TransferFormModal,
-  type TransactionFilterValues,
 } from '@/components/transactions';
 import { ImportStatementModal } from '@/components/transactions/import';
 import {
@@ -23,6 +22,7 @@ import {
   useUpdateTransaction,
   useDeleteTransaction,
   useDocumentTitle,
+  useTransactionUrlFilters,
 } from '@/hooks';
 import { useTransactionCurrencyConverter } from '@/hooks/usecase/useTransactionCurrencyConverter';
 import { updateDebtExpenseDetails } from '@/services/transactionService';
@@ -37,8 +37,14 @@ import type {
 
 export const TransactionsPage = () => {
   useDocumentTitle('Transactions');
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [showFilters, setShowFilters] = useState(false);
+
+  // URL-synced filter & month state
+  const { selectedMonth, setSelectedMonth, filters, setFilters, hasUrlFilters, clearFilters } =
+    useTransactionUrlFilters();
+
+  // Local toggle for filter panel visibility — auto-opens when URL has filters
+  const [showFilters, setShowFilters] = useState(hasUrlFilters);
+
   const [editTransaction, setEditTransaction] = useState<EnrichedTransaction | null>(null);
   const [duplicateTransaction, setDuplicateTransaction] = useState<EnrichedTransaction | null>(
     null
@@ -49,11 +55,6 @@ export const TransactionsPage = () => {
   }>({
     isOpen: false,
     transaction: null,
-  });
-  const [filters, setFilters] = useState<TransactionFilterValues>({
-    accountIds: [],
-    categoryIds: [],
-    transactionType: 'all',
   });
 
   const { open: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
@@ -243,11 +244,7 @@ export const TransactionsPage = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({
-      accountIds: [],
-      categoryIds: [],
-      transactionType: 'all',
-    });
+    clearFilters();
   };
 
   if (isLoading) {

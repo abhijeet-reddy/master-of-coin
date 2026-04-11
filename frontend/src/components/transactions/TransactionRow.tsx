@@ -7,6 +7,8 @@ import {
   FiUsers,
   FiTrash2,
   FiRepeat,
+  FiArrowUp,
+  FiArrowDown,
 } from 'react-icons/fi';
 import { HiOutlineDocumentDuplicate } from 'react-icons/hi';
 import { FaEuroSign } from 'react-icons/fa';
@@ -52,6 +54,16 @@ export const TransactionRow = ({
   const navigate = useNavigate();
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
+  const isDebtTransaction = !!transaction.debt_metadata;
+
+  // Determine amount color: orange for debt transactions (someone else paid), red/green otherwise
+  const amountColor = isDebtTransaction ? 'orange.600' : isExpense ? 'red.600' : 'green.600';
+
+  // Compute debt effect from splits (how this transaction changed the debt relationship)
+  const debtEffect =
+    transaction.splits && transaction.splits.length > 0
+      ? transaction.splits.reduce((sum, s) => sum + parseFloat(s.amount), 0)
+      : null;
 
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
 
@@ -204,10 +216,24 @@ export const TransactionRow = ({
 
         {/* Right side - Amount and date */}
         <VStack align="end" gap={1} minW="100px">
-          <Text fontWeight="bold" fontSize="lg" color={isExpense ? 'red.600' : 'green.600'}>
+          <Text fontWeight="bold" fontSize="lg" color={amountColor}>
             {isExpense ? '-' : '+'}
             {formatCurrency(Math.abs(amount), transaction.account.currency)}
           </Text>
+
+          {/* Debt effect indicator — shows how this transaction changed the debt */}
+          {debtEffect !== null && debtEffect !== 0 && (
+            <HStack gap={1} justify="end">
+              <Icon
+                as={debtEffect < 0 ? FiArrowUp : FiArrowDown}
+                boxSize={3}
+                color={debtEffect < 0 ? 'red.500' : 'green.500'}
+              />
+              <Text fontSize="xs" color={debtEffect < 0 ? 'red.600' : 'green.600'}>
+                Debt {formatCurrency(Math.abs(debtEffect), transaction.account.currency)}
+              </Text>
+            </HStack>
+          )}
 
           {/* Time on desktop */}
           <Text fontSize="sm" color="fg.muted" display={{ base: 'none', md: 'block' }}>

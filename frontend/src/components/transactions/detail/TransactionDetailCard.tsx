@@ -17,6 +17,8 @@ import {
   FiCheck,
   FiArrowRight,
   FiArrowLeft,
+  FiArrowUp,
+  FiArrowDown,
 } from 'react-icons/fi';
 import { FaEuroSign } from 'react-icons/fa';
 import type { EnrichedTransaction, Person } from '@/types';
@@ -52,7 +54,17 @@ export const TransactionDetailCard = ({
   const [copied, setCopied] = useState(false);
   const amount = parseFloat(transaction.amount);
   const isExpense = amount < 0;
+  const isDebtTransaction = !!transaction.debt_metadata;
   const CategoryIcon = getCategoryIcon(transaction.category?.icon);
+
+  // Determine amount color: orange for debt transactions (someone else paid), red/green otherwise
+  const amountColor = isDebtTransaction ? 'orange.600' : isExpense ? 'red.600' : 'green.600';
+
+  // Compute debt effect from splits (how this transaction changed the debt relationship)
+  const debtEffect =
+    transaction.splits && transaction.splits.length > 0
+      ? transaction.splits.reduce((sum, s) => sum + parseFloat(s.amount), 0)
+      : null;
 
   const personMap = new Map(people.map((p) => [p.id, p]));
 
@@ -99,10 +111,23 @@ export const TransactionDetailCard = ({
 
             {/* Amount */}
             <Box textAlign="center" py={2}>
-              <Text fontSize="4xl" fontWeight="bold" color={isExpense ? 'red.600' : 'green.600'}>
+              <Text fontSize="4xl" fontWeight="bold" color={amountColor}>
                 {isExpense ? '-' : '+'}
                 {formatCurrency(Math.abs(amount), transaction.account.currency)}
               </Text>
+              {/* Debt effect indicator */}
+              {debtEffect !== null && debtEffect !== 0 && (
+                <HStack gap={1} justify="center" mt={1}>
+                  <Icon
+                    as={debtEffect < 0 ? FiArrowUp : FiArrowDown}
+                    boxSize={3.5}
+                    color={debtEffect < 0 ? 'red.500' : 'green.500'}
+                  />
+                  <Text fontSize="sm" color={debtEffect < 0 ? 'red.600' : 'green.600'}>
+                    Debt {formatCurrency(Math.abs(debtEffect), transaction.account.currency)}
+                  </Text>
+                </HStack>
+              )}
               {transaction.splits &&
                 transaction.splits.length > 0 &&
                 !transaction.debt_metadata && (

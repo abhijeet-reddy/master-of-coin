@@ -1722,3 +1722,368 @@ async fn test_full_debt_management_flow() {
     let final_debt: PersonDebt = extract_json(final_debt_response);
     assert_eq!(final_debt.debt_amount, "0");
 }
+
+// ============================================================================
+// Soft-Delete Debt Exclusion Tests (Regression)
+// ============================================================================
+
+/// Test that soft-deleting a transaction excludes its splits from person debt.
+///
+/// Regression test: person debt was incorrectly including splits from
+/// soft-deleted transactions because the query did not JOIN with the
+/// transactions table to filter `is_deleted = false`.
+///
+/// Verifies that:
+/// - Debt is correct before deletion
+/// - After soft-deleting the transaction, the person's debt via GET /people/:id/debts is zero
+/// - The person list endpoint also shows zero debt
+#[tokio::test]
+async fn test_person_debt_excludes_soft_deleted_transactions() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("debtdel_{}", timestamp),
+        &format!("debtdel_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Debt Delete User",
+    )
+    .await;
+
+    // Create account, category, and person
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person = create_test_person(&server, &auth.token, "Debt Delete Person").await;
+
+    // Create a transaction with a split (person owes 50)
+    let transaction_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Shared Expense",
+        "amount": -100.0,
+        "date": "2023-01-01T00:00:00Z",
+        "splits": [
+            {
+                "person_id": person.id,
+                "amount": 50.0
+            }
+        ]
+    });
+
+    let tx_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &transaction_request,
+    )
+    .await;
+    assert_status(&tx_response, 201);
+    let tx: serde_json::Value = extract_json(tx_response);
+    let tx_id = tx["id"].as_str().unwrap();
+
+    // Verify debt is 50 before deletion
+    let debt_response = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}/debts", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&debt_response, 200);
+    let debt: PersonDebt = extract_json(debt_response);
+    assert_eq!(
+        debt.debt_amount, "50.00",
+        "Debt should be 50 before deletion"
+    );
+
+    // Soft-delete the transaction
+    let delete_response = delete_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", tx_id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&delete_response, 200);
+
+    // Verify debt is now 0 via GET /people/:id/debts
+    let debt_response2 = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}/debts", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&debt_response2, 200);
+    let debt2: PersonDebt = extract_json(debt_response2);
+    assert_eq!(
+        debt2.debt_amount, "0",
+        "Debt should be 0 after soft-deleting the transaction"
+    );
+
+    // Verify debt is also 0 via GET /people (list endpoint with debt_summary)
+    let list_response = get_authenticated(&server, "/api/v1/people", &auth.token).await;
+    assert_status(&list_response, 200);
+    let people: Vec<PersonResponse> = extract_json(list_response);
+    let found_person = people
+        .iter()
+        .find(|p| p.id == person.id)
+        .expect("Person should be in list");
+    let summary = found_person
+        .debt_summary
+        .as_ref()
+        .expect("debt_summary should be present");
+    assert_eq!(
+        summary.net, "0",
+        "debt_summary.net should be 0 after soft-deleting the transaction"
+    );
+    assert_eq!(
+        summary.owes_me, "0",
+        "debt_summary.owes_me should be 0 after soft-deleting the transaction"
+    );
+
+    // Verify GET /people/:id also shows zero debt
+    let get_response = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get_response, 200);
+    let single_person: PersonResponse = extract_json(get_response);
+    let single_summary = single_person
+        .debt_summary
+        .as_ref()
+        .expect("debt_summary should be present");
+    assert_eq!(
+        single_summary.net, "0",
+        "Single person debt_summary.net should be 0 after soft-delete"
+    );
+    assert_eq!(
+        single_person.transaction_count, 0,
+        "Transaction count should be 0 after soft-delete"
+    );
+}
+
+/// Test that restoring a soft-deleted transaction brings the debt back.
+///
+/// Verifies that:
+/// - Debt is correct before deletion
+/// - Debt is zero after soft-delete
+/// - Debt is restored after restoring the transaction
+#[tokio::test]
+async fn test_person_debt_restored_after_transaction_restore() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("debtrestore_{}", timestamp),
+        &format!("debtrestore_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Debt Restore User",
+    )
+    .await;
+
+    // Create account, category, and person
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person = create_test_person(&server, &auth.token, "Debt Restore Person").await;
+
+    // Create a transaction with a split
+    let transaction_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Shared Dinner",
+        "amount": -80.0,
+        "date": "2023-02-01T00:00:00Z",
+        "splits": [
+            {
+                "person_id": person.id,
+                "amount": 40.0
+            }
+        ]
+    });
+
+    let tx_response = post_authenticated(
+        &server,
+        "/api/v1/transactions",
+        &auth.token,
+        &transaction_request,
+    )
+    .await;
+    assert_status(&tx_response, 201);
+    let tx: serde_json::Value = extract_json(tx_response);
+    let tx_id = tx["id"].as_str().unwrap();
+
+    // Verify initial debt
+    let debt_response = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}/debts", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&debt_response, 200);
+    let debt: PersonDebt = extract_json(debt_response);
+    assert_eq!(debt.debt_amount, "40.00");
+
+    // Soft-delete the transaction
+    let delete_response = delete_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", tx_id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&delete_response, 200);
+
+    // Verify debt is 0
+    let debt_response2 = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}/debts", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&debt_response2, 200);
+    let debt2: PersonDebt = extract_json(debt_response2);
+    assert_eq!(debt2.debt_amount, "0", "Debt should be 0 after soft-delete");
+
+    // Restore the transaction
+    let restore_response = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/restore", tx_id),
+        &auth.token,
+        &json!({}),
+    )
+    .await;
+    assert_status(&restore_response, 200);
+
+    // Verify debt is back to 40
+    let debt_response3 = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}/debts", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&debt_response3, 200);
+    let debt3: PersonDebt = extract_json(debt_response3);
+    assert_eq!(
+        debt3.debt_amount, "40.00",
+        "Debt should be restored after transaction restore"
+    );
+}
+
+/// Test that only the soft-deleted transaction's split is excluded, not others.
+///
+/// Verifies that:
+/// - With two transactions with splits, deleting one only removes that debt
+/// - The remaining transaction's split is still counted
+#[tokio::test]
+async fn test_person_debt_partial_soft_delete() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("debtpartial_{}", timestamp),
+        &format!("debtpartial_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Debt Partial User",
+    )
+    .await;
+
+    // Create account, category, and person
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person = create_test_person(&server, &auth.token, "Debt Partial Person").await;
+
+    // Create first transaction with split (person owes 30)
+    let tx1_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Shared Lunch",
+        "amount": -60.0,
+        "date": "2023-03-01T00:00:00Z",
+        "splits": [
+            {
+                "person_id": person.id,
+                "amount": 30.0
+            }
+        ]
+    });
+    let tx1_response =
+        post_authenticated(&server, "/api/v1/transactions", &auth.token, &tx1_request).await;
+    assert_status(&tx1_response, 201);
+    let tx1: serde_json::Value = extract_json(tx1_response);
+    let tx1_id = tx1["id"].as_str().unwrap();
+
+    // Create second transaction with split (person owes 20)
+    let tx2_request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Shared Coffee",
+        "amount": -40.0,
+        "date": "2023-03-02T00:00:00Z",
+        "splits": [
+            {
+                "person_id": person.id,
+                "amount": 20.0
+            }
+        ]
+    });
+    let tx2_response =
+        post_authenticated(&server, "/api/v1/transactions", &auth.token, &tx2_request).await;
+    assert_status(&tx2_response, 201);
+
+    // Verify total debt is 50 (30 + 20)
+    let debt_response = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}/debts", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&debt_response, 200);
+    let debt: PersonDebt = extract_json(debt_response);
+    assert_eq!(debt.debt_amount, "50.00", "Total debt should be 50 (30+20)");
+
+    // Soft-delete only the first transaction
+    let delete_response = delete_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", tx1_id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&delete_response, 200);
+
+    // Verify debt is now only 20 (from the second transaction)
+    let debt_response2 = get_authenticated(
+        &server,
+        &format!("/api/v1/people/{}/debts", person.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&debt_response2, 200);
+    let debt2: PersonDebt = extract_json(debt_response2);
+    assert_eq!(
+        debt2.debt_amount, "20.00",
+        "Debt should be 20 after soft-deleting the first transaction (30 removed)"
+    );
+
+    // Verify via people list endpoint too
+    let list_response = get_authenticated(&server, "/api/v1/people", &auth.token).await;
+    assert_status(&list_response, 200);
+    let people: Vec<PersonResponse> = extract_json(list_response);
+    let found_person = people
+        .iter()
+        .find(|p| p.id == person.id)
+        .expect("Person should be in list");
+    let summary = found_person
+        .debt_summary
+        .as_ref()
+        .expect("debt_summary should be present");
+    assert_eq!(
+        summary.owes_me, "20.00",
+        "debt_summary.owes_me should be 20 after partial soft-delete"
+    );
+    assert_eq!(
+        found_person.transaction_count, 1,
+        "Transaction count should be 1 after soft-deleting one of two transactions"
+    );
+}

@@ -199,7 +199,7 @@ pub async fn build_person_response_with_config(
     Ok(response)
 }
 
-/// Get all splits for a person
+/// Get all splits for a person, excluding splits on soft-deleted transactions.
 pub async fn list_splits_for_person(
     pool: &DbPool,
     person_id: Uuid,
@@ -210,10 +210,15 @@ pub async fn list_splits_for_person(
     })?;
 
     tokio::task::spawn_blocking(move || {
-        use crate::schema::transaction_splits;
+        use crate::schema::{transaction_splits, transactions};
 
         transaction_splits::table
+            .inner_join(
+                transactions::table.on(transactions::id.eq(transaction_splits::transaction_id)),
+            )
             .filter(transaction_splits::person_id.eq(person_id))
+            .filter(transactions::is_deleted.eq(false))
+            .select(transaction_splits::all_columns)
             .order(transaction_splits::created_at.asc())
             .load(&mut conn)
             .map_err(|e| {
@@ -228,7 +233,8 @@ pub async fn list_splits_for_person(
     })?
 }
 
-/// Get all splits for multiple people in a single batch query (avoids N+1)
+/// Get all splits for multiple people in a single batch query (avoids N+1),
+/// excluding splits on soft-deleted transactions.
 pub async fn list_splits_for_people(
     pool: &DbPool,
     person_ids: Vec<Uuid>,
@@ -239,10 +245,15 @@ pub async fn list_splits_for_people(
     })?;
 
     tokio::task::spawn_blocking(move || {
-        use crate::schema::transaction_splits;
+        use crate::schema::{transaction_splits, transactions};
 
         transaction_splits::table
+            .inner_join(
+                transactions::table.on(transactions::id.eq(transaction_splits::transaction_id)),
+            )
             .filter(transaction_splits::person_id.eq_any(&person_ids))
+            .filter(transactions::is_deleted.eq(false))
+            .select(transaction_splits::all_columns)
             .order(transaction_splits::created_at.asc())
             .load(&mut conn)
             .map_err(|e| {

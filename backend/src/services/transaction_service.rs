@@ -81,6 +81,9 @@ pub async fn create_transaction(
     }
 
     // Create transaction
+    // Determine if this is an income transaction (for split sign logic later)
+    let is_income = amount > BigDecimal::from(0);
+
     let new_transaction = NewTransaction {
         user_id,
         account_id: request.account_id,
@@ -124,10 +127,19 @@ pub async fn create_transaction(
                     ApiError::Validation("Invalid split amount".to_string())
                 })?;
 
+            // Sign the split amount based on transaction direction:
+            // - Expense (amount < 0): positive split → they owe you (you paid for them)
+            // - Income (amount > 0): negative split → you owe them (you received money on their behalf)
+            let signed_split_amount = if is_income {
+                -split_amount.abs()
+            } else {
+                split_amount.abs()
+            };
+
             let new_split = NewTransactionSplit {
                 transaction_id: transaction.id,
                 person_id: split_input.person_id,
-                amount: split_amount,
+                amount: signed_split_amount,
             };
 
             let split =
@@ -414,18 +426,30 @@ pub async fn update_transaction(
                     ApiError::Validation("Invalid split amount".to_string())
                 })?;
 
+            // Sign the split amount based on transaction direction:
+            // - Expense (amount < 0): positive split → they owe you (you paid for them)
+            // - Income (amount > 0): negative split → you owe them (you received money on their behalf)
+            let signed_split_amount = if updated.amount > BigDecimal::from(0) {
+                -split_amount.abs()
+            } else {
+                split_amount.abs()
+            };
+
             if let Some(existing) = existing_map.get(&split_input.person_id) {
                 // UPDATE existing split amount (preserves split ID and sync records)
-                let updated =
-                    repositories::transaction::update_split_amount(pool, existing.id, split_amount)
-                        .await?;
-                result_splits.push(updated);
+                let updated_split = repositories::transaction::update_split_amount(
+                    pool,
+                    existing.id,
+                    signed_split_amount,
+                )
+                .await?;
+                result_splits.push(updated_split);
             } else {
                 // CREATE new split
                 let new_split = NewTransactionSplit {
                     transaction_id,
                     person_id: split_input.person_id,
-                    amount: split_amount,
+                    amount: signed_split_amount,
                 };
                 let split =
                     repositories::transaction::create_split(pool, transaction_id, new_split)

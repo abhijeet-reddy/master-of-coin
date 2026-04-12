@@ -58,16 +58,13 @@ export const SettleDebtModal = ({
   });
 
   const handleFormSubmit = (data: SettleDebtFormData) => {
-    // Send signed amount to backend:
-    // Positive debtAmount (they owe me) → positive amount (I receive payment)
-    // Negative debtAmount (I owe them) → negative amount (I make payment)
-    const settlementAmount = debtAmount > 0 ? Math.abs(debtAmount) : -Math.abs(debtAmount);
-
+    // Send positive (absolute) amount to backend.
+    // The backend determines the sign based on the current debt direction.
     settleMutation.mutate(
       {
         personId: person.id,
         data: {
-          amount: settlementAmount,
+          amount: Math.abs(debtAmount),
           account_id: data.account_id,
           notes: data.notes && data.notes.trim() !== '' ? data.notes : undefined,
         },

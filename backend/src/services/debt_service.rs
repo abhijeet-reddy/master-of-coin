@@ -80,7 +80,12 @@ pub async fn get_all_debts_for_user(
 }
 
 /// Settle debt with a person
-/// Creates a settlement transaction to record the payment
+/// Creates a settlement transaction to record the payment.
+///
+/// The `amount` parameter should be a positive value representing the settlement size.
+/// The backend determines the transaction sign based on the current debt direction:
+/// - If they owe you (positive debt): creates income transaction (you receive payment)
+/// - If you owe them (negative debt): creates expense transaction (you make payment)
 pub async fn settle_debt(
     pool: &DbPool,
     person_id: Uuid,
@@ -110,28 +115,39 @@ pub async fn settle_debt(
         ));
     }
 
-    // Validate amount
-    if amount == 0.0 {
+    // Validate amount (must be positive — backend determines the sign)
+    if amount <= 0.0 {
         return Err(ApiError::Validation(
-            "Settlement amount cannot be zero".to_string(),
+            "Settlement amount must be positive".to_string(),
         ));
     }
 
-    // Convert amount to BigDecimal
-    let settlement_amount = BigDecimal::from_str(&amount.to_string()).map_err(|e| {
+    // Convert amount to BigDecimal (always positive at this point)
+    let abs_amount = BigDecimal::from_str(&amount.to_string()).map_err(|e| {
         tracing::error!("Failed to convert settlement amount: {}", e);
         ApiError::Validation("Invalid settlement amount".to_string())
     })?;
 
+    // Look up the current debt to determine the settlement direction
+    let current_debt = calculate_debt_for_person(pool, person_id, user_id).await?;
+    let debt_value = BigDecimal::from_str(&current_debt).unwrap_or_default();
+
+    // Determine signed transaction amount based on debt direction:
+    // - Positive debt (they owe you) → you receive payment → positive transaction
+    // - Negative debt (you owe them) → you make payment → negative transaction
+    let signed_amount = if debt_value > BigDecimal::from(0) {
+        abs_amount.clone()
+    } else {
+        -abs_amount.clone()
+    };
+
     // Create settlement transaction
-    // Positive amount means you received payment from them
-    // Negative amount means you paid them
     let settlement_transaction = NewTransaction {
         user_id,
         account_id,
         category_id: None,
         title: format!("Debt settlement with {}", person.name),
-        amount: settlement_amount.clone(),
+        amount: signed_amount,
         date: chrono::Utc::now(),
         notes: Some(format!("Settlement of debt with {}", person.name)),
     };
@@ -140,10 +156,15 @@ pub async fn settle_debt(
         repositories::transaction::create_transaction(pool, user_id, settlement_transaction)
             .await?;
 
-    // Create a split with negative amount to offset the debt
-    // If they paid you (positive amount), create negative split to reduce their debt
-    // If you paid them (negative amount), create positive split to reduce your debt to them
-    let split_amount = -settlement_amount;
+    // Create a split to offset the debt.
+    // The split always has the opposite sign of the debt:
+    // - Positive debt (they owe you) → negative split to reduce their debt
+    // - Negative debt (you owe them) → positive split to reduce your debt
+    let split_amount = if debt_value > BigDecimal::from(0) {
+        -abs_amount
+    } else {
+        abs_amount
+    };
 
     let new_split = NewTransactionSplit {
         transaction_id: transaction.id,

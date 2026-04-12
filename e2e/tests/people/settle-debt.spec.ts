@@ -293,10 +293,10 @@ test.describe("Settle Debt", () => {
     const requestBody = settleRequest.postDataJSON();
 
     // Verify the payload contains the required 'amount' field
-    // Amount is signed: negative when "I owe" (paying them), positive when "they owe me" (receiving)
+    // Amount is always positive — the backend determines the sign based on debt direction
     expect(requestBody).toHaveProperty("amount");
     expect(typeof requestBody.amount).toBe("number");
-    expect(requestBody.amount).not.toBe(0);
+    expect(requestBody.amount).toBeGreaterThan(0);
 
     // Verify the payload contains 'account_id'
     expect(requestBody).toHaveProperty("account_id");

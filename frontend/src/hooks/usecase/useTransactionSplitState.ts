@@ -53,12 +53,20 @@ export default function useTransactionSplitState({
 
   const initFromTransaction = useCallback(
     (existingSplits: TransactionSplitRequest[], isDebt: boolean) => {
-      if (!isDebt && existingSplits.length > 0) {
+      // Normalize split amounts to absolute values for the form UI.
+      // The backend stores signed amounts (negative for income splits),
+      // but the form always works with positive values.
+      const normalizedSplits = existingSplits.map((s) => ({
+        ...s,
+        amount: Math.abs(parseFloat(s.amount) || 0).toString(),
+      }));
+
+      if (!isDebt && normalizedSplits.length > 0) {
         setIsSplitEnabled(true);
-        setSplits(existingSplits);
+        setSplits(normalizedSplits);
       } else {
         setIsSplitEnabled(false);
-        setSplits(isDebt ? [] : existingSplits);
+        setSplits(isDebt ? [] : normalizedSplits);
       }
     },
     []

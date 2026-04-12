@@ -908,13 +908,13 @@ impl SplitSyncService {
     /// Single entry point for syncing a transaction's splits with the external provider.
     ///
     /// Flow:
-    /// 1. If already linked to an external expense → fetch it and compare splits
-    ///    - If splits match → "synced" (already in sync)
-    ///    - If splits differ → "mismatch" (returns both sides' details)
-    /// 2. If not linked → search provider for matching expenses (same amount, ±3 days)
-    ///    - If exact match found → "linked" (auto-links)
-    ///    - If amount matches but splits differ → "mismatch"
-    ///    - If no match → "created" (creates new expense)
+    /// 1. If already linked to an external expense -> fetch it and compare splits
+    ///    - If splits match -> "synced" (already in sync)
+    ///    - If splits differ -> "mismatch" (returns both sides' details)
+    /// 2. If not linked -> search provider for matching expenses (same amount, ±3 days)
+    ///    - If exact match found -> "linked" (auto-links)
+    ///    - If amount matches but splits differ -> "mismatch"
+    ///    - If no match -> "created" (creates new expense)
     ///
     /// # Returns
     ///
@@ -950,8 +950,8 @@ impl SplitSyncService {
             // Debt transaction sync flow:
             // 1. Check if already linked to an external expense
             // 2. Search for matching expenses (where friend paid)
-            // 3. If match found → link it
-            // 4. If no match → create new expense with friend as payer
+            // 3. If match found -> link it
+            // 4. If no match -> create new expense with friend as payer
 
             let existing_expense_id = self.get_linked_expense_id(&splits_group);
 
@@ -1076,7 +1076,7 @@ impl SplitSyncService {
                     &splits_group,
                     matched_expense,
                 ) {
-                    // Exact match → link it and update metadata
+                    // Exact match -> link it and update metadata
                     for (split, _config) in &splits_group {
                         self.upsert_sync_record(
                             split.id,
@@ -1099,7 +1099,7 @@ impl SplitSyncService {
                 }
             }
 
-            // No match found → create new expense with friend as payer
+            // No match found -> create new expense with friend as payer
             self.sync_splits_group(&transaction, provider_id, splits_group.clone())
                 .await?;
 
@@ -1237,7 +1237,7 @@ impl SplitSyncService {
         let matches = self.find_split_match(transaction_id).await?;
 
         if matches.is_empty() {
-            // No match found → create new expense
+            // No match found -> create new expense
             self.sync_splits_group(&transaction, provider_id, splits_group)
                 .await?;
 
@@ -1252,7 +1252,7 @@ impl SplitSyncService {
             let splits_match = self.compare_splits(&transaction, &splits_group, matched_expense);
 
             if splits_match {
-                // Exact match → link it
+                // Exact match -> link it
                 for (split, _config) in &splits_group {
                     self.upsert_sync_record(
                         split.id,
@@ -1272,7 +1272,7 @@ impl SplitSyncService {
             }
         }
 
-        // Step 4: Amount matches but splits differ → mismatch
+        // Step 4: Amount matches but splits differ -> mismatch
         let first_match = &matches[0];
         self.build_mismatch_response(
             &transaction,
@@ -1285,8 +1285,8 @@ impl SplitSyncService {
 
     /// Sync on transaction update.
     ///
-    /// If already linked to an external expense → pushes updated local splits to provider.
-    /// If not linked → runs regular sync logic (search, link, or create).
+    /// If already linked to an external expense -> pushes updated local splits to provider.
+    /// If not linked -> runs regular sync logic (search, link, or create).
     pub async fn sync_on_update(&self, transaction_id: Uuid) -> ApiResult<serde_json::Value> {
         let (_transaction, splits_with_configs) =
             self.fetch_transaction_and_splits(transaction_id).await?;
@@ -1314,11 +1314,11 @@ impl SplitSyncService {
         let existing_expense_id = self.get_linked_expense_id(&splits_group);
 
         if let Some(ref ext_id) = existing_expense_id {
-            // Already linked → push updated local splits to provider
+            // Already linked -> push updated local splits to provider
             return self.resolve_mismatch(transaction_id, ext_id, "push").await;
         }
 
-        // Not linked → run regular sync logic
+        // Not linked -> run regular sync logic
         self.sync_transaction(transaction_id).await
     }
 
@@ -1611,9 +1611,12 @@ impl SplitSyncService {
 
     /// Compare local transaction splits with an external expense's user shares.
     ///
-    /// Validates ALL users including the payer (current user):
-    /// 1. Each split participant's owed_share matches
-    /// 2. The payer's owed_share matches (local payer share vs external payer owed_share)
+    /// Handles both expense and income transactions:
+    /// - **Expense** (amount < 0): Current user is the payer on Splitwise.
+    ///   Split participants' owed_shares must match, and the payer's owed_share must match.
+    /// - **Income** (amount > 0): Friend is the payer on Splitwise.
+    ///   The current user's owed_share should equal the transaction amount,
+    ///   and the friend's owed_share should be 0.
     ///
     /// Returns `true` only if all users' shares match.
     fn compare_splits(
@@ -1622,7 +1625,9 @@ impl SplitSyncService {
         local_splits: &[(TransactionSplit, PersonSplitConfig)],
         external_expense: &ExternalExpenseDetail,
     ) -> bool {
-        // Build a map of external_user_id → owed_share (as BigDecimal) from the external expense
+        let is_income = transaction.amount > BigDecimal::from(0);
+
+        // Build a map of external_user_id -> owed_share from the external expense
         let external_map: HashMap<String, BigDecimal> = external_expense
             .users
             .iter()
@@ -1634,44 +1639,76 @@ impl SplitSyncService {
             })
             .collect();
 
-        // Check each local split participant matches numerically
-        for (split, config) in local_splits {
-            let local_owed = split.amount.abs();
-            match external_map.get(&config.external_user_id) {
-                Some(external_owed) => {
-                    if local_owed != *external_owed {
-                        return false;
+        if is_income {
+            // Income transaction: friend is the payer on Splitwise.
+            // The friend's owed_share should be 0 (they paid).
+            // The current user's owed_share should equal |tx amount|.
+            for (_split, config) in local_splits {
+                match external_map.get(&config.external_user_id) {
+                    Some(external_owed) => {
+                        if *external_owed != BigDecimal::from(0) {
+                            return false;
+                        }
                     }
+                    None => return false,
                 }
-                None => return false,
             }
+
+            // The current user's owed_share on Splitwise should equal |tx amount|
+            let local_total = transaction.amount.abs();
+            let split_ext_ids: std::collections::HashSet<&str> = local_splits
+                .iter()
+                .map(|(_, config)| config.external_user_id.as_str())
+                .collect();
+            let current_user_owed: BigDecimal = external_expense
+                .users
+                .iter()
+                .filter(|u| !split_ext_ids.contains(u.external_user_id.as_str()))
+                .filter_map(|u| u.owed_share.parse::<BigDecimal>().ok())
+                .sum();
+
+            if local_total != current_user_owed {
+                return false;
+            }
+
+            true
+        } else {
+            // Expense transaction: current user is the payer on Splitwise.
+            for (split, config) in local_splits {
+                let local_owed = split.amount.abs();
+                match external_map.get(&config.external_user_id) {
+                    Some(external_owed) => {
+                        if local_owed != *external_owed {
+                            return false;
+                        }
+                    }
+                    None => return false,
+                }
+            }
+
+            let local_total = transaction.amount.abs();
+            let local_splits_total: BigDecimal =
+                local_splits.iter().map(|(s, _)| s.amount.abs()).sum();
+            let local_payer_share = &local_total - &local_splits_total;
+
+            let external_payer_owed: BigDecimal = external_expense
+                .users
+                .iter()
+                .filter(|u| {
+                    u.paid_share
+                        .parse::<BigDecimal>()
+                        .map(|p| p > BigDecimal::from(0))
+                        .unwrap_or(false)
+                })
+                .filter_map(|u| u.owed_share.parse::<BigDecimal>().ok())
+                .sum();
+
+            if local_payer_share != external_payer_owed {
+                return false;
+            }
+
+            true
         }
-
-        // Also validate the payer's share:
-        // Local payer share = local transaction amount - sum of local splits
-        // External payer share = their owed_share (the user with paid_share > 0)
-        let local_total = transaction.amount.abs();
-        let local_splits_total: BigDecimal = local_splits.iter().map(|(s, _)| s.amount.abs()).sum();
-        let local_payer_share = &local_total - &local_splits_total;
-
-        // The payer is the user whose paid_share > 0
-        let external_payer_owed: BigDecimal = external_expense
-            .users
-            .iter()
-            .filter(|u| {
-                u.paid_share
-                    .parse::<BigDecimal>()
-                    .map(|p| p > BigDecimal::from(0))
-                    .unwrap_or(false)
-            })
-            .filter_map(|u| u.owed_share.parse::<BigDecimal>().ok())
-            .sum();
-
-        if local_payer_share != external_payer_owed {
-            return false;
-        }
-
-        true
     }
 
     /// Get the payer's external user ID and display name from provider credentials.
@@ -2372,7 +2409,7 @@ impl SplitSyncService {
 
         match local_participants {
             Some(participants) => {
-                // Build external map: external_user_id → owed_share
+                // Build external map: external_user_id -> owed_share
                 let ext_map: HashMap<String, BigDecimal> = external_expense
                     .users
                     .iter()

@@ -320,6 +320,11 @@ impl SplitSyncService {
                     self.build_debt_expense_users(transaction, &splits, &payer_external_id)?;
                 (users, transaction.amount.abs().to_string())
             }
+        } else if transaction.amount > BigDecimal::from(0) {
+            // Income transaction on regular account: friend is the payer on Splitwise
+            let users =
+                self.build_income_expense_users(transaction, &splits, &payer_external_id)?;
+            (users, transaction.amount.abs().to_string())
         } else {
             let users = self.build_expense_users(transaction, &splits, &payer_external_id)?;
             (users, transaction.amount.abs().to_string())
@@ -486,6 +491,11 @@ impl SplitSyncService {
                     self.build_debt_expense_users(transaction, &splits, &payer_external_id)?;
                 (users, transaction.amount.abs().to_string())
             }
+        } else if transaction.amount > BigDecimal::from(0) {
+            // Income transaction on regular account: friend is the payer on Splitwise
+            let users =
+                self.build_income_expense_users(transaction, &splits, &payer_external_id)?;
+            (users, transaction.amount.abs().to_string())
         } else {
             let users = self.build_expense_users(transaction, &splits, &payer_external_id)?;
             (users, transaction.amount.abs().to_string())
@@ -753,6 +763,26 @@ impl SplitSyncService {
         });
 
         Ok(users)
+    }
+
+    /// Build expense users for an income transaction on a regular account.
+    ///
+    /// For income transactions (positive amount), the **friend** (split person) is the
+    /// payer on Splitwise, and the current user "owes" the payment amount.
+    /// This is the same structure as debt transactions on Splitwise.
+    ///
+    /// For an income of +87.05 EUR (friend paid me):
+    /// - Friend: paid_share = 87.05, owed_share = 0
+    /// - Current user: paid_share = 0, owed_share = 87.05
+    fn build_income_expense_users(
+        &self,
+        transaction: &Transaction,
+        splits: &[(TransactionSplit, PersonSplitConfig)],
+        current_user_external_id: &str,
+    ) -> ApiResult<Vec<ExpenseUser>> {
+        // Reuse the debt expense users logic - same Splitwise structure:
+        // friend is the payer, current user owes the amount
+        self.build_debt_expense_users(transaction, splits, current_user_external_id)
     }
 
     /// Find matching expenses on the split provider for a transaction
@@ -1110,32 +1140,55 @@ impl SplitSyncService {
 
         // Get the payer's info (current user) from provider credentials
         let payer_info = self.get_payer_info(provider_id)?;
-
-        // Calculate payer's share: total amount - sum of all splits
-        let total_split_amount: BigDecimal = splits_group.iter().map(|(s, _)| s.amount.abs()).sum();
-        let payer_share = transaction.amount.abs() - &total_split_amount;
+        let is_income = transaction.amount > BigDecimal::from(0);
 
         // Build local user shares for comparison/display (including payer)
         let mut local_shares: Vec<serde_json::Value> = Vec::new();
 
-        // Add payer (you) first
-        local_shares.push(serde_json::json!({
-            "external_user_id": payer_info.0,
-            "person_name": payer_info.1,
-            "owed_share": payer_share.to_string(),
-        }));
-
-        // Add split participants
-        for (split, config) in &splits_group {
-            let name = person_names
-                .get(&split.person_id)
-                .cloned()
-                .unwrap_or_else(|| format!("User {}", config.external_user_id));
+        if is_income {
+            // Income transaction: friend paid me.
+            // On Splitwise: friend has owed_share=0 (they paid), I have owed_share=|amount|.
+            // Show local shares with the same perspective.
             local_shares.push(serde_json::json!({
-                "external_user_id": config.external_user_id,
-                "person_name": name,
-                "owed_share": split.amount.abs().to_string(),
+                "external_user_id": payer_info.0,
+                "person_name": payer_info.1,
+                "owed_share": transaction.amount.abs().to_string(),
             }));
+
+            for (split, config) in &splits_group {
+                let name = person_names
+                    .get(&split.person_id)
+                    .cloned()
+                    .unwrap_or_else(|| format!("User {}", config.external_user_id));
+                local_shares.push(serde_json::json!({
+                    "external_user_id": config.external_user_id,
+                    "person_name": name,
+                    "owed_share": "0",
+                }));
+            }
+        } else {
+            // Expense transaction: I paid, others owe me.
+            let total_split_amount: BigDecimal =
+                splits_group.iter().map(|(s, _)| s.amount.abs()).sum();
+            let payer_share = transaction.amount.abs() - &total_split_amount;
+
+            local_shares.push(serde_json::json!({
+                "external_user_id": payer_info.0,
+                "person_name": payer_info.1,
+                "owed_share": payer_share.to_string(),
+            }));
+
+            for (split, config) in &splits_group {
+                let name = person_names
+                    .get(&split.person_id)
+                    .cloned()
+                    .unwrap_or_else(|| format!("User {}", config.external_user_id));
+                local_shares.push(serde_json::json!({
+                    "external_user_id": config.external_user_id,
+                    "person_name": name,
+                    "owed_share": split.amount.abs().to_string(),
+                }));
+            }
         }
 
         // Step 1: Check if already linked to an external expense

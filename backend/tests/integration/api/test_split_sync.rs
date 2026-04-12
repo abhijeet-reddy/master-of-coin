@@ -19,9 +19,10 @@ use diesel::prelude::*;
 use master_of_coin_backend::{
     models::{
         NewSplitProvider, SplitProvider,
+        person_split_config::NewPersonSplitConfig,
         split_sync_record::{NewSplitSyncRecord, SplitSyncStatusResponse},
     },
-    schema::{split_providers, split_sync_records},
+    schema::{person_split_configs, split_providers, split_sync_records},
     types::SplitProviderType,
 };
 use serde_json::json;
@@ -59,6 +60,24 @@ fn create_test_split_provider(
         .values(&new_provider)
         .get_result::<SplitProvider>(&mut conn)
         .expect("Failed to create test split provider")
+}
+
+fn create_person_split_config(
+    pool: &master_of_coin_backend::DbPool,
+    person_id: Uuid,
+    provider_id: Uuid,
+    external_user_id: &str,
+) {
+    let mut conn = pool.get().expect("Failed to get DB connection");
+    let new_config = NewPersonSplitConfig {
+        person_id,
+        split_provider_id: provider_id,
+        external_user_id: external_user_id.to_string(),
+    };
+    diesel::insert_into(person_split_configs::table)
+        .values(&new_config)
+        .execute(&mut conn)
+        .expect("Failed to create person split config");
 }
 
 /// Gets a transaction_split_id from a transaction that has splits.
@@ -949,5 +968,196 @@ async fn test_resolve_mismatch_wrong_user() {
         status >= 400,
         "User B resolving User A's transaction should fail, got {}",
         status
+    );
+}
+
+// ============================================================================
+// Income Transaction Split Sync Tests
+// ============================================================================
+
+/// Test that syncing an income transaction with splits reaches the provider call.
+///
+/// Income transactions (positive amount) on regular accounts should use
+/// `build_income_expense_users` where the friend is the payer on Splitwise.
+/// Since test credentials can't be decrypted, the sync will fail with a 500
+/// (credential error) — but NOT a 400 "no splits" or "no provider", proving
+/// the income path through the sync logic works correctly.
+#[tokio::test]
+async fn test_sync_income_transaction_with_splits_reaches_provider() {
+    let server = create_test_server().await;
+    let pool = get_test_db_pool();
+    let ts = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("sync_income_{}", ts),
+        &format!("sync_income_{}@example.com", ts),
+        "SecurePass123!",
+        "Sync Income User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Sync Income Account").await;
+    let category = create_test_category(&server, &auth.token, "Sync Income Category").await;
+    let person = create_test_person(&server, &auth.token, "Income Payer Friend").await;
+
+    // Create a split provider and map the person
+    let provider = create_test_split_provider(&pool, auth.user.id);
+    create_person_split_config(&pool, person.id, provider.id, "income_friend_ext_123");
+
+    // Create an INCOME transaction (positive amount) with a split
+    let req = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Friend paid me back for dinner",
+        "amount": 87.05,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [{"person_id": person.id, "amount": 87.05}]
+    });
+    let create_resp = post_authenticated(&server, "/api/v1/transactions", &auth.token, &req).await;
+    assert_status(&create_resp, 201);
+
+    let tx: serde_json::Value = extract_json(create_resp);
+    let tx_id = tx["id"].as_str().expect("Transaction should have id");
+
+    // Verify the transaction was created as income with splits
+    assert_eq!(tx["amount"].as_str().unwrap(), "87.05");
+    assert!(tx["splits"].is_array());
+    let splits = tx["splits"].as_array().unwrap();
+    assert_eq!(splits.len(), 1);
+    assert_eq!(
+        splits[0]["person_id"].as_str().unwrap(),
+        person.id.to_string()
+    );
+
+    // Try to sync — should reach the provider call (and fail with credential error)
+    // but NOT with 400 "no splits" or "no provider"
+    let resp = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/sync-split", tx_id),
+        &auth.token,
+        &json!({}),
+    )
+    .await;
+
+    let status = resp.status_code().as_u16();
+    // Should NOT be 400 (no splits / no provider) — the income transaction has
+    // splits with a configured provider. Expected: 500 (credential decryption fails)
+    assert_ne!(
+        status, 400,
+        "Income transaction with splits and provider should not get 400"
+    );
+    // The sync reached the provider call (credential decryption fails in test env)
+    assert_eq!(
+        status, 500,
+        "Expected 500 from credential decryption failure, got {}",
+        status
+    );
+}
+
+/// Test that syncing an income transaction without a provider returns 400.
+///
+/// Same as expense transactions: if the split person has no split provider
+/// config, the sync should fail with "No splits have a configured split provider".
+#[tokio::test]
+async fn test_sync_income_transaction_no_provider_returns_400() {
+    let server = create_test_server().await;
+    let ts = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("sync_inc_noprov_{}", ts),
+        &format!("sync_inc_noprov_{}@example.com", ts),
+        "SecurePass123!",
+        "Sync Income NoProv",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Income NoProv Account").await;
+    let category = create_test_category(&server, &auth.token, "Income NoProv Category").await;
+    let person = create_test_person(&server, &auth.token, "Income NoProv Person").await;
+
+    // Create an income transaction with splits but NO split provider config
+    let req = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Income without provider",
+        "amount": 50.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [{"person_id": person.id, "amount": 50.0}]
+    });
+    let create_resp = post_authenticated(&server, "/api/v1/transactions", &auth.token, &req).await;
+    assert_status(&create_resp, 201);
+
+    let tx: serde_json::Value = extract_json(create_resp);
+    let tx_id = tx["id"].as_str().expect("Transaction should have id");
+
+    // Try to sync — should fail with 400 because no provider configured
+    let resp = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/sync-split", tx_id),
+        &auth.token,
+        &json!({}),
+    )
+    .await;
+
+    assert_status(&resp, 400);
+    let body = resp.text();
+    assert!(
+        body.to_lowercase().contains("provider"),
+        "Error should mention provider, got: {}",
+        body
+    );
+}
+
+/// Test that an income transaction with no splits returns 400 on sync.
+///
+/// Same behavior as expense transactions: no splits → "Transaction has no splits to sync".
+#[tokio::test]
+async fn test_sync_income_transaction_no_splits_returns_400() {
+    let server = create_test_server().await;
+    let ts = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("sync_inc_nosplit_{}", ts),
+        &format!("sync_inc_nosplit_{}@example.com", ts),
+        "SecurePass123!",
+        "Sync Income NoSplit",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Income NoSplit Account").await;
+    let category = create_test_category(&server, &auth.token, "Income NoSplit Category").await;
+
+    // Create an income transaction WITHOUT splits
+    let req = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Income without splits",
+        "amount": 75.00,
+        "date": Utc::now().to_rfc3339()
+    });
+    let create_resp = post_authenticated(&server, "/api/v1/transactions", &auth.token, &req).await;
+    assert_status(&create_resp, 201);
+
+    let tx: serde_json::Value = extract_json(create_resp);
+    let tx_id = tx["id"].as_str().expect("Transaction should have id");
+
+    // Try to sync — should fail because no splits
+    let resp = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/sync-split", tx_id),
+        &auth.token,
+        &json!({}),
+    )
+    .await;
+
+    assert_status(&resp, 400);
+    let body = resp.text();
+    assert!(
+        body.to_lowercase().contains("no splits"),
+        "Error should mention no splits, got: {}",
+        body
     );
 }

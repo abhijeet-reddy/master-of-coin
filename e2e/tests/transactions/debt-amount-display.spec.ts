@@ -333,12 +333,12 @@ test.describe("Debt Amount Display", () => {
       return;
     }
 
-    // Settle the debt via API
+    // Settle the debt via API (positive amount — backend determines sign)
     const settleRes = await apiPost(
       authenticatedPage,
       `/people/${testData.person.id}/settle`,
       {
-        amount: -100.0,
+        amount: 100.0,
         account_id: activeAccount.id,
       },
     );

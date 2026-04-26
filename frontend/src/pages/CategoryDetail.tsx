@@ -6,7 +6,7 @@ import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/compone
 import { CategoryInfoCard, CategoryFormModal } from '@/components/categories';
 import {
   TransactionList,
-  TransactionFilters,
+  TransactionFilterDrawer,
   TransactionFormModal,
 } from '@/components/transactions';
 import { useCategoryDetail } from '@/hooks/usecase';
@@ -155,15 +155,15 @@ export const CategoryDetailPage = () => {
         <ErrorAlert title="Failed to delete category" error={deleteMutation.error} />
       )}
 
-      {showFilters && (
-        <TransactionFilters
-          accounts={accounts}
-          categories={[]}
-          filters={filters}
-          onFilterChange={setFilters}
-          onClear={clearFilters}
-        />
-      )}
+      <TransactionFilterDrawer
+        open={showFilters}
+        onClose={toggleFilters}
+        accounts={accounts}
+        categories={[]}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClear={clearFilters}
+      />
 
       <TransactionList
         transactions={filteredTransactions}

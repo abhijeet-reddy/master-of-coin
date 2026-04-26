@@ -120,25 +120,29 @@ test.describe("Transactions Page", () => {
     );
   });
 
-  test("filter toggle works", async ({ authenticatedPage }) => {
+  test("filter toggle opens drawer", async ({ authenticatedPage }) => {
     await authenticatedPage.goto("/transactions");
     await authenticatedPage.waitForLoadState("networkidle");
 
     // Look for filter button
-    const filterButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /filter/i })
-      .first()
-      .or(authenticatedPage.locator('[aria-label*="filter"]').first());
+    const filterButton = authenticatedPage.locator(
+      '[aria-label="Toggle filters"]',
+    );
 
     if (await filterButton.isVisible()) {
       await filterButton.click();
       await authenticatedPage.waitForTimeout(500);
 
-      // Screenshot with filters visible
+      // Filter drawer should be visible
+      const drawer = authenticatedPage
+        .locator('[role="dialog"]')
+        .filter({ hasText: /Filters/ });
+      await expect(drawer).toBeVisible({ timeout: 5000 });
+
+      // Screenshot with filter drawer open
       await screenshotHelper.capturePageScreenshot(
         authenticatedPage,
-        "transactions-filters-open",
+        "transactions-filters-drawer-open",
       );
     }
   });

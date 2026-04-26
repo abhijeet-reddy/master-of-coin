@@ -4,6 +4,7 @@ export { TransactionList } from './TransactionList';
 export { TransactionRow } from './TransactionRow';
 export { TransactionFilters } from './TransactionFilters';
 export type { TransactionFilterValues } from './TransactionFilters';
+export { TransactionFilterDrawer } from './TransactionFilterDrawer';
 export { TransactionFormModal } from './TransactionFormModal';
 export { TransferFormModal } from './TransferFormModal';
 export { SplitPaymentForm } from './SplitPaymentForm';

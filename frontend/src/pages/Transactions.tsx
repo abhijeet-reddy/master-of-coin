@@ -6,7 +6,7 @@ import {
   MonthNavigator,
   MonthSummary,
   TransactionList,
-  TransactionFilters,
+  TransactionFilterDrawer,
   TransactionFormModal,
   TransferFormModal,
 } from '@/components/transactions';
@@ -42,8 +42,8 @@ export const TransactionsPage = () => {
   const { selectedMonth, setSelectedMonth, filters, setFilters, hasUrlFilters, clearFilters } =
     useTransactionUrlFilters();
 
-  // Local toggle for filter panel visibility — auto-opens when URL has filters
-  const [showFilters, setShowFilters] = useState(hasUrlFilters);
+  // Drawer open state for filter panel — auto-opens when URL has filters
+  const [isFilterOpen, setIsFilterOpen] = useState(hasUrlFilters);
 
   const [editTransaction, setEditTransaction] = useState<EnrichedTransaction | null>(null);
   const [duplicateTransaction, setDuplicateTransaction] = useState<EnrichedTransaction | null>(
@@ -270,8 +270,8 @@ export const TransactionsPage = () => {
           <HStack gap={2}>
             <IconButton
               aria-label="Toggle filters"
-              variant={showFilters ? 'solid' : 'outline'}
-              onClick={() => setShowFilters(!showFilters)}
+              variant={isFilterOpen ? 'solid' : 'outline'}
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
             >
               <FiFilter />
             </IconButton>
@@ -303,16 +303,16 @@ export const TransactionsPage = () => {
       {/* Month Summary */}
       <MonthSummary income={monthSummary.income} expenses={monthSummary.expenses} />
 
-      {/* Filters */}
-      {showFilters && (
-        <TransactionFilters
-          accounts={accountsData || []}
-          categories={categoriesData || []}
-          filters={filters}
-          onFilterChange={setFilters}
-          onClear={handleClearFilters}
-        />
-      )}
+      {/* Filters Drawer */}
+      <TransactionFilterDrawer
+        open={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        accounts={accountsData || []}
+        categories={categoriesData || []}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClear={handleClearFilters}
+      />
 
       {/* Transaction List — clicking row navigates to detail, edit icon opens modal */}
       <TransactionList

@@ -6,7 +6,7 @@ import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/compone
 import { PersonInfoCard, PersonFormModal, SettleDebtModal } from '@/components/people';
 import {
   TransactionList,
-  TransactionFilters,
+  TransactionFilterDrawer,
   TransactionFormModal,
 } from '@/components/transactions';
 import { usePersonDetail } from '@/hooks/usecase';
@@ -161,16 +161,16 @@ export const PersonDetailPage = () => {
         <ErrorAlert title="Failed to delete person" error={deleteMutation.error} />
       )}
 
-      {/* Transaction Filters */}
-      {showFilters && (
-        <TransactionFilters
-          accounts={accounts}
-          categories={categories}
-          filters={filters}
-          onFilterChange={setFilters}
-          onClear={clearFilters}
-        />
-      )}
+      {/* Transaction Filters Drawer */}
+      <TransactionFilterDrawer
+        open={showFilters}
+        onClose={toggleFilters}
+        accounts={accounts}
+        categories={categories}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClear={clearFilters}
+      />
 
       {/* Transaction List */}
       <TransactionList

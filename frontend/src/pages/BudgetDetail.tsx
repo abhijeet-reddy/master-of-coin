@@ -6,7 +6,7 @@ import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/compone
 import { BudgetInfoCard } from '@/components/budgets';
 import {
   TransactionList,
-  TransactionFilters,
+  TransactionFilterDrawer,
   TransactionFormModal,
 } from '@/components/transactions';
 import { useBudgetDetail } from '@/hooks/usecase';
@@ -147,15 +147,15 @@ export const BudgetDetailPage = () => {
         <ErrorAlert title="Failed to delete budget" error={deleteMutation.error} />
       )}
 
-      {showFilters && (
-        <TransactionFilters
-          accounts={accounts}
-          categories={categories}
-          filters={filters}
-          onFilterChange={setFilters}
-          onClear={clearFilters}
-        />
-      )}
+      <TransactionFilterDrawer
+        open={showFilters}
+        onClose={toggleFilters}
+        accounts={accounts}
+        categories={categories}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClear={clearFilters}
+      />
 
       <TransactionList
         transactions={filteredTransactions}

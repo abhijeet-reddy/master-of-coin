@@ -1,5 +1,4 @@
 import { Box, Button, HStack, Input, Text, VStack, Checkbox, Stack } from '@chakra-ui/react';
-import { FiFilter, FiX } from 'react-icons/fi';
 import type { Account, Category } from '@/types';
 
 export interface TransactionFilterValues {
@@ -18,7 +17,6 @@ interface TransactionFiltersProps {
   categories: Category[];
   filters: TransactionFilterValues;
   onFilterChange: (filters: TransactionFilterValues) => void;
-  onClear: () => void;
 }
 
 export const TransactionFilters = ({
@@ -26,7 +24,6 @@ export const TransactionFilters = ({
   categories,
   filters,
   onFilterChange,
-  onClear,
 }: TransactionFiltersProps) => {
   const handleAccountToggle = (accountId: string) => {
     const newAccountIds = filters.accountIds.includes(accountId)
@@ -44,215 +41,185 @@ export const TransactionFilters = ({
     onFilterChange({ ...filters, categoryIds: newCategoryIds });
   };
 
-  const hasActiveFilters =
-    filters.accountIds.length > 0 ||
-    filters.categoryIds.length > 0 ||
-    filters.startDate ||
-    filters.endDate ||
-    filters.minAmount ||
-    filters.maxAmount ||
-    (filters.transactionType && filters.transactionType !== 'all') ||
-    (filters.paidByOthers && filters.paidByOthers !== 'all');
-
   return (
-    <Box p={4} bg="bg" borderRadius="lg" borderWidth="1px" borderColor="border" mb={4}>
-      <VStack align="stretch" gap={4}>
-        {/* Header */}
-        <HStack justify="space-between">
-          <HStack gap={2}>
-            <FiFilter />
-            <Text fontWeight="semibold">Filters</Text>
-          </HStack>
-          {hasActiveFilters && (
-            <Button size="sm" variant="ghost" colorScheme="red" onClick={onClear}>
-              <HStack gap={1}>
-                <FiX />
-                <Text>Clear</Text>
-              </HStack>
-            </Button>
-          )}
+    <VStack align="stretch" gap={4}>
+      {/* Transaction Type */}
+      <Box>
+        <Text fontSize="sm" fontWeight="medium" mb={2}>
+          Transaction Type
+        </Text>
+        <HStack gap={2}>
+          <Button
+            size="sm"
+            variant={
+              !filters.transactionType || filters.transactionType === 'all' ? 'solid' : 'outline'
+            }
+            onClick={() => onFilterChange({ ...filters, transactionType: 'all' })}
+          >
+            All
+          </Button>
+          <Button
+            size="sm"
+            variant={filters.transactionType === 'income' ? 'solid' : 'outline'}
+            colorPalette="green"
+            onClick={() => onFilterChange({ ...filters, transactionType: 'income' })}
+          >
+            Income
+          </Button>
+          <Button
+            size="sm"
+            variant={filters.transactionType === 'expense' ? 'solid' : 'outline'}
+            colorPalette="red"
+            onClick={() => onFilterChange({ ...filters, transactionType: 'expense' })}
+          >
+            Expense
+          </Button>
         </HStack>
+      </Box>
 
-        {/* Transaction Type */}
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>
-            Transaction Type
-          </Text>
-          <HStack gap={2}>
-            <Button
-              size="sm"
-              variant={
-                !filters.transactionType || filters.transactionType === 'all' ? 'solid' : 'outline'
-              }
-              onClick={() => onFilterChange({ ...filters, transactionType: 'all' })}
-            >
-              All
-            </Button>
-            <Button
-              size="sm"
-              variant={filters.transactionType === 'income' ? 'solid' : 'outline'}
-              colorScheme="green"
-              onClick={() => onFilterChange({ ...filters, transactionType: 'income' })}
-            >
-              Income
-            </Button>
-            <Button
-              size="sm"
-              variant={filters.transactionType === 'expense' ? 'solid' : 'outline'}
-              colorScheme="red"
-              onClick={() => onFilterChange({ ...filters, transactionType: 'expense' })}
-            >
-              Expense
-            </Button>
-          </HStack>
-        </Box>
-
-        {/* Paid by Others Filter */}
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>
+      {/* Paid by Others Filter */}
+      <Box>
+        <Text fontSize="sm" fontWeight="medium" mb={2}>
+          Paid by Others
+        </Text>
+        <HStack gap={2}>
+          <Button
+            size="sm"
+            variant={!filters.paidByOthers || filters.paidByOthers === 'all' ? 'solid' : 'outline'}
+            onClick={() => onFilterChange({ ...filters, paidByOthers: 'all' })}
+          >
+            All
+          </Button>
+          <Button
+            size="sm"
+            variant={filters.paidByOthers === 'only' ? 'solid' : 'outline'}
+            colorPalette="orange"
+            onClick={() => onFilterChange({ ...filters, paidByOthers: 'only' })}
+          >
             Paid by Others
-          </Text>
-          <HStack gap={2}>
-            <Button
-              size="sm"
-              variant={
-                !filters.paidByOthers || filters.paidByOthers === 'all' ? 'solid' : 'outline'
-              }
-              onClick={() => onFilterChange({ ...filters, paidByOthers: 'all' })}
-            >
-              All
-            </Button>
-            <Button
-              size="sm"
-              variant={filters.paidByOthers === 'only' ? 'solid' : 'outline'}
-              colorScheme="orange"
-              onClick={() => onFilterChange({ ...filters, paidByOthers: 'only' })}
-            >
-              Paid by Others
-            </Button>
-            <Button
-              size="sm"
-              variant={filters.paidByOthers === 'exclude' ? 'solid' : 'outline'}
-              colorScheme="gray"
-              onClick={() => onFilterChange({ ...filters, paidByOthers: 'exclude' })}
-            >
-              My Payments
-            </Button>
-          </HStack>
-        </Box>
+          </Button>
+          <Button
+            size="sm"
+            variant={filters.paidByOthers === 'exclude' ? 'solid' : 'outline'}
+            colorPalette="gray"
+            onClick={() => onFilterChange({ ...filters, paidByOthers: 'exclude' })}
+          >
+            My Payments
+          </Button>
+        </HStack>
+      </Box>
 
-        {/* Date Range */}
+      {/* Date Range */}
+      <Box>
+        <Text fontSize="sm" fontWeight="medium" mb={2}>
+          Date Range
+        </Text>
+        <HStack gap={2}>
+          <Box flex={1}>
+            <Input
+              type="date"
+              size="sm"
+              value={filters.startDate || ''}
+              onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
+              placeholder="Start date"
+            />
+          </Box>
+          <Text fontSize="sm" color="fg.muted">
+            to
+          </Text>
+          <Box flex={1}>
+            <Input
+              type="date"
+              size="sm"
+              value={filters.endDate || ''}
+              onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
+              placeholder="End date"
+            />
+          </Box>
+        </HStack>
+      </Box>
+
+      {/* Amount Range */}
+      <Box>
+        <Text fontSize="sm" fontWeight="medium" mb={2}>
+          Amount Range
+        </Text>
+        <HStack gap={2}>
+          <Box flex={1}>
+            <Input
+              type="number"
+              size="sm"
+              step="0.01"
+              value={filters.minAmount || ''}
+              onChange={(e) => onFilterChange({ ...filters, minAmount: e.target.value })}
+              placeholder="Min amount"
+            />
+          </Box>
+          <Text fontSize="sm" color="fg.muted">
+            to
+          </Text>
+          <Box flex={1}>
+            <Input
+              type="number"
+              size="sm"
+              step="0.01"
+              value={filters.maxAmount || ''}
+              onChange={(e) => onFilterChange({ ...filters, maxAmount: e.target.value })}
+              placeholder="Max amount"
+            />
+          </Box>
+        </HStack>
+      </Box>
+
+      {/* Accounts */}
+      {accounts.length > 0 && (
         <Box>
           <Text fontSize="sm" fontWeight="medium" mb={2}>
-            Date Range
+            Accounts
           </Text>
-          <HStack gap={2}>
-            <Box flex={1}>
-              <Input
-                type="date"
-                size="sm"
-                value={filters.startDate || ''}
-                onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
-                placeholder="Start date"
-              />
-            </Box>
-            <Text fontSize="sm" color="fg.muted">
-              to
-            </Text>
-            <Box flex={1}>
-              <Input
-                type="date"
-                size="sm"
-                value={filters.endDate || ''}
-                onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
-                placeholder="End date"
-              />
-            </Box>
-          </HStack>
+          <Stack gap={2} maxH="150px" overflowY="auto">
+            {accounts.map((account) => (
+              <Checkbox.Root
+                key={account.id}
+                checked={filters.accountIds.includes(account.id)}
+                onCheckedChange={() => handleAccountToggle(account.id)}
+              >
+                <Checkbox.HiddenInput />
+                <Checkbox.Control />
+                <Checkbox.Label>
+                  <Text fontSize="sm">{account.name}</Text>
+                </Checkbox.Label>
+              </Checkbox.Root>
+            ))}
+          </Stack>
         </Box>
+      )}
 
-        {/* Amount Range */}
+      {/* Categories */}
+      {categories.length > 0 && (
         <Box>
           <Text fontSize="sm" fontWeight="medium" mb={2}>
-            Amount Range
+            Categories
           </Text>
-          <HStack gap={2}>
-            <Box flex={1}>
-              <Input
-                type="number"
-                size="sm"
-                step="0.01"
-                value={filters.minAmount || ''}
-                onChange={(e) => onFilterChange({ ...filters, minAmount: e.target.value })}
-                placeholder="Min amount"
-              />
-            </Box>
-            <Text fontSize="sm" color="fg.muted">
-              to
-            </Text>
-            <Box flex={1}>
-              <Input
-                type="number"
-                size="sm"
-                step="0.01"
-                value={filters.maxAmount || ''}
-                onChange={(e) => onFilterChange({ ...filters, maxAmount: e.target.value })}
-                placeholder="Max amount"
-              />
-            </Box>
-          </HStack>
+          <Stack gap={2} maxH="150px" overflowY="auto">
+            {categories.map((category) => (
+              <Checkbox.Root
+                key={category.id}
+                checked={filters.categoryIds.includes(category.id)}
+                onCheckedChange={() => handleCategoryToggle(category.id)}
+              >
+                <Checkbox.HiddenInput />
+                <Checkbox.Control />
+                <Checkbox.Label>
+                  <Text fontSize="sm">
+                    {category.icon} {category.name}
+                  </Text>
+                </Checkbox.Label>
+              </Checkbox.Root>
+            ))}
+          </Stack>
         </Box>
-
-        {/* Accounts */}
-        {accounts.length > 0 && (
-          <Box>
-            <Text fontSize="sm" fontWeight="medium" mb={2}>
-              Accounts
-            </Text>
-            <Stack gap={2} maxH="150px" overflowY="auto">
-              {accounts.map((account) => (
-                <Checkbox.Root
-                  key={account.id}
-                  checked={filters.accountIds.includes(account.id)}
-                  onCheckedChange={() => handleAccountToggle(account.id)}
-                >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                  <Checkbox.Label>
-                    <Text fontSize="sm">{account.name}</Text>
-                  </Checkbox.Label>
-                </Checkbox.Root>
-              ))}
-            </Stack>
-          </Box>
-        )}
-
-        {/* Categories */}
-        {categories.length > 0 && (
-          <Box>
-            <Text fontSize="sm" fontWeight="medium" mb={2}>
-              Categories
-            </Text>
-            <Stack gap={2} maxH="150px" overflowY="auto">
-              {categories.map((category) => (
-                <Checkbox.Root
-                  key={category.id}
-                  checked={filters.categoryIds.includes(category.id)}
-                  onCheckedChange={() => handleCategoryToggle(category.id)}
-                >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                  <Checkbox.Label>
-                    <Text fontSize="sm">
-                      {category.icon} {category.name}
-                    </Text>
-                  </Checkbox.Label>
-                </Checkbox.Root>
-              ))}
-            </Stack>
-          </Box>
-        )}
-      </VStack>
-    </Box>
+      )}
+    </VStack>
   );
 };

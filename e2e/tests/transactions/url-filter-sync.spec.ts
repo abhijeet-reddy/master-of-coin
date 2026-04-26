@@ -11,16 +11,31 @@ import { goToTransactions } from "../../helpers/navigation";
  * URL Filter Sync E2E tests.
  *
  * Tests that transaction page filters are synced to URL search parameters:
- * - Filters update the URL when applied
+ * - Filters update the URL when applied (inside the drawer)
  * - Visiting a URL with filter params restores the filter state
  * - Month navigation updates the URL
  * - Clearing filters removes URL params
  * - Browser back/forward updates filter state
- * - Filter panel auto-opens when URL has filter params
+ * - Filter drawer auto-opens when URL has filter params
  * - Default view (no params) shows current month with no filters
  */
 
 const screenshotHelper = new ScreenshotHelper();
+
+/** Helper to locate the filter drawer dialog */
+function getFilterDrawer(page: import("@playwright/test").Page) {
+  return page.locator('[role="dialog"]').filter({ hasText: /Filters/ });
+}
+
+/** Helper to open the filter drawer */
+async function openFilterDrawer(page: import("@playwright/test").Page) {
+  const filterButton = page.locator('[aria-label="Toggle filters"]');
+  await filterButton.click();
+  await page.waitForTimeout(500);
+  const drawer = getFilterDrawer(page);
+  await expect(drawer).toBeVisible({ timeout: 5000 });
+  return drawer;
+}
 
 test.describe("URL Filter Sync", () => {
   test("transactions page loads with clean URL (no params) by default", async ({
@@ -51,15 +66,11 @@ test.describe("URL Filter Sync", () => {
 
     await goToTransactions(authenticatedPage);
 
-    // Open the filter panel
-    const filterButton = authenticatedPage.locator(
-      '[aria-label="Toggle filters"]',
-    );
-    await filterButton.click();
-    await authenticatedPage.waitForTimeout(300);
+    // Open the filter drawer
+    const drawer = await openFilterDrawer(authenticatedPage);
 
-    // Click the "Expense" type filter button
-    const expenseButton = authenticatedPage
+    // Click the "Expense" type filter button inside the drawer
+    const expenseButton = drawer
       .locator("button")
       .filter({ hasText: /^Expense$/i });
     await expenseButton.click();
@@ -82,15 +93,11 @@ test.describe("URL Filter Sync", () => {
   }) => {
     await goToTransactions(authenticatedPage);
 
-    // Open the filter panel
-    const filterButton = authenticatedPage.locator(
-      '[aria-label="Toggle filters"]',
-    );
-    await filterButton.click();
-    await authenticatedPage.waitForTimeout(300);
+    // Open the filter drawer
+    const drawer = await openFilterDrawer(authenticatedPage);
 
-    // Click the "Income" type filter button
-    const incomeButton = authenticatedPage
+    // Click the "Income" type filter button inside the drawer
+    const incomeButton = drawer
       .locator("button")
       .filter({ hasText: /^Income$/i });
     await incomeButton.click();
@@ -101,7 +108,7 @@ test.describe("URL Filter Sync", () => {
     expect(url.searchParams.get("type")).toBe("income");
   });
 
-  test("visiting URL with type=expense restores filter state and auto-opens panel", async ({
+  test("visiting URL with type=expense restores filter state and auto-opens drawer", async ({
     authenticatedPage,
   }) => {
     const errors = collectConsoleErrors(authenticatedPage);
@@ -112,15 +119,18 @@ test.describe("URL Filter Sync", () => {
 
     await expectPageTitle(authenticatedPage, "Transactions");
 
-    // Filter panel should be auto-opened because URL has filter params
-    // The "Expense" button should be in solid/active variant
-    const expenseButton = authenticatedPage
+    // Filter drawer should be auto-opened because URL has filter params
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
+
+    // The "Expense" button should be visible inside the drawer
+    const expenseButton = drawer
       .locator("button")
       .filter({ hasText: /^Expense$/i });
     await expect(expenseButton).toBeVisible({ timeout: 5000 });
 
-    // The "Filters" section text should be visible (panel is open)
-    const filtersLabel = authenticatedPage.locator("text=Filters").first();
+    // The "Filters" title should be visible in the drawer header
+    const filtersLabel = drawer.locator("text=Filters").first();
     await expect(filtersLabel).toBeVisible({ timeout: 5000 });
 
     expectNoConsoleErrors(errors);
@@ -137,14 +147,18 @@ test.describe("URL Filter Sync", () => {
     await authenticatedPage.goto("/transactions?type=income");
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // The "Income" button should be visible (filter panel auto-opened)
-    const incomeButton = authenticatedPage
+    // Filter drawer should be auto-opened
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
+
+    // The "Income" button should be visible inside the drawer
+    const incomeButton = drawer
       .locator("button")
       .filter({ hasText: /^Income$/i });
     await expect(incomeButton).toBeVisible({ timeout: 5000 });
 
-    // The "Filters" label should be visible
-    const filtersLabel = authenticatedPage.locator("text=Filters").first();
+    // The "Filters" label should be visible in the drawer
+    const filtersLabel = drawer.locator("text=Filters").first();
     await expect(filtersLabel).toBeVisible({ timeout: 5000 });
   });
 
@@ -202,14 +216,14 @@ test.describe("URL Filter Sync", () => {
     await authenticatedPage.goto("/transactions?type=expense");
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // Verify filter panel is open and type=expense is active
-    const filtersLabel = authenticatedPage.locator("text=Filters").first();
-    await expect(filtersLabel).toBeVisible({ timeout: 5000 });
+    // Verify filter drawer is open and type=expense is active
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
 
-    // Click the "Clear" button to remove all filters
-    const clearButton = authenticatedPage
+    // Click the "Clear All" button in the drawer to remove all filters
+    const clearButton = drawer
       .locator("button")
-      .filter({ hasText: /clear/i });
+      .filter({ hasText: /Clear All/i });
     await clearButton.click();
     await authenticatedPage.waitForTimeout(300);
 
@@ -229,30 +243,30 @@ test.describe("URL Filter Sync", () => {
     );
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // Filter panel should be auto-opened
-    const filtersLabel = authenticatedPage.locator("text=Filters").first();
-    await expect(filtersLabel).toBeVisible({ timeout: 5000 });
+    // Filter drawer should be auto-opened
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
 
-    // Expense button should be visible (filter panel open)
-    const expenseButton = authenticatedPage
+    // Expense button should be visible inside the drawer
+    const expenseButton = drawer
       .locator("button")
       .filter({ hasText: /^Expense$/i });
     await expect(expenseButton).toBeVisible({ timeout: 5000 });
 
-    // "My Payments" button should be visible (paidByOthers=exclude)
-    const myPaymentsButton = authenticatedPage
+    // "My Payments" button should be visible inside the drawer (paidByOthers=exclude)
+    const myPaymentsButton = drawer
       .locator("button")
       .filter({ hasText: /My Payments/i });
     await expect(myPaymentsButton).toBeVisible({ timeout: 5000 });
 
     // Min amount input should have value "10"
-    const minAmountInput = authenticatedPage.locator(
+    const minAmountInput = drawer.locator(
       'input[type="number"][placeholder="Min amount"]',
     );
     await expect(minAmountInput).toHaveValue("10");
 
     // Max amount input should have value "500"
-    const maxAmountInput = authenticatedPage.locator(
+    const maxAmountInput = drawer.locator(
       'input[type="number"][placeholder="Max amount"]',
     );
     await expect(maxAmountInput).toHaveValue("500");
@@ -277,13 +291,16 @@ test.describe("URL Filter Sync", () => {
       .filter({ hasText: /Feb 2026/i });
     await expect(febButton).toBeVisible({ timeout: 5000 });
 
-    // Filter panel should be open with Income selected
-    const incomeButton = authenticatedPage
+    // Filter drawer should be open with Income selected
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
+
+    const incomeButton = drawer
       .locator("button")
       .filter({ hasText: /^Income$/i });
     await expect(incomeButton).toBeVisible({ timeout: 5000 });
 
-    const filtersLabel = authenticatedPage.locator("text=Filters").first();
+    const filtersLabel = drawer.locator("text=Filters").first();
     await expect(filtersLabel).toBeVisible({ timeout: 5000 });
   });
 
@@ -294,8 +311,12 @@ test.describe("URL Filter Sync", () => {
     await authenticatedPage.goto("/transactions?type=expense");
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // Click the "All" type button to reset
-    const allButton = authenticatedPage
+    // Filter drawer should be auto-opened
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
+
+    // Click the "All" type button inside the drawer to reset
+    const allButton = drawer
       .locator("button")
       .filter({ hasText: /^All$/i })
       .first();
@@ -350,12 +371,12 @@ test.describe("URL Filter Sync", () => {
     await authenticatedPage.goto("/transactions?paidByOthers=only");
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // Filter panel should be open
-    const filtersLabel = authenticatedPage.locator("text=Filters").first();
-    await expect(filtersLabel).toBeVisible({ timeout: 5000 });
+    // Filter drawer should be open
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
 
-    // "Paid by Others" button should be visible
-    const paidByOthersButton = authenticatedPage
+    // "Paid by Others" button should be visible inside the drawer
+    const paidByOthersButton = drawer
       .locator("button")
       .filter({ hasText: /Paid by Others/i });
     await expect(paidByOthersButton).toBeVisible({ timeout: 5000 });
@@ -366,17 +387,11 @@ test.describe("URL Filter Sync", () => {
   }) => {
     await goToTransactions(authenticatedPage);
 
-    // Open filters
-    const filterButton = authenticatedPage.locator(
-      '[aria-label="Toggle filters"]',
-    );
-    await filterButton.click();
-    await authenticatedPage.waitForTimeout(300);
+    // Open filter drawer
+    const drawer = await openFilterDrawer(authenticatedPage);
 
-    // Set a start date
-    const startDateInput = authenticatedPage
-      .locator('input[type="date"]')
-      .first();
+    // Set a start date inside the drawer
+    const startDateInput = drawer.locator('input[type="date"]').first();
     await startDateInput.fill("2026-04-01");
     await authenticatedPage.waitForTimeout(300);
 
@@ -393,12 +408,12 @@ test.describe("URL Filter Sync", () => {
     );
     await authenticatedPage.waitForLoadState("networkidle");
 
-    // Filter panel should be auto-opened
-    const filtersLabel = authenticatedPage.locator("text=Filters").first();
-    await expect(filtersLabel).toBeVisible({ timeout: 5000 });
+    // Filter drawer should be auto-opened
+    const drawer = getFilterDrawer(authenticatedPage);
+    await expect(drawer).toBeVisible({ timeout: 5000 });
 
     // Start date input should have the value
-    const dateInputs = authenticatedPage.locator('input[type="date"]');
+    const dateInputs = drawer.locator('input[type="date"]');
     const startDateInput = dateInputs.first();
     await expect(startDateInput).toHaveValue("2026-03-01");
 

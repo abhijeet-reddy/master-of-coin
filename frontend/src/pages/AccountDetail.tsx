@@ -6,7 +6,7 @@ import { PageHeader, LoadingSpinner, ErrorAlert, ConfirmDialog } from '@/compone
 import { AccountInfoCard, AccountFormModal } from '@/components/accounts';
 import {
   TransactionList,
-  TransactionFilters,
+  TransactionFilterDrawer,
   TransactionFormModal,
 } from '@/components/transactions';
 import {
@@ -205,16 +205,16 @@ export const AccountDetailPage = () => {
         <ErrorAlert title="Failed to delete account" error={deleteMutation.error} />
       )}
 
-      {/* Transaction Filters */}
-      {showFilters && (
-        <TransactionFilters
-          accounts={[]}
-          categories={categories}
-          filters={filters}
-          onFilterChange={setFilters}
-          onClear={clearFilters}
-        />
-      )}
+      {/* Transaction Filters Drawer */}
+      <TransactionFilterDrawer
+        open={showFilters}
+        onClose={toggleFilters}
+        accounts={[]}
+        categories={categories}
+        filters={filters}
+        onFilterChange={setFilters}
+        onClear={clearFilters}
+      />
 
       {/* Transaction List */}
       <TransactionList

@@ -10,7 +10,10 @@ pub use factories::*;
 pub use request_helpers::*;
 pub use test_server::*;
 
+use diesel::PgConnection;
 use diesel::prelude::*;
+use diesel::r2d2::{self, ConnectionManager};
+use master_of_coin_backend::DbPool;
 use master_of_coin_backend::models::{NewUser, User};
 use master_of_coin_backend::schema::{accounts, users};
 use uuid::Uuid;
@@ -20,6 +23,43 @@ pub fn get_test_database_url() -> String {
     // Load .env file from current directory
     dotenvy::from_filename(".env").ok();
     std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests")
+}
+
+/// Build a standalone DB pool for tests that need direct DB access outside the
+/// TestServer (e.g. to clean up created rows). Matches test_server's pool config.
+pub fn get_test_db_pool() -> DbPool {
+    let database_url = get_test_database_url();
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
+    r2d2::Pool::builder()
+        .max_size(5)
+        .build(manager)
+        .expect("Failed to create test database pool")
+}
+
+/// Hard-delete a test user by id. Cascades to schedules, background_jobs,
+/// accounts, transactions, etc. via `ON DELETE CASCADE` foreign keys.
+///
+/// Use via [`UserCleanup`] so cleanup runs even if the test panics partway.
+pub fn cleanup_test_user(pool: &DbPool, user_id: Uuid) {
+    let mut conn = match pool.get() {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    let _ = diesel::delete(users::table.find(user_id)).execute(&mut conn);
+}
+
+/// RAII guard that hard-deletes a test user on drop. Keeps the per-test call
+/// site to one line and ensures cleanup survives assertion panics, preventing
+/// leaked rows from blocking the worker queue (issue #56).
+pub struct UserCleanup {
+    pub pool: DbPool,
+    pub user_id: Uuid,
+}
+
+impl Drop for UserCleanup {
+    fn drop(&mut self) {
+        cleanup_test_user(&self.pool, self.user_id);
+    }
 }
 
 /// Helper function to create a test user with unique suffix

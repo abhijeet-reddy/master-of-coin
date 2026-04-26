@@ -24,19 +24,6 @@ use uuid::Uuid;
 // Helpers
 // ============================================================================
 
-fn get_test_db_pool() -> master_of_coin_backend::DbPool {
-    use diesel::PgConnection;
-    use diesel::r2d2::{self, ConnectionManager};
-    dotenvy::from_filename("../.env").ok();
-    let database_url =
-        std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
-    let manager = ConnectionManager::<PgConnection>::new(database_url);
-    r2d2::Pool::builder()
-        .max_size(5)
-        .build(manager)
-        .expect("Failed to create test database pool")
-}
-
 /// Helper to update a job's status directly in the DB.
 fn update_job_status_in_db(
     pool: &master_of_coin_backend::DbPool,
@@ -79,6 +66,7 @@ async fn test_start_drift_detection_returns_202() {
         "DD Start",
     )
     .await;
+    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
 
     let body = json!({
         "start_date": "2026-01-01T00:00:00Z",
@@ -107,6 +95,7 @@ async fn test_start_drift_detection_missing_start_date() {
         "DD NoDate",
     )
     .await;
+    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
 
     // Missing start_date — only end_date provided
     let body = json!({
@@ -135,6 +124,7 @@ async fn test_get_drift_detection_pending_job() {
         "DD Pending",
     )
     .await;
+    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
 
     // Create a job via POST
     let body = json!({
@@ -178,6 +168,7 @@ async fn test_get_drift_detection_not_found() {
         "DD NotFound",
     )
     .await;
+    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
 
     let random_id = Uuid::new_v4();
     let resp = get_authenticated(
@@ -212,6 +203,8 @@ async fn test_get_drift_detection_wrong_user() {
         "DD User B",
     )
     .await;
+    let _cleanup_a = UserCleanup { pool: get_test_db_pool(), user_id: auth_a.user.id };
+    let _cleanup_b = UserCleanup { pool: get_test_db_pool(), user_id: auth_b.user.id };
 
     // User A creates a job
     let body = json!({
@@ -251,6 +244,7 @@ async fn test_retry_failed_job() {
         "DD Retry",
     )
     .await;
+    let _cleanup = UserCleanup { pool: pool.clone(), user_id: auth.user.id };
 
     // Create a job via POST
     let body = json!({
@@ -315,6 +309,7 @@ async fn test_retry_non_failed_job() {
         "DD RetryNF",
     )
     .await;
+    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
 
     // Create a PENDING job via POST
     let body = json!({
@@ -350,6 +345,7 @@ async fn test_retry_not_found() {
         "DD RetryNF",
     )
     .await;
+    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
 
     let random_id = Uuid::new_v4();
     let retry_resp = post_authenticated(

@@ -11,6 +11,7 @@ import {
   TransferFormModal,
 } from '@/components/transactions';
 import { ImportStatementModal } from '@/components/transactions/import';
+import { UNCATEGORISED_FILTER_ID } from '@/components/transactions/TransactionFilters';
 import {
   useTransactions,
   useEnrichedTransactions,
@@ -112,12 +113,12 @@ export const TransactionsPage = () => {
         return false;
       }
 
-      // Category filter
-      if (
-        filters.categoryIds.length > 0 &&
-        (!transaction.category || !filters.categoryIds.includes(transaction.category.id))
-      ) {
-        return false;
+      // Category filter (supports a sentinel for uncategorised transactions)
+      if (filters.categoryIds.length > 0) {
+        const matches = transaction.category
+          ? filters.categoryIds.includes(transaction.category.id)
+          : filters.categoryIds.includes(UNCATEGORISED_FILTER_ID);
+        if (!matches) return false;
       }
 
       // Transaction type filter

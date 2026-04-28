@@ -5,7 +5,10 @@ import useEnrichedTransactions from '@/hooks/api/useEnrichedTransactions';
 import useAccounts from '@/hooks/api/useAccounts';
 import useCategories from '@/hooks/api/useCategories';
 import useDeleteBudget from '@/hooks/api/useDeleteBudget';
-import type { TransactionFilterValues } from '@/components/transactions/TransactionFilters';
+import {
+  UNCATEGORISED_FILTER_ID,
+  type TransactionFilterValues,
+} from '@/components/transactions/TransactionFilters';
 
 const DEFAULT_FILTERS: TransactionFilterValues = {
   accountIds: [],
@@ -79,12 +82,12 @@ export default function useBudgetDetail(id: string) {
         return false;
       }
 
-      // Category filter
-      if (
-        filters.categoryIds.length > 0 &&
-        (!transaction.category || !filters.categoryIds.includes(transaction.category.id))
-      ) {
-        return false;
+      // Category filter (supports a sentinel for uncategorised transactions)
+      if (filters.categoryIds.length > 0) {
+        const matches = transaction.category
+          ? filters.categoryIds.includes(transaction.category.id)
+          : filters.categoryIds.includes(UNCATEGORISED_FILTER_ID);
+        if (!matches) return false;
       }
 
       // Transaction type filter

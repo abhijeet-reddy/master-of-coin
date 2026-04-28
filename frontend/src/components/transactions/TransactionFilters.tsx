@@ -1,6 +1,12 @@
 import { Box, Button, HStack, Input, Text, VStack, Checkbox, Stack } from '@chakra-ui/react';
 import type { Account, Category } from '@/types';
 
+/**
+ * Sentinel value used in `categoryIds` to represent transactions that have no category.
+ * Chosen to not collide with any UUID so it round-trips safely through URL params.
+ */
+export const UNCATEGORISED_FILTER_ID = 'uncategorised';
+
 export interface TransactionFilterValues {
   accountIds: string[];
   categoryIds: string[];
@@ -196,30 +202,41 @@ export const TransactionFilters = ({
       )}
 
       {/* Categories */}
-      {categories.length > 0 && (
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>
-            Categories
-          </Text>
-          <Stack gap={2} maxH="150px" overflowY="auto">
-            {categories.map((category) => (
-              <Checkbox.Root
-                key={category.id}
-                checked={filters.categoryIds.includes(category.id)}
-                onCheckedChange={() => handleCategoryToggle(category.id)}
-              >
-                <Checkbox.HiddenInput />
-                <Checkbox.Control />
-                <Checkbox.Label>
-                  <Text fontSize="sm">
-                    {category.icon} {category.name}
-                  </Text>
-                </Checkbox.Label>
-              </Checkbox.Root>
-            ))}
-          </Stack>
-        </Box>
-      )}
+      <Box>
+        <Text fontSize="sm" fontWeight="medium" mb={2}>
+          Categories
+        </Text>
+        <Stack gap={2} maxH="150px" overflowY="auto">
+          <Checkbox.Root
+            key={UNCATEGORISED_FILTER_ID}
+            checked={filters.categoryIds.includes(UNCATEGORISED_FILTER_ID)}
+            onCheckedChange={() => handleCategoryToggle(UNCATEGORISED_FILTER_ID)}
+          >
+            <Checkbox.HiddenInput />
+            <Checkbox.Control />
+            <Checkbox.Label>
+              <Text fontSize="sm" fontStyle="italic" color="fg.muted">
+                Uncategorised
+              </Text>
+            </Checkbox.Label>
+          </Checkbox.Root>
+          {categories.map((category) => (
+            <Checkbox.Root
+              key={category.id}
+              checked={filters.categoryIds.includes(category.id)}
+              onCheckedChange={() => handleCategoryToggle(category.id)}
+            >
+              <Checkbox.HiddenInput />
+              <Checkbox.Control />
+              <Checkbox.Label>
+                <Text fontSize="sm">
+                  {category.icon} {category.name}
+                </Text>
+              </Checkbox.Label>
+            </Checkbox.Root>
+          ))}
+        </Stack>
+      </Box>
     </VStack>
   );
 };

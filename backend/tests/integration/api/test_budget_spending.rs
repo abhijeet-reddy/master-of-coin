@@ -213,6 +213,152 @@ async fn test_budget_spending_accounts_for_splits() {
     );
 }
 
+/// Test that a MONTHLY budget rolls over to the current calendar month, even
+/// when its range was created in a prior month with `end_date` that still
+/// covers today.
+///
+/// This exercises the regression where a range created on (e.g.) April 23 with
+/// end_date May 23 was being treated as the "current period" for the entire
+/// span — so May transactions and April transactions were summed together, and
+/// the budget never reset on May 1.
+///
+/// After the fix:
+/// - `active_range.start_date` / `active_range.end_date` returned to the
+///   client must reflect the current calendar month, not the raw stored range.
+/// - `current_spending` must only include transactions dated in the current month.
+#[tokio::test]
+async fn test_monthly_budget_rolls_over_to_current_month() {
+    use chrono::{Duration, TimeZone};
+
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("budgetrollover_{}", timestamp),
+        &format!("budgetrollover_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Budget Rollover User",
+    )
+    .await;
+
+    let account = create_eur_account(&server, &auth.token, "EUR Checking").await;
+    let category = create_test_category(&server, &auth.token, "Groceries").await;
+
+    // Create a budget whose range was created roughly a month ago and spans
+    // into today — e.g. range start = today - 45 days, end = today + 15 days,
+    // so the raw range covers the previous calendar month AND the current one.
+    let budget_request = json!({
+        "name": "Monthly Groceries",
+        "filters": { "category_id": category.id.to_string() }
+    });
+    let budget_response =
+        post_authenticated(&server, "/api/v1/budgets", &auth.token, &budget_request).await;
+    assert_status(&budget_response, 201);
+    let budget: BudgetResponse = extract_json(budget_response);
+
+    let today = Utc::now().date_naive();
+    let range_start = today - Duration::days(45);
+    let range_end = today + Duration::days(15);
+    let range_request = json!({
+        "limit_amount": 200.0,
+        "period": "MONTHLY",
+        "start_date": range_start.to_string(),
+        "end_date": range_end.to_string(),
+    });
+    let range_resp = post_authenticated(
+        &server,
+        &format!("/api/v1/budgets/{}/ranges", budget.id),
+        &auth.token,
+        &range_request,
+    )
+    .await;
+    assert_status(&range_resp, 201);
+
+    // Seed two transactions:
+    // 1. one ~35 days ago (previous calendar month in most positions in the year)
+    // 2. one today (current month)
+    let prev_month_date = Utc
+        .from_utc_datetime(&(today - Duration::days(35)).and_hms_opt(12, 0, 0).unwrap())
+        .to_rfc3339();
+    let txn_old = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Groceries — previous month",
+        "amount": -80.0,
+        "date": prev_month_date,
+    });
+    assert_status(
+        &post_authenticated(&server, "/api/v1/transactions", &auth.token, &txn_old).await,
+        201,
+    );
+
+    let txn_now = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Groceries — today",
+        "amount": -25.0,
+        "date": Utc::now().to_rfc3339(),
+    });
+    assert_status(
+        &post_authenticated(&server, "/api/v1/transactions", &auth.token, &txn_now).await,
+        201,
+    );
+
+    // Fetch the budget — its active_range must be the current calendar month,
+    // and spending must exclude the older transaction.
+    let detail_resp = get_authenticated(
+        &server,
+        &format!("/api/v1/budgets/{}", budget.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&detail_resp, 200);
+    let detail: BudgetResponse = extract_json(detail_resp);
+
+    let active_range = detail
+        .active_range
+        .expect("budget should have an active range");
+
+    // Compute expected calendar-month window for `today`.
+    use chrono::{Datelike, NaiveDate};
+    let expected_start = NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap();
+    let expected_end = if today.month() == 12 {
+        NaiveDate::from_ymd_opt(today.year() + 1, 1, 1).unwrap()
+    } else {
+        NaiveDate::from_ymd_opt(today.year(), today.month() + 1, 1).unwrap()
+    }
+    .pred_opt()
+    .unwrap();
+
+    // If the raw range happens to end mid-month (because end = today + 15d),
+    // it should clamp to min(calendar month end, range end).
+    let expected_end_clamped = expected_end.min(range_end);
+
+    assert_eq!(
+        active_range.start_date, expected_start,
+        "active_range.start_date should be the 1st of the current month (was {})",
+        active_range.start_date
+    );
+    assert_eq!(
+        active_range.end_date,
+        Some(expected_end_clamped),
+        "active_range.end_date should be last day of current month (clamped to range end)"
+    );
+
+    let spending: f64 = detail
+        .current_spending
+        .as_ref()
+        .expect("current_spending")
+        .parse()
+        .unwrap();
+    assert!(
+        (spending - 25.0).abs() < 0.01,
+        "spending should only include this month's €25 transaction, got {}",
+        spending
+    );
+}
+
 /// Test that budget spending is correct when a transaction has NO splits.
 ///
 /// Scenario:

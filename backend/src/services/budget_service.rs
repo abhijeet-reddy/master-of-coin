@@ -1,5 +1,5 @@
 use bigdecimal::BigDecimal;
-use chrono::Utc;
+use chrono::{NaiveDate, Utc};
 use std::str::FromStr;
 use uuid::Uuid;
 use validator::Validate;
@@ -9,11 +9,28 @@ use crate::{
     errors::ApiError,
     models::{
         BudgetRangeResponse, BudgetResponse, CreateBudgetRangeRequest, CreateBudgetRequest,
-        NewBudget, NewBudgetRange, UpdateBudgetRequest,
+        NewBudget, NewBudgetRange, UpdateBudgetRequest, budget_range::BudgetRange,
     },
     repositories,
     services::exchange_rate_service::ExchangeRateProvider,
 };
+
+/// Compute the current active period window for a budget range.
+///
+/// Returns `(start, end)` clamped to the range's own `start_date`/`end_date`
+/// so the window never extends outside the budget's lifetime.
+fn current_period_window(range: &BudgetRange, today: NaiveDate) -> (NaiveDate, NaiveDate) {
+    let (mut start, mut end) = range.period.current_window(today);
+    if start < range.start_date {
+        start = range.start_date;
+    }
+    if let Some(range_end) = range.end_date
+        && end > range_end
+    {
+        end = range_end;
+    }
+    (start, end)
+}
 
 /// Budget status information
 #[derive(Debug, serde::Serialize)]
@@ -93,10 +110,12 @@ pub async fn get_budget(
             .and_then(|v| v.as_str())
             .and_then(|s| Uuid::parse_str(s).ok());
 
-        let start_date = Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc());
-        let end_date = range
-            .end_date
-            .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc());
+        // Narrow the range's stored bounds to the calendar-aligned period
+        // containing today (e.g. MONTHLY → 1st → last day of current month),
+        // so spending resets at each period boundary.
+        let (window_start, window_end) = current_period_window(&range, today);
+        let start_date = Some(window_start.and_hms_opt(0, 0, 0).unwrap().and_utc());
+        let end_date = Some(window_end.and_hms_opt(23, 59, 59).unwrap().and_utc());
 
         // Single query: compute split-adjusted spending grouped by currency
         let spending_by_currency = repositories::budget::calculate_spending_by_currency(
@@ -128,7 +147,12 @@ pub async fn get_budget(
             0.0
         };
 
-        response.active_range = Some(range.into());
+        // Return the current period window (not the raw stored range) so clients
+        // filter transactions to the same window the spending total reflects.
+        let mut range_response: BudgetRangeResponse = range.into();
+        range_response.start_date = window_start;
+        range_response.end_date = Some(window_end);
+        response.active_range = Some(range_response);
         response.current_spending = Some(spending_abs.to_string());
         response.percentage_used = Some(percentage_used);
     }
@@ -308,10 +332,9 @@ pub async fn calculate_budget_status(
         .and_then(|v| v.as_str())
         .and_then(|s| Uuid::parse_str(s).ok());
 
-    let start_date = Some(range.start_date.and_hms_opt(0, 0, 0).unwrap().and_utc());
-    let end_date = range
-        .end_date
-        .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc());
+    let (window_start, window_end) = current_period_window(&range, today);
+    let start_date = Some(window_start.and_hms_opt(0, 0, 0).unwrap().and_utc());
+    let end_date = Some(window_end.and_hms_opt(23, 59, 59).unwrap().and_utc());
 
     // Single query: compute split-adjusted spending grouped by currency
     let spending_by_currency = repositories::budget::calculate_spending_by_currency(

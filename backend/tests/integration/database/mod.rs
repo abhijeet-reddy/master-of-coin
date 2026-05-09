@@ -15,6 +15,7 @@ mod common;
 mod test_api_key_crud;
 mod test_async_bridge;
 mod test_background_jobs;
+mod test_budget_period;
 mod test_connection;
 mod test_cron_utils;
 mod test_custom_types;

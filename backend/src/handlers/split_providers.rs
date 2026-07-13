@@ -158,11 +158,35 @@ async fn fetch_splitwise_friends(
     let friends: Vec<SplitwiseFriendResponse> = friends_array
         .iter()
         .filter_map(|friend| {
-            let id = friend.get("id")?.as_i64()?;
-            let first_name = friend.get("first_name")?.as_str()?.to_string();
-            let last_name = friend.get("last_name")?.as_str()?.to_string();
-            let email = friend.get("email")?.as_str()?.to_string();
-            let full_name = format!("{} {}", first_name, last_name);
+            // Only `id` is required (it's the mapping key to person_split_configs).
+            // Splitwise legitimately returns null for first_name/last_name/email
+            // (e.g. a friend added with only a first name, or no registered email),
+            // so tolerate missing/null values instead of silently dropping the friend.
+            let Some(id) = friend.get("id").and_then(|v| v.as_i64()) else {
+                tracing::warn!(
+                    friend = ?friend,
+                    "Skipping Splitwise friend with missing or invalid id"
+                );
+                return None;
+            };
+            let first_name = friend
+                .get("first_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let last_name = friend
+                .get("last_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let email = friend
+                .get("email")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let full_name = format!("{} {}", first_name, last_name)
+                .trim()
+                .to_string();
 
             Some(SplitwiseFriendResponse {
                 id,

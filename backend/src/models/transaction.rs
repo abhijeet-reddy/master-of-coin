@@ -100,6 +100,12 @@ pub struct CreateTransactionRequest {
     /// Each split must have a positive amount, and total splits must not exceed transaction amount
     #[validate(nested)]
     pub splits: Option<Vec<TransactionSplitInput>>,
+
+    /// When true, splits are recorded in MOC but the automatic upstream
+    /// split-provider (e.g. Splitwise) sync is skipped. Defaults to false,
+    /// preserving the existing behaviour of syncing on create.
+    #[serde(default)]
+    pub skip_split_sync: bool,
 }
 
 // Custom validator for amount not being zero

@@ -170,6 +170,7 @@ pub async fn settle_debt(
         transaction_id: transaction.id,
         person_id,
         amount: split_amount,
+        sync_skipped: false,
     };
 
     repositories::transaction::create_split(pool, transaction.id, new_split).await?;

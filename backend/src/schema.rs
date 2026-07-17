@@ -287,6 +287,7 @@ diesel::table! {
         amount -> Numeric,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        sync_skipped -> Bool,
     }
 }
 

@@ -507,6 +507,109 @@ async fn test_create_transaction_with_splits() {
 
     let splits = transaction.splits.unwrap();
     assert_eq!(splits.len(), 2);
+
+    // Default behaviour: splits are not marked as sync-skipped.
+    assert!(splits.iter().all(|s| !s.sync_skipped));
+}
+
+/// Test that creating a transaction with `skip_split_sync: true` records the
+/// splits normally but marks them as sync-skipped (so no upstream provider
+/// sync is triggered).
+#[tokio::test]
+async fn test_create_transaction_with_splits_skip_sync() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("skipsyncuser_{}", timestamp),
+        &format!("skipsync_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Skip Sync Test User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let category = create_test_category(&server, &auth.token, "Test Category").await;
+    let person = create_test_person(&server, &auth.token, "Person 1").await;
+
+    let request = json!({
+        "account_id": account.id,
+        "category_id": category.id,
+        "title": "Already Settled Expense",
+        "amount": -100.00,
+        "date": Utc::now().to_rfc3339(),
+        "skip_split_sync": true,
+        "splits": [
+            {
+                "person_id": person.id,
+                "amount": 40.00
+            }
+        ]
+    });
+
+    let response = post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
+    assert_status(&response, 201);
+
+    let transaction: TransactionResponse = extract_json(response);
+    let splits = transaction.splits.expect("splits should be present");
+    assert_eq!(splits.len(), 1);
+    // The split is stored and flagged as intentionally not synced.
+    assert!(splits.iter().all(|s| s.sync_skipped));
+
+    // The split is still readable via GET (persisted normally).
+    let get_response = get_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", transaction.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get_response, 200);
+    let fetched: TransactionResponse = extract_json(get_response);
+    let fetched_splits = fetched.splits.expect("splits should be present on GET");
+    assert_eq!(fetched_splits.len(), 1);
+    assert!(fetched_splits[0].sync_skipped);
+}
+
+/// Test that omitting `skip_split_sync` defaults to false (existing behaviour).
+#[tokio::test]
+async fn test_create_transaction_skip_sync_defaults_false() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("defaultsyncuser_{}", timestamp),
+        &format!("defaultsync_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Default Sync Test User",
+    )
+    .await;
+
+    let account = create_test_account(&server, &auth.token, "Test Account").await;
+    let person = create_test_person(&server, &auth.token, "Person 1").await;
+
+    // No skip_split_sync field in the payload.
+    let request = json!({
+        "account_id": account.id,
+        "title": "Shared Expense",
+        "amount": -100.00,
+        "date": Utc::now().to_rfc3339(),
+        "splits": [
+            {
+                "person_id": person.id,
+                "amount": 30.00
+            }
+        ]
+    });
+
+    let response = post_authenticated(&server, "/api/v1/transactions", &auth.token, &request).await;
+    assert_status(&response, 201);
+
+    let transaction: TransactionResponse = extract_json(response);
+    let splits = transaction.splits.expect("splits should be present");
+    assert_eq!(splits.len(), 1);
+    assert!(!splits[0].sync_skipped);
 }
 
 /// Test that list transactions includes splits for transactions with splits.

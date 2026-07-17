@@ -41,10 +41,19 @@ pub async fn create(
     let user_id = auth_context.user_id();
     tracing::info!("Creating transaction for user {}", user_id);
 
+    // Read the skip flag before `request` is moved into the service.
+    let skip_split_sync = request.skip_split_sync;
+
     let transaction = transaction_service::create_transaction(&state.db, user_id, request).await?;
 
-    // Trigger split sync if splits were created (fire-and-forget)
-    if let Some(ref splits) = transaction.splits {
+    // Trigger split sync if splits were created (fire-and-forget), unless the
+    // caller explicitly opted out via skip_split_sync.
+    if skip_split_sync {
+        tracing::info!(
+            "Skipping split sync for transaction {} (skip_split_sync=true)",
+            transaction.id
+        );
+    } else if let Some(ref splits) = transaction.splits {
         if !splits.is_empty() {
             trigger_split_sync(state.split_sync.clone(), transaction.id).await;
         }

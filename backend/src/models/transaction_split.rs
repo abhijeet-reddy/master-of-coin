@@ -17,6 +17,9 @@ pub struct TransactionSplit {
     pub amount: BigDecimal,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    /// True when this split's upstream provider (e.g. Splitwise) sync was
+    /// intentionally skipped at create time (distinct from "not yet synced").
+    pub sync_skipped: bool,
 }
 
 #[derive(Debug, Insertable)]
@@ -25,6 +28,7 @@ pub struct NewTransactionSplit {
     pub transaction_id: Uuid,
     pub person_id: Uuid,
     pub amount: BigDecimal,
+    pub sync_skipped: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,6 +108,8 @@ pub struct TransactionSplitResponse {
     pub person_id: Uuid,
     /// BigDecimal as string for JSON serialization
     pub amount: String,
+    /// True when this split's upstream provider sync was intentionally skipped.
+    pub sync_skipped: bool,
 }
 
 impl From<TransactionSplit> for TransactionSplitResponse {
@@ -112,6 +118,7 @@ impl From<TransactionSplit> for TransactionSplitResponse {
             id: split.id,
             person_id: split.person_id,
             amount: format!("{:.2}", split.amount),
+            sync_skipped: split.sync_skipped,
         }
     }
 }

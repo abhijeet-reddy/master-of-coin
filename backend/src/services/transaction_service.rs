@@ -140,6 +140,7 @@ pub async fn create_transaction(
                 transaction_id: transaction.id,
                 person_id: split_input.person_id,
                 amount: signed_split_amount,
+                sync_skipped: request.skip_split_sync,
             };
 
             let split =
@@ -450,6 +451,9 @@ pub async fn update_transaction(
                     transaction_id,
                     person_id: split_input.person_id,
                     amount: signed_split_amount,
+                    // Update path is out of scope for the skip-sync flag; keep
+                    // the default (not skipped).
+                    sync_skipped: false,
                 };
                 let split =
                     repositories::transaction::create_split(pool, transaction_id, new_split)

@@ -150,6 +150,7 @@ pub async fn create_debt_transaction(
         transaction_id: transaction.id,
         person_id: request.payer_person_id,
         amount,
+        sync_skipped: false,
     };
     let split = repositories::transaction::create_split(pool, transaction.id, new_split).await?;
 

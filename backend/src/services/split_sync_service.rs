@@ -2109,6 +2109,7 @@ impl SplitSyncService {
             transaction_id: transaction.id,
             person_id: payer_person_id,
             amount: amount.clone(),
+            sync_skipped: false,
         };
         let split =
             repositories::transaction::create_split(&self.pool, transaction.id, new_split).await?;
@@ -2244,6 +2245,7 @@ impl SplitSyncService {
                 transaction_id: transaction.id,
                 person_id,
                 amount: split_amount,
+                sync_skipped: false,
             };
 
             let split =

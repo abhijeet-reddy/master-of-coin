@@ -46,6 +46,24 @@ pub struct CreateTransferRequest {
     pub category_id: Option<Uuid>,
 }
 
+/// Request DTO for converting an existing transaction into a transfer.
+///
+/// The transaction to convert is identified by the path; the caller supplies
+/// the counterpart account. Direction is inferred from the original
+/// transaction's amount sign (negative = money left the original account, so
+/// the counterpart is the destination; positive = money arrived, so the
+/// counterpart is the source), so it never needs to be stated.
+#[derive(Debug, Deserialize, Validate)]
+pub struct ConvertToTransferRequest {
+    /// The counterpart account for the other leg of the transfer.
+    pub account_id: Uuid,
+    /// For cross-currency conversions: the absolute amount on the counterpart
+    /// account's leg. Ignored when both accounts share a currency.
+    pub counterpart_amount: Option<f64>,
+    /// Alternative to `counterpart_amount` for cross-currency conversions.
+    pub exchange_rate: Option<f64>,
+}
+
 /// Response DTO — what the API returns after creating a transfer.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransferResponse {

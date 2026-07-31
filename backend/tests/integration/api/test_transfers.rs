@@ -592,3 +592,260 @@ async fn test_list_transactions_includes_transfer_info() {
         "to-side transfer_info should have the checking account name"
     );
 }
+
+// ============================================================================
+// Convert-to-transfer Tests
+// ============================================================================
+
+/// Helper: create a normal transaction and return its JSON.
+async fn create_normal_transaction(
+    server: &axum_test::TestServer,
+    token: &str,
+    account_id: uuid::Uuid,
+    amount: f64,
+    extra: serde_json::Value,
+) -> TransactionResponse {
+    let mut request = json!({
+        "account_id": account_id,
+        "title": "To convert",
+        "amount": amount,
+        "date": Utc::now().to_rfc3339(),
+    });
+    if let Some(obj) = extra.as_object() {
+        for (k, v) in obj {
+            request[k] = v.clone();
+        }
+    }
+    let response = post_authenticated(server, "/api/v1/transactions", token, &request).await;
+    assert_status(&response, 201);
+    extract_json(response)
+}
+
+/// A NEGATIVE (debit) transaction converts with the counterpart as the
+/// DESTINATION: original stays the from-leg, new positive leg on the counterpart.
+#[tokio::test]
+async fn test_convert_debit_counterpart_is_destination() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("conv_debit_{}", timestamp),
+        &format!("conv_debit_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Convert Debit User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    // A -100 debit on `source`.
+    let txn = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+
+    let request = json!({ "account_id": dest.id });
+    let response = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &request,
+    )
+    .await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+
+    // Original (the -100 on source) is the from-leg.
+    assert_eq!(transfer.from_transaction.id, txn.id);
+    assert_eq!(transfer.from_transaction.account_id, source.id);
+    assert_eq!(transfer.from_transaction.amount, "-100.00");
+    // New leg is +100 on the destination account.
+    assert_eq!(transfer.to_transaction.account_id, dest.id);
+    assert_eq!(transfer.to_transaction.amount, "100.00");
+    assert_eq!(transfer.exchange_rate, "1");
+
+    // The transaction now reports transfer_info when fetched.
+    let get = get_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", txn.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get, 200);
+    let fetched: TransactionResponse = extract_json(get);
+    assert!(
+        fetched.transfer_info.is_some(),
+        "converted transaction should carry transfer_info"
+    );
+}
+
+/// A POSITIVE (credit) transaction converts with the counterpart as the SOURCE:
+/// original becomes the to-leg, new negative leg on the counterpart.
+#[tokio::test]
+async fn test_convert_credit_counterpart_is_source() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("conv_credit_{}", timestamp),
+        &format!("conv_credit_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Convert Credit User",
+    )
+    .await;
+
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+
+    // A +100 credit on `dest`.
+    let txn = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
+
+    let request = json!({ "account_id": source.id });
+    let response = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &request,
+    )
+    .await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+
+    // New leg is the -100 source; original +100 is the to-leg.
+    assert_eq!(transfer.from_transaction.account_id, source.id);
+    assert_eq!(transfer.from_transaction.amount, "-100.00");
+    assert_eq!(transfer.to_transaction.id, txn.id);
+    assert_eq!(transfer.to_transaction.account_id, dest.id);
+    assert_eq!(transfer.to_transaction.amount, "100.00");
+}
+
+/// The original transaction's category is preserved (not overwritten).
+#[tokio::test]
+async fn test_convert_preserves_category() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("conv_cat_{}", timestamp),
+        &format!("conv_cat_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Convert Category User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let category = create_test_category(&server, &auth.token, "Groceries").await;
+
+    let txn = create_normal_transaction(
+        &server,
+        &auth.token,
+        source.id,
+        -50.0,
+        json!({ "category_id": category.id }),
+    )
+    .await;
+
+    let request = json!({ "account_id": dest.id });
+    let response = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &request,
+    )
+    .await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+
+    // Original leg keeps its category.
+    assert_eq!(
+        transfer.from_transaction.category_id,
+        Some(category.id),
+        "original leg should keep its category"
+    );
+    // New leg inherits the same category.
+    assert_eq!(
+        transfer.to_transaction.category_id,
+        Some(category.id),
+        "new leg should inherit the original category"
+    );
+}
+
+/// A transaction with splits cannot be converted — API returns a validation error.
+#[tokio::test]
+async fn test_convert_with_splits_refused() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("conv_splits_{}", timestamp),
+        &format!("conv_splits_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Convert Splits User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let person = create_test_person(&server, &auth.token, "Alex").await;
+
+    // -100 expense with a split.
+    let txn = create_normal_transaction(
+        &server,
+        &auth.token,
+        source.id,
+        -100.0,
+        json!({ "splits": [ { "person_id": person.id, "amount": 40.0 } ] }),
+    )
+    .await;
+
+    let request = json!({ "account_id": dest.id });
+    let response = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &request,
+    )
+    .await;
+    // Validation error (splits present) → 422 Unprocessable Entity.
+    assert_status(&response, 422);
+}
+
+/// A transaction already part of a transfer cannot be converted again.
+#[tokio::test]
+async fn test_convert_already_transfer_refused() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("conv_dup_{}", timestamp),
+        &format!("conv_dup_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Convert Dup User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let third = create_account_with_currency(&server, &auth.token, "EUR Third", "EUR").await;
+
+    let txn = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+
+    // First conversion succeeds.
+    let ok = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &json!({ "account_id": dest.id }),
+    )
+    .await;
+    assert_status(&ok, 201);
+
+    // Second conversion of the same transaction is refused.
+    let again = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &json!({ "account_id": third.id }),
+    )
+    .await;
+    assert_status(&again, 422);
+}

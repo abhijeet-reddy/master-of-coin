@@ -66,6 +66,65 @@ pub async fn create_transfer_atomic(
     })?
 }
 
+/// Atomically join an existing transaction into a transfer.
+///
+/// The original transaction (`original_transaction_id`) is left untouched. Only
+/// the opposite leg (`new_leg`) and the linking `transfers` row are inserted,
+/// both inside one `conn.transaction()` so a partial failure rolls back
+/// entirely — there is no half-converted state. The caller resolves direction
+/// and passes the correct `from`/`to` assignment via `original_is_source`.
+pub async fn join_transaction_into_transfer_atomic(
+    pool: &DbPool,
+    original_transaction_id: Uuid,
+    original_is_source: bool,
+    new_leg: NewTransaction,
+    exchange_rate: BigDecimal,
+) -> Result<(Transfer, Transaction), ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        conn.transaction(|conn| {
+            // 1. Insert the new opposite leg.
+            let new_transaction: Transaction = diesel::insert_into(transactions::table)
+                .values(&new_leg)
+                .get_result(conn)?;
+
+            // 2. Assign from/to slots. The from (source) leg is the negative
+            //    side, the to (destination) leg the positive side.
+            let (from_transaction_id, to_transaction_id) = if original_is_source {
+                (original_transaction_id, new_transaction.id)
+            } else {
+                (new_transaction.id, original_transaction_id)
+            };
+
+            // 3. Insert the transfer row linking both transactions.
+            let new_transfer = NewTransfer {
+                from_transaction_id,
+                to_transaction_id,
+                exchange_rate,
+            };
+
+            let transfer: Transfer = diesel::insert_into(transfers::table)
+                .values(&new_transfer)
+                .get_result(conn)?;
+
+            Ok((transfer, new_transaction))
+        })
+        .map_err(|e: diesel::result::Error| {
+            tracing::error!("Failed to convert transaction to transfer atomically: {}", e);
+            ApiError::from(e)
+        })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
 /// Find a transfer by either of its linked transaction IDs.
 ///
 /// Returns `None` if the transaction is not part of a transfer.

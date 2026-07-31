@@ -187,6 +187,21 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        // Convert an existing transaction into a transfer
+        .route(
+            "/transactions/:id/convert-to-transfer",
+            post(handlers::transfers::convert_to_transfer).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Debt transactions (paid by others)
         .route(
             "/debt-transactions",

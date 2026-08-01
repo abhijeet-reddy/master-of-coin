@@ -1,0 +1,139 @@
+name: Build Beta Preview Image
+
+# Builds a chosen branch and publishes it under the moving `:beta` tag (plus an
+# immutable `:beta-<shortsha>` tag for traceability) so the beta preview slot can
+# serve any PR branch. This NEVER touches `:latest` or any semver/prod tag, and
+# it does NOT trigger the production deploy webhook — production is unaffected.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch (or ref) to build for the beta slot, e.g. feat/convert-transaction-to-transfer"
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # Build platform-specific images in parallel (native runners = no QEMU)
+  # ============================================================================
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout the requested branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # Build and push by digest (no tag yet — tags applied in the merge job)
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=beta-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=beta-${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Save digest artifact
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-digests-${{ matrix.runner }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # ============================================================================
+  # Merge platform images into a multi-arch manifest under the beta tags
+  # ============================================================================
+  merge:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout the requested branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Resolve short commit SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: beta-digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create the multi-arch manifest and apply ONLY the beta tags.
+      # `:beta` is the moving "what's live in the beta slot now" tag;
+      # `:beta-<shortsha>` is immutable for traceability.
+      # `:latest` and semver tags are deliberately NOT written here.
+      - name: Create manifest list and push beta tags
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:beta \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:beta-${{ steps.sha.outputs.short }} \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Report published tags
+        run: |
+          echo "Published beta image for branch '${{ inputs.branch }}' (commit ${{ steps.sha.outputs.short }})"
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:beta"
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:beta-${{ steps.sha.outputs.short }}"

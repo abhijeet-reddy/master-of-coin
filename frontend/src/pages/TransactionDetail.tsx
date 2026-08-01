@@ -6,6 +6,7 @@ import {
   TransactionDetailCard,
   TransactionActions,
   SplitMismatchModal,
+  DeletedTransactionBanner,
 } from '@/components/transactions/detail';
 import { TransactionFormModal, ConvertToTransferModal } from '@/components/transactions';
 import {
@@ -13,6 +14,7 @@ import {
   useDeleteTransaction,
   useCreateTransaction,
   useCreateDebtTransaction,
+  useRestoreTransaction,
   useAccounts,
   useCategories,
   usePeople,
@@ -112,6 +114,7 @@ export const TransactionDetailPage = () => {
   const deleteMutation = useDeleteTransaction();
   const createMutation = useCreateTransaction();
   const debtMutation = useCreateDebtTransaction();
+  const restoreMutation = useRestoreTransaction();
 
   // Split sync
   const { handleSync, handleResolve, closeMismatchModal, mismatchResult, isSyncing, isResolving } =
@@ -201,27 +204,50 @@ export const TransactionDetailPage = () => {
   // has splits, and not one that is already part of a transfer.
   const canConvertToTransfer = !hasSplits && !transaction.transfer_info;
 
+  const isDeleted = !!transaction.deleted_at;
+
+  const handleRestore = () => {
+    if (!id) return;
+    restoreMutation.mutate(id);
+  };
+
   return (
     <Box maxW="2xl" mx="auto">
       <PageHeader
         breadcrumbs={buildBreadcrumbs(navState, transaction.title)}
         actions={
-          <TransactionActions
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onDuplicate={!transaction.transfer_info ? handleDuplicate : undefined}
-            onConvertToTransfer={canConvertToTransfer ? onConvertOpen : undefined}
-            isDeleting={deleteMutation.isPending}
-          />
+          // A soft-deleted record offers no mutating actions here — Restore
+          // lives in the banner below and is the only available action.
+          isDeleted ? undefined : (
+            <TransactionActions
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onDuplicate={!transaction.transfer_info ? handleDuplicate : undefined}
+              onConvertToTransfer={canConvertToTransfer ? onConvertOpen : undefined}
+              isDeleting={deleteMutation.isPending}
+            />
+          )
         }
       />
 
-      <TransactionDetailCard
-        transaction={transaction}
-        people={people}
-        onSync={hasSplits ? handleSync : undefined}
-        isSyncing={isSyncing}
-      />
+      {isDeleted && transaction.deleted_at && (
+        <DeletedTransactionBanner
+          deletedAt={transaction.deleted_at}
+          permanentDeleteAt={transaction.permanent_delete_at}
+          onRestore={handleRestore}
+          isRestoring={restoreMutation.isPending}
+        />
+      )}
+
+      <Box opacity={isDeleted ? 0.6 : 1}>
+        <TransactionDetailCard
+          transaction={transaction}
+          people={people}
+          onSync={!isDeleted && hasSplits ? handleSync : undefined}
+          isSyncing={isSyncing}
+          isDeleted={isDeleted}
+        />
+      </Box>
 
       {/* Split Mismatch Modal */}
       <SplitMismatchModal

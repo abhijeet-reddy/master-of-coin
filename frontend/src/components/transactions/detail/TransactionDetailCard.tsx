@@ -32,6 +32,8 @@ interface TransactionDetailCardProps {
   people: Person[];
   onSync?: () => void;
   isSyncing?: boolean;
+  /** When true (soft-deleted), the amount is struck through. */
+  isDeleted?: boolean;
 }
 
 const getCategoryIcon = (iconName?: string) => {
@@ -50,6 +52,7 @@ export const TransactionDetailCard = ({
   people,
   onSync,
   isSyncing,
+  isDeleted = false,
 }: TransactionDetailCardProps) => {
   const [copied, setCopied] = useState(false);
   const amount = parseFloat(transaction.amount);
@@ -111,7 +114,12 @@ export const TransactionDetailCard = ({
 
             {/* Amount */}
             <Box textAlign="center" py={2}>
-              <Text fontSize="4xl" fontWeight="bold" color={amountColor}>
+              <Text
+                fontSize="4xl"
+                fontWeight="bold"
+                color={amountColor}
+                textDecoration={isDeleted ? 'line-through' : undefined}
+              >
                 {isExpense ? '-' : '+'}
                 {formatCurrency(Math.abs(amount), transaction.account.currency)}
               </Text>

@@ -849,3 +849,44 @@ async fn test_convert_already_transfer_refused() {
     .await;
     assert_status(&again, 422);
 }
+
+/// A soft-deleted transaction cannot be converted into a transfer.
+#[tokio::test]
+async fn test_convert_soft_deleted_refused() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("conv_deleted_{}", timestamp),
+        &format!("conv_deleted_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Convert Deleted User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let txn = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+
+    // Soft-delete it.
+    let del = delete_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", txn.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&del, 200);
+
+    // Convert must now be refused. The fail-safe find_by_id excludes deleted
+    // rows, so the fetch fails with 404 before the row is ever loaded — the
+    // deleted transaction is not eligible for conversion.
+    let response = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &json!({ "account_id": dest.id }),
+    )
+    .await;
+    assert_status(&response, 404);
+}

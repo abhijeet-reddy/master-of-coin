@@ -100,9 +100,36 @@ pub async fn bulk_create_transactions(
 }
 
 /// Find transaction by ID with optional debt metadata via LEFT JOIN.
+/// Find an ACTIVE (not soft-deleted) transaction by id.
+///
+/// This is the fail-safe default: it excludes soft-deleted rows, so mutating
+/// paths (update, convert-to-transfer, debt-update) and any future by-id caller
+/// cannot accidentally operate on a deleted transaction. Callers that
+/// legitimately need deleted rows (detail view, delete, restore,
+/// permanent-delete, trash) must use [`find_by_id_including_deleted`] explicitly.
 pub async fn find_by_id(
     pool: &DbPool,
     transaction_id: Uuid,
+) -> Result<TransactionWithDebtInfo, ApiError> {
+    find_by_id_inner(pool, transaction_id, false).await
+}
+
+/// Find a transaction by id, INCLUDING soft-deleted rows.
+///
+/// Only for paths that must see deleted transactions: the detail view (renders
+/// a "deleted" banner rather than 404ing), delete/restore, permanent-delete,
+/// and the trash listing. Prefer [`find_by_id`] everywhere else.
+pub async fn find_by_id_including_deleted(
+    pool: &DbPool,
+    transaction_id: Uuid,
+) -> Result<TransactionWithDebtInfo, ApiError> {
+    find_by_id_inner(pool, transaction_id, true).await
+}
+
+async fn find_by_id_inner(
+    pool: &DbPool,
+    transaction_id: Uuid,
+    include_deleted: bool,
 ) -> Result<TransactionWithDebtInfo, ApiError> {
     let mut conn = pool.get().map_err(|e| {
         tracing::error!("Failed to get DB connection: {}", e);
@@ -110,13 +137,7 @@ pub async fn find_by_id(
     })?;
 
     tokio::task::spawn_blocking(move || {
-        let (transaction, payer_person_id, payer_person_name, total_cost, expense_participants): (
-            Transaction,
-            Option<Uuid>,
-            Option<String>,
-            Option<bigdecimal::BigDecimal>,
-            Option<serde_json::Value>,
-        ) = transactions::table
+        let mut query = transactions::table
             .left_join(
                 debt_transaction_metadata::table
                     .on(debt_transaction_metadata::transaction_id.eq(transactions::id)),
@@ -127,6 +148,20 @@ pub async fn find_by_id(
                     .eq(debt_transaction_metadata::payer_person_id.nullable())),
             )
             .filter(transactions::id.eq(transaction_id))
+            .into_boxed();
+
+        // Fail-safe default: exclude soft-deleted rows unless explicitly requested.
+        if !include_deleted {
+            query = query.filter(transactions::is_deleted.eq(false));
+        }
+
+        let (transaction, payer_person_id, payer_person_name, total_cost, expense_participants): (
+            Transaction,
+            Option<Uuid>,
+            Option<String>,
+            Option<bigdecimal::BigDecimal>,
+            Option<serde_json::Value>,
+        ) = query
             .select((
                 transactions::all_columns,
                 debt_transaction_metadata::payer_person_id.nullable(),

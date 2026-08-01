@@ -15,8 +15,10 @@
 # Optional overrides:
 #   DEMO_EMAIL, DEMO_USERNAME, DEMO_PASSWORD, DEMO_NAME
 #
-# The script is idempotent-ish: if the demo user already exists, registration
-# fails and it logs in instead, then skips creating duplicate accounts by name.
+# This is a MANUAL, run-on-demand script — it is NOT a container boot hook, so
+# it never runs on container start and a beta restart mid-test cannot wipe or
+# re-seed anything. It is also self-guarding: if the demo user already has any
+# accounts, it exits immediately without touching existing data. Safe to re-run.
 
 set -euo pipefail
 
@@ -72,6 +74,18 @@ AUTH=(-H "Authorization: Bearer ${TOKEN}")
 post() { curl -s "${AUTH[@]}" -H 'Content-Type: application/json' -X POST "${API}$1" -d "$2"; }
 
 existing_accounts=$(curl -s "${AUTH[@]}" "${API}/accounts")
+
+# --- Only seed a fresh instance ----------------------------------------------
+# If the demo user already has any accounts, assume seeding has run and STOP.
+# This makes the script safe to re-run and, crucially, means it never wipes or
+# re-adds data on top of state built up while exercising the app (e.g. a beta
+# container restart mid-test must not disturb what the tester created).
+if echo "$existing_accounts" | jq -e 'length > 0' >/dev/null 2>&1; then
+  echo "Demo user already has accounts — instance is already seeded. Nothing to do."
+  echo "Login: ${DEMO_EMAIL} / ${DEMO_PASSWORD}"
+  exit 0
+fi
+
 account_exists() { echo "$existing_accounts" | jq -e --arg n "$1" 'any(.[]; .name == $n)' >/dev/null 2>&1; }
 
 create_account() { # name type currency initial_balance

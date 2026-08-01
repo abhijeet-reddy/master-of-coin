@@ -165,8 +165,11 @@ pub async fn get_transaction(
     transaction_id: Uuid,
     user_id: Uuid,
 ) -> Result<TransactionResponse, ApiError> {
-    // Fetch transaction with debt metadata via LEFT JOIN
-    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    // Fetch transaction with debt metadata via LEFT JOIN.
+    // Detail view intentionally includes soft-deleted rows so it can render the
+    // "deleted" banner rather than 404.
+    let result =
+        repositories::transaction::find_by_id_including_deleted(pool, transaction_id).await?;
 
     // Verify ownership
     if result.transaction.user_id != user_id {
@@ -316,8 +319,9 @@ pub async fn update_transaction(
         ApiError::Validation(e.to_string())
     })?;
 
-    // Fetch and verify ownership
-    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    // Fetch and verify ownership (must see already-deleted rows too)
+    let result =
+        repositories::transaction::find_by_id_including_deleted(pool, transaction_id).await?;
     if result.transaction.user_id != user_id {
         tracing::warn!(
             "User {} attempted to update transaction {} owned by {}",
@@ -511,8 +515,9 @@ pub async fn delete_transaction(
     transaction_id: Uuid,
     user_id: Uuid,
 ) -> Result<TransactionResponse, ApiError> {
-    // Fetch and verify ownership
-    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    // Fetch and verify ownership (must see already-deleted rows too)
+    let result =
+        repositories::transaction::find_by_id_including_deleted(pool, transaction_id).await?;
     if result.transaction.user_id != user_id {
         tracing::warn!(
             "User {} attempted to delete transaction {} owned by {}",
@@ -547,7 +552,9 @@ pub async fn delete_transaction(
     }
 
     // Re-fetch the transaction to get the updated deleted_at timestamp
-    let updated_result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    // (row is now soft-deleted, so must include deleted rows)
+    let updated_result =
+        repositories::transaction::find_by_id_including_deleted(pool, transaction_id).await?;
     let mut response = TransactionResponse::from(updated_result);
 
     // Compute permanent_delete_at
@@ -569,8 +576,9 @@ pub async fn restore_transaction(
     transaction_id: Uuid,
     user_id: Uuid,
 ) -> Result<TransactionResponse, ApiError> {
-    // Fetch transaction (find_by_id does NOT filter by is_deleted)
-    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    // Fetch transaction — must include deleted rows for this deleted-record path
+    let result =
+        repositories::transaction::find_by_id_including_deleted(pool, transaction_id).await?;
 
     // Verify ownership
     if result.transaction.user_id != user_id {
@@ -614,7 +622,8 @@ pub async fn restore_transaction(
     }
 
     // Re-fetch the restored transaction to build the response
-    let restored_result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    let restored_result =
+        repositories::transaction::find_by_id_including_deleted(pool, transaction_id).await?;
 
     // Fetch splits
     let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id)
@@ -652,8 +661,9 @@ pub async fn permanent_delete_transaction(
     transaction_id: Uuid,
     user_id: Uuid,
 ) -> Result<(), ApiError> {
-    // Fetch transaction (find_by_id does NOT filter by is_deleted)
-    let result = repositories::transaction::find_by_id(pool, transaction_id).await?;
+    // Fetch transaction — must include deleted rows for this deleted-record path
+    let result =
+        repositories::transaction::find_by_id_including_deleted(pool, transaction_id).await?;
 
     // Verify ownership
     if result.transaction.user_id != user_id {

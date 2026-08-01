@@ -1,4 +1,4 @@
-import { Badge, Box, Button, HStack, Text } from '@chakra-ui/react';
+import { Box, Button, HStack, Text } from '@chakra-ui/react';
 import { FiRotateCcw, FiTrash2 } from 'react-icons/fi';
 
 interface DeletedTransactionBannerProps {
@@ -17,19 +17,12 @@ const fmt = (iso?: string) => {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-/** A date rendered as a filled pill chip so it stands out inside the red banner. */
-const DateChip = ({ children }: { children: React.ReactNode }) => (
-  <Badge colorPalette="red" variant="solid" borderRadius="full" px={2}>
-    {children}
-  </Badge>
-);
-
 /**
  * Banner shown above a soft-deleted transaction's detail card. Explains the
  * deleted state and its permanent-removal date (using the real timestamps, not
- * a hardcoded retention window), with both dates highlighted, and offers a
- * green Restore action (matching the Trash page's Restore convention). Kept to
- * a single row: the sentence on the left, Restore on the right.
+ * a hardcoded retention window), with both dates in bold, and offers a green
+ * Restore action (matching the Trash page's Restore convention). Kept to a
+ * single row: the sentence on the left, Restore on the right.
  */
 export const DeletedTransactionBanner = ({
   deletedAt,
@@ -55,10 +48,16 @@ export const DeletedTransactionBanner = ({
         <HStack gap={2} color="red.700" _dark={{ color: 'red.200' }} flexWrap="wrap">
           <FiTrash2 style={{ flexShrink: 0 }} />
           <Text fontSize="sm" as="span">
-            Deleted on <DateChip>{deleted}</DateChip>
+            Deleted on{' '}
+            <Text as="span" fontWeight="bold">
+              {deleted}
+            </Text>
             {purge && (
               <>
-                , will be purged on <DateChip>{purge}</DateChip>
+                , will be purged on{' '}
+                <Text as="span" fontWeight="bold">
+                  {purge}
+                </Text>
               </>
             )}
           </Text>

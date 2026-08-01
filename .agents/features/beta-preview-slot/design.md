@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-A single, persistent **beta-preview slot** that serves a running, click-through instance of any chosen PR branch at **`moc.beta.abhijeetreddy.in`**.
+A single, persistent **beta-preview slot** that serves a running, click-through instance of any chosen PR branch at **`moc-beta.abhijeetreddy.in`**.
 
 Goals:
 
@@ -55,7 +55,7 @@ deploy-branch helper (cont.)
 moc-beta-server (Portainer stack, host port 13253, :beta image)
    │  boots → runs embedded migrations against beta DB
    ▼
-Cloudflare Tunnel ingress  moc.beta.abhijeetreddy.in → moc-beta-server:13153
+Cloudflare Tunnel ingress  moc-beta.abhijeetreddy.in → moc-beta-server:13153
    ▼
 User clicks through the previewed branch (MOC login only)
 ```
@@ -89,7 +89,8 @@ The work spans **two git repos** plus **one manual Cloudflare step**. All three 
 
 #### C. Cloudflare (manual, not config-as-code) — home-server-agent
 
-4. **Tunnel ingress + DNS** — add a Cloudflare Tunnel ingress rule `moc.beta.abhijeetreddy.in → http://moc-beta-server:13153` (container name + internal port, reached over the shared `kings-road` net) and a DNS CNAME `moc.beta → <tunnel-id>.cfargotunnel.com`.
+4. **Tunnel ingress + DNS** — add a Cloudflare Tunnel ingress rule `moc-beta.abhijeetreddy.in → http://moc-beta-server:13153` (container name + internal port, reached over the shared `kings-road` net) and a DNS CNAME `moc-beta → <tunnel-id>.cfargotunnel.com`.
+   - **Hostname must be single-label** (`moc-beta`, hyphen — not `moc.beta`, dot). Cloudflare's Universal cert covers only `*.abhijeetreddy.in`, and a wildcard matches exactly one label, so a two-label name like `moc.beta.abhijeetreddy.in` fails TLS. Use the hyphenated `moc-beta.abhijeetreddy.in`.
    - **No Cloudflare Access gate** (decision a).
    - This is done via the Cloudflare API by **home-server-agent as an explicit approval**, not committed config. **Noted here, not built.**
 

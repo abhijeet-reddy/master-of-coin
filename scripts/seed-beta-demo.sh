@@ -11,7 +11,7 @@
 # throwaway database (see the deploy repo's docker-compose.beta.yml).
 #
 # Usage:
-#   BETA_URL=https://moc.beta.abhijeetreddy.in ./scripts/seed-beta-demo.sh
+#   BETA_URL=https://moc-beta.abhijeetreddy.in ./scripts/seed-beta-demo.sh
 # Optional overrides:
 #   DEMO_EMAIL, DEMO_USERNAME, DEMO_PASSWORD, DEMO_NAME
 #

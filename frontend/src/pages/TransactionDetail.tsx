@@ -7,7 +7,7 @@ import {
   TransactionActions,
   SplitMismatchModal,
 } from '@/components/transactions/detail';
-import { TransactionFormModal } from '@/components/transactions';
+import { TransactionFormModal, ConvertToTransferModal } from '@/components/transactions';
 import {
   useUpdateTransaction,
   useDeleteTransaction,
@@ -102,6 +102,11 @@ export const TransactionDetailPage = () => {
     onOpen: onDuplicateOpen,
     onClose: onDuplicateClose,
   } = useDisclosure();
+  const {
+    open: isConvertOpen,
+    onOpen: onConvertOpen,
+    onClose: onConvertClose,
+  } = useDisclosure();
 
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
@@ -192,6 +197,10 @@ export const TransactionDetailPage = () => {
   // Only show sync button if transaction has splits
   const hasSplits = transaction.splits && transaction.splits.length > 0;
 
+  // "Convert to transfer" is only offered for a plain transaction: not one that
+  // has splits, and not one that is already part of a transfer.
+  const canConvertToTransfer = !hasSplits && !transaction.transfer_info;
+
   return (
     <Box maxW="2xl" mx="auto">
       <PageHeader
@@ -201,6 +210,7 @@ export const TransactionDetailPage = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onDuplicate={!transaction.transfer_info ? handleDuplicate : undefined}
+            onConvertToTransfer={canConvertToTransfer ? onConvertOpen : undefined}
             isDeleting={deleteMutation.isPending}
           />
         }
@@ -267,6 +277,17 @@ export const TransactionDetailPage = () => {
         people={peopleData || []}
         onSubmit={handleDuplicateSubmit}
         onSubmitDebt={handleDuplicateDebtSubmit}
+      />
+
+      {/* Convert to Transfer Modal */}
+      <ConvertToTransferModal
+        open={isConvertOpen}
+        onClose={onConvertClose}
+        transactionId={transaction.id}
+        transactionAccountId={transaction.account.id}
+        transactionAmount={transaction.amount}
+        transactionCurrency={transaction.account.currency}
+        accounts={accountsData || []}
       />
 
       {/* Delete Confirmation */}

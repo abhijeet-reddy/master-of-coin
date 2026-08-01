@@ -1,11 +1,12 @@
 import { Button, HStack } from '@chakra-ui/react';
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiEdit2, FiRepeat, FiTrash2 } from 'react-icons/fi';
 import { HiOutlineDocumentDuplicate } from 'react-icons/hi';
 
 interface TransactionActionsProps {
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate?: () => void;
+  onConvertToTransfer?: () => void;
   isDeleting: boolean;
 }
 
@@ -13,6 +14,7 @@ export const TransactionActions = ({
   onEdit,
   onDelete,
   onDuplicate,
+  onConvertToTransfer,
   isDeleting,
 }: TransactionActionsProps) => {
   return (
@@ -28,6 +30,14 @@ export const TransactionActions = ({
           <HStack gap={2}>
             <HiOutlineDocumentDuplicate />
             <span>Duplicate</span>
+          </HStack>
+        </Button>
+      )}
+      {onConvertToTransfer && (
+        <Button variant="outline" colorScheme="purple" onClick={onConvertToTransfer}>
+          <HStack gap={2}>
+            <FiRepeat />
+            <span>Convert to transfer</span>
           </HStack>
         </Button>
       )}

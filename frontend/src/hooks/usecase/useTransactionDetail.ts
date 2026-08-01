@@ -59,6 +59,8 @@ export default function useTransactionDetail(id: string): TransactionDetailResul
       user_share: rawTransaction.user_share,
       debt_metadata: rawTransaction.debt_metadata,
       transfer_info: rawTransaction.transfer_info,
+      deleted_at: rawTransaction.deleted_at,
+      permanent_delete_at: rawTransaction.permanent_delete_at,
       created_at: rawTransaction.created_at,
       updated_at: rawTransaction.updated_at,
     };

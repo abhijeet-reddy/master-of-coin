@@ -7,6 +7,7 @@ export type { TransactionFilterValues } from './TransactionFilters';
 export { TransactionFilterDrawer } from './TransactionFilterDrawer';
 export { TransactionFormModal } from './TransactionFormModal';
 export { TransferFormModal } from './TransferFormModal';
+export { ConvertToTransferModal } from './ConvertToTransferModal';
 export { SplitPaymentForm } from './SplitPaymentForm';
 export { DebtExpenseParticipantsForm } from './DebtExpenseParticipantsForm';
 export { SplitSyncStatus } from './SplitSyncStatus';

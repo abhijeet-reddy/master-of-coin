@@ -176,6 +176,16 @@ export interface TransferResponse {
   created_at: string;
 }
 
+// Request to convert an existing transaction into a transfer.
+// Direction is inferred from the transaction's amount sign, so it is never sent.
+export interface ConvertToTransferRequest {
+  account_id: string;
+  // Cross-currency only: the absolute amount on the counterpart account's leg.
+  counterpart_amount?: number;
+  // Alternative to counterpart_amount for cross-currency conversions.
+  exchange_rate?: number;
+}
+
 export interface CreateTransactionRequest {
   title: string;
   amount: number; // Backend expects f64 (number)

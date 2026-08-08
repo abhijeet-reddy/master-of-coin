@@ -29,13 +29,9 @@ export const CategoryCard = ({ category, onClick, onEdit, onDelete }: CategoryCa
             />
             <Text fontSize="2xl">{category.icon}</Text>
 
-            <VStack align="start" gap={1} flex={1}>
+            <VStack align="start" gap={1} flex={1} justify="center">
               <Text fontWeight="semibold" fontSize="lg">
                 {category.name}
-              </Text>
-              <Text fontSize="sm" color="fg.muted">
-                {category.transaction_count} transaction
-                {category.transaction_count !== 1 ? 's' : ''}
               </Text>
             </VStack>
           </HStack>

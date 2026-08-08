@@ -1,7 +1,7 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDate, Utc};
 use diesel::prelude::*;
-use diesel::sql_types::{Nullable, Numeric, Timestamptz, Uuid as DieselUuid};
+use diesel::sql_types::{Array, Nullable, Numeric, Timestamptz, Uuid as DieselUuid};
 use uuid::Uuid;
 
 use crate::{
@@ -284,6 +284,7 @@ pub async fn calculate_spending_by_currency(
     account_id: Option<Uuid>,
     start_date: Option<DateTime<Utc>>,
     end_date: Option<DateTime<Utc>>,
+    exclude_category_ids: Vec<Uuid>,
 ) -> Result<Vec<CurrencySpending>, ApiError> {
     let mut conn = pool.get().map_err(|e| {
         tracing::error!("Failed to get DB connection: {}", e);
@@ -291,6 +292,10 @@ pub async fn calculate_spending_by_currency(
     })?;
 
     tokio::task::spawn_blocking(move || {
+        // Categories excluded from analysis are dropped only for overall
+        // (no-category) budgets: a budget explicitly scoped to a category is
+        // honoured even if that category is excluded elsewhere. The clause
+        // never affects NULL-category (uncategorised) transactions.
         diesel::sql_query(
             "SELECT \
                 a.currency, \
@@ -310,6 +315,8 @@ pub async fn calculate_spending_by_currency(
               AND ($3::timestamptz IS NULL OR t.date >= $3) \
               AND ($4::timestamptz IS NULL OR t.date <= $4) \
               AND ($5::uuid IS NULL OR t.account_id = $5) \
+              AND ($2::uuid IS NOT NULL OR t.category_id IS NULL \
+                   OR t.category_id <> ALL($6)) \
             GROUP BY a.currency",
         )
         .bind::<DieselUuid, _>(user_id)
@@ -317,6 +324,7 @@ pub async fn calculate_spending_by_currency(
         .bind::<Nullable<Timestamptz>, _>(start_date)
         .bind::<Nullable<Timestamptz>, _>(end_date)
         .bind::<Nullable<DieselUuid>, _>(account_id)
+        .bind::<Array<DieselUuid>, _>(exclude_category_ids)
         .load::<CurrencySpending>(&mut conn)
         .map_err(|e| {
             tracing::error!(

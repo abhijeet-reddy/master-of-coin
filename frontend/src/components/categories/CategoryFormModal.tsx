@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, HStack, Input, VStack } from '@chakra-ui/react';
+import { Box, Button, HStack, Input, Switch, Text, VStack } from '@chakra-ui/react';
 import {
   DialogRoot,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogCloseTrigger,
   DialogBackdrop,
 } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Field } from '@/components/ui/field';
@@ -35,6 +35,7 @@ const categorySchema = z.object({
     .string()
     .min(1, 'Color is required')
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex code (e.g., #FF5733)'),
+  isExcludedFromAnalysis: z.boolean(),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -57,6 +58,8 @@ export const CategoryFormModal = ({
 
   const {
     register,
+    control,
+    watch,
     handleSubmit,
     formState: { errors },
     reset,
@@ -66,6 +69,7 @@ export const CategoryFormModal = ({
       name: '',
       icon: '📁',
       color: getRandomColor(),
+      isExcludedFromAnalysis: false,
     },
   });
 
@@ -77,28 +81,32 @@ export const CategoryFormModal = ({
           name: category.name,
           icon: category.icon,
           color: category.color,
+          isExcludedFromAnalysis: category.is_excluded_from_analysis ?? false,
         });
       } else {
         reset({
           name: '',
           icon: '📁',
           color: getRandomColor(),
+          isExcludedFromAnalysis: false,
         });
       }
     }
   }, [isOpen, category, reset]);
 
   const handleFormSubmit = (data: CategoryFormData) => {
-    const categoryData = {
-      name: data.name,
-      icon: data.icon,
-      color: data.color,
-    };
-
     if (category) {
       // Update existing category
       updateMutation.mutate(
-        { id: category.id, data: categoryData },
+        {
+          id: category.id,
+          data: {
+            name: data.name,
+            icon: data.icon,
+            color: data.color,
+            is_excluded_from_analysis: data.isExcludedFromAnalysis,
+          },
+        },
         {
           onSuccess: () => {
             onSuccess();
@@ -107,18 +115,37 @@ export const CategoryFormModal = ({
         }
       );
     } else {
-      // Create new category
-      createMutation.mutate(categoryData, {
-        onSuccess: () => {
-          onSuccess();
-          onClose();
+      // Create new category (exclusion defaults to off; toggled via edit)
+      createMutation.mutate(
+        {
+          name: data.name,
+          icon: data.icon,
+          color: data.color,
         },
-      });
+        {
+          onSuccess: () => {
+            onSuccess();
+            onClose();
+          },
+        }
+      );
     }
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const mutationError = createMutation.error || updateMutation.error;
+
+  // Editing an existing category (vs. creating a new one). The exclude toggle
+  // only makes sense on edit — a brand-new category has nothing to exclude yet,
+  // and the create endpoint does not accept the flag.
+  const isEditing = !!category;
+
+  // State-dependent helper: describe what IS true now, not what would happen.
+  // Label is "Exclude from analysis", so switch ON = excluded.
+  const isExcluded = watch('isExcludedFromAnalysis');
+  const excludeHelperText = isExcluded
+    ? 'Not counted. Still visible in the ledger and on transactions.'
+    : 'Counted in breakdowns and budgets.';
 
   return (
     <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="lg">
@@ -187,6 +214,39 @@ export const CategoryFormModal = ({
                   />
                 </HStack>
               </Field>
+
+              {/* Exclude from analysis — edit only; a new category has nothing
+                  to exclude yet and the create endpoint ignores the flag.
+                  Label and switch share one row (matching the other fields'
+                  label+control rhythm); state-dependent helper sits below. */}
+              {isEditing && (
+                <Box>
+                  <HStack justify="space-between" align="center">
+                    <Text fontWeight="medium">Exclude from analysis</Text>
+                    <Controller
+                      name="isExcludedFromAnalysis"
+                      control={control}
+                      render={({ field }) => (
+                        <Switch.Root
+                          checked={field.value}
+                          onCheckedChange={(e) => field.onChange(e.checked)}
+                        >
+                          <Switch.HiddenInput onBlur={field.onBlur} ref={field.ref} />
+                          <Switch.Control>
+                            <Switch.Thumb />
+                          </Switch.Control>
+                          <Switch.Label color={field.value ? 'fg' : 'fg.muted'}>
+                            {field.value ? 'On' : 'Off'}
+                          </Switch.Label>
+                        </Switch.Root>
+                      )}
+                    />
+                  </HStack>
+                  <Text fontSize="sm" color="fg.muted" mt={1}>
+                    {excludeHelperText}
+                  </Text>
+                </Box>
+              )}
             </VStack>
           </form>
         </DialogBody>

@@ -33,6 +33,7 @@ export interface Category {
   parent_category_id?: string;
   transaction_count: number;
   created_at: string;
+  is_excluded_from_analysis?: boolean;
 }
 
 // Person types
@@ -143,6 +144,7 @@ export interface EnrichedTransaction {
     id: string;
     name: string;
     icon: string;
+    is_excluded_from_analysis?: boolean;
   };
   splits?: TransactionSplit[];
   notes?: string;

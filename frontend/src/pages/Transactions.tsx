@@ -163,7 +163,13 @@ export const TransactionsPage = () => {
       return { income: 0, expenses: 0 };
     }
 
-    const income = filteredTransactions
+    // Categories excluded from analysis drop out of the income/expense
+    // totals, but the transactions themselves stay in the list below.
+    const analysable = filteredTransactions.filter(
+      (t) => !t.category?.is_excluded_from_analysis
+    );
+
+    const income = analysable
       .filter((t) => parseFloat(t.amount) > 0)
       .reduce((sum, t) => {
         const amount = parseFloat(t.amount);
@@ -172,7 +178,7 @@ export const TransactionsPage = () => {
       }, 0);
 
     const expenses = Math.abs(
-      filteredTransactions
+      analysable
         .filter((t) => parseFloat(t.amount) < 0)
         .reduce((sum, t) => {
           const amount = parseFloat(t.amount);

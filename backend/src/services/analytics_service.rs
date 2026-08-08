@@ -186,12 +186,33 @@ pub async fn get_category_breakdown(
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
 
+    // Load the user's categories once so we can both resolve names and skip
+    // categories the user has excluded from analysis. Categories flagged as
+    // excluded drop out of the breakdown entirely; NULL-category (uncategorised)
+    // transactions are never excluded and still contribute.
+    let categories = repositories::category::list_by_user(pool, user_id).await?;
+    let category_names: HashMap<Uuid, String> = categories
+        .iter()
+        .map(|c| (c.id, c.name.clone()))
+        .collect();
+    let excluded_categories: std::collections::HashSet<Uuid> = categories
+        .iter()
+        .filter(|c| c.is_excluded_from_analysis)
+        .map(|c| c.id)
+        .collect();
+
     // Group by category
     let mut category_totals: HashMap<Option<Uuid>, BigDecimal> = HashMap::new();
     let mut total_spending = BigDecimal::from(0);
 
     for result in &transactions {
         let transaction = &result.transaction;
+        // Skip transactions in categories excluded from analysis
+        if let Some(category_id) = transaction.category_id {
+            if excluded_categories.contains(&category_id) {
+                continue;
+            }
+        }
         // Only count expenses (negative amounts)
         if transaction.amount < BigDecimal::from(0) {
             let spending = transaction.amount.abs();
@@ -217,14 +238,7 @@ pub async fn get_category_breakdown(
     let mut breakdown = Vec::new();
 
     for (category_id, total) in category_totals {
-        let category_name = if let Some(id) = category_id {
-            match repositories::category::find_by_id(pool, id).await {
-                Ok(cat) => Some(cat.name),
-                Err(_) => None,
-            }
-        } else {
-            None
-        };
+        let category_name = category_id.and_then(|id| category_names.get(&id).cloned());
 
         let percentage = if total_spending > BigDecimal::from(0) {
             let ratio = &total / &total_spending;

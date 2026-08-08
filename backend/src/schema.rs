@@ -170,6 +170,7 @@ diesel::table! {
         parent_id -> Nullable<Uuid>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        is_excluded_from_analysis -> Bool,
     }
 }
 

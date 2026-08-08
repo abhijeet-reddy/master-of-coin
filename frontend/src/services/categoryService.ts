@@ -40,6 +40,7 @@ export async function updateCategory(
     icon: string;
     color: string;
     parent_category_id: string;
+    is_excluded_from_analysis: boolean;
   }>
 ): Promise<Category> {
   const response = await apiClient.put<Category>(`/categories/${id}`, data);

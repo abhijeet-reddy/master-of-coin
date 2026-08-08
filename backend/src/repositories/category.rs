@@ -131,6 +131,19 @@ pub async fn update_category(
                     ApiError::from(e)
                 })?;
         }
+        if let Some(is_excluded_from_analysis) = updates.is_excluded_from_analysis {
+            diesel::update(categories::table.find(category_id))
+                .set(categories::is_excluded_from_analysis.eq(is_excluded_from_analysis))
+                .execute(&mut conn)
+                .map_err(|e| {
+                    tracing::error!(
+                        "Failed to update category is_excluded_from_analysis {}: {}",
+                        category_id,
+                        e
+                    );
+                    ApiError::from(e)
+                })?;
+        }
 
         // Return the updated category
         categories::table

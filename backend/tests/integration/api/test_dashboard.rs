@@ -1154,3 +1154,192 @@ async fn test_get_dashboard_debt_overview() {
         "Total I owe should be 0 (no net negative debts)"
     );
 }
+
+// ============================================================================
+// Excluded-from-analysis Tests
+// ============================================================================
+
+/// Helper to mark a category as excluded from analysis.
+async fn set_category_excluded(server: &TestServer, token: &str, category_id: &str, excluded: bool) {
+    let request = json!({ "is_excluded_from_analysis": excluded });
+    let response = put_authenticated(
+        server,
+        &format!("/api/v1/categories/{}", category_id),
+        token,
+        &request,
+    )
+    .await;
+    assert_status(&response, 200);
+}
+
+/// Test that categories excluded from analysis drop out of the category
+/// breakdown, while uncategorised transactions remain represented.
+#[tokio::test]
+async fn test_dashboard_breakdown_excludes_flagged_category() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("excl_bd_{}", timestamp),
+        &format!("excl_bd_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Exclude Breakdown User",
+    )
+    .await;
+
+    let groceries = create_test_category(&server, &auth.token, "Groceries").await;
+    let groceries_id = groceries["id"].as_str().unwrap();
+    let investments = create_test_category(&server, &auth.token, "Investments").await;
+    let investments_id = investments["id"].as_str().unwrap();
+
+    let account = create_test_account(&server, &auth.token, "Checking", "CHECKING", 5000.0).await;
+    let account_id = account["id"].as_str().unwrap();
+
+    // Groceries expense (counts), Investments expense (to be excluded),
+    // and an uncategorised expense (must still be represented).
+    create_test_transaction(
+        &server,
+        &auth.token,
+        account_id,
+        -300.0,
+        "Grocery Shopping",
+        Some(groceries_id),
+        None,
+    )
+    .await;
+    create_test_transaction(
+        &server,
+        &auth.token,
+        account_id,
+        -1000.0,
+        "Stock Purchase",
+        Some(investments_id),
+        None,
+    )
+    .await;
+    create_test_transaction(
+        &server,
+        &auth.token,
+        account_id,
+        -50.0,
+        "Misc",
+        None,
+        None,
+    )
+    .await;
+
+    // Mark Investments excluded from analysis
+    set_category_excluded(&server, &auth.token, investments_id, true).await;
+
+    let response = get_authenticated(&server, "/api/v1/dashboard", &auth.token).await;
+    assert_status(&response, 200);
+    let dashboard = extract_dashboard(response);
+    let breakdown = dashboard["category_breakdown"].as_array().unwrap();
+
+    // Investments must be gone
+    assert!(
+        !breakdown
+            .iter()
+            .any(|c| c["category_name"].as_str() == Some("Investments")),
+        "Excluded category should not appear in breakdown"
+    );
+
+    // Groceries still present with its full total
+    let groceries_bd = breakdown
+        .iter()
+        .find(|c| c["category_name"].as_str() == Some("Groceries"))
+        .expect("Groceries should remain");
+    assert_eq!(
+        BigDecimal::from_str(groceries_bd["total"].as_str().unwrap()).unwrap(),
+        BigDecimal::from_str("300").unwrap()
+    );
+
+    // Uncategorised (null category_name) still represented — exclusion must
+    // not be conflated with being uncategorised.
+    let uncategorised = breakdown
+        .iter()
+        .find(|c| c["category_id"].is_null())
+        .expect("Uncategorised bucket should remain");
+    assert_eq!(
+        BigDecimal::from_str(uncategorised["total"].as_str().unwrap()).unwrap(),
+        BigDecimal::from_str("50").unwrap()
+    );
+}
+
+/// Test that an overall (no-category) budget's spend drops transactions in
+/// categories excluded from analysis, while still counting uncategorised ones.
+#[tokio::test]
+async fn test_no_category_budget_spend_excludes_flagged_category() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("excl_bg_{}", timestamp),
+        &format!("excl_bg_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Exclude Budget User",
+    )
+    .await;
+
+    let groceries = create_test_category(&server, &auth.token, "Groceries").await;
+    let groceries_id = groceries["id"].as_str().unwrap();
+    let investments = create_test_category(&server, &auth.token, "Investments").await;
+    let investments_id = investments["id"].as_str().unwrap();
+
+    let account = create_test_account(&server, &auth.token, "Checking", "CHECKING", 5000.0).await;
+    let account_id = account["id"].as_str().unwrap();
+
+    // 200 groceries + 1000 investments + 50 uncategorised = 1250 total spend.
+    // Excluding investments should leave 200 + 50 = 250.
+    create_test_transaction(
+        &server,
+        &auth.token,
+        account_id,
+        -200.0,
+        "Groceries",
+        Some(groceries_id),
+        None,
+    )
+    .await;
+    create_test_transaction(
+        &server,
+        &auth.token,
+        account_id,
+        -1000.0,
+        "Stock Purchase",
+        Some(investments_id),
+        None,
+    )
+    .await;
+    create_test_transaction(
+        &server,
+        &auth.token,
+        account_id,
+        -50.0,
+        "Misc",
+        None,
+        None,
+    )
+    .await;
+
+    // Overall budget (no category filter)
+    let budget = create_test_budget(&server, &auth.token, "Overall", None, 2000.0).await;
+    let budget_id = budget["id"].as_str().unwrap();
+
+    set_category_excluded(&server, &auth.token, investments_id, true).await;
+
+    let response =
+        get_authenticated(&server, &format!("/api/v1/budgets/{}", budget_id), &auth.token).await;
+    assert_status(&response, 200);
+    let budget_detail: Value = extract_json(response);
+
+    let current_spending =
+        BigDecimal::from_str(budget_detail["current_spending"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        current_spending,
+        BigDecimal::from_str("250").unwrap(),
+        "No-category budget should exclude the flagged category but keep uncategorised"
+    );
+}

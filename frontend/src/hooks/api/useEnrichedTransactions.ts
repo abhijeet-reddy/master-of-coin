@@ -54,6 +54,7 @@ export default function useEnrichedTransactions(
               id: category.id,
               name: category.name,
               icon: category.icon,
+              is_excluded_from_analysis: category.is_excluded_from_analysis,
             }
           : undefined,
         notes: transaction.notes,

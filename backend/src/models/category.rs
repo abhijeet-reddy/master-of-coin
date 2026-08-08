@@ -17,6 +17,7 @@ pub struct Category {
     pub parent_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub is_excluded_from_analysis: bool,
 }
 
 #[derive(Debug, Insertable)]
@@ -43,6 +44,7 @@ pub struct UpdateCategory {
     pub icon: Option<String>,
     pub color: Option<String>,
     pub parent_id: Option<Uuid>,
+    pub is_excluded_from_analysis: Option<bool>,
 }
 
 // Request DTOs
@@ -65,6 +67,7 @@ pub struct UpdateCategoryRequest {
     pub icon: Option<String>,
     #[validate(length(max = 20))]
     pub color: Option<String>,
+    pub is_excluded_from_analysis: Option<bool>,
 }
 
 // Response DTOs
@@ -75,6 +78,7 @@ pub struct CategoryResponse {
     pub parent_id: Option<Uuid>,
     pub icon: Option<String>,
     pub color: Option<String>,
+    pub is_excluded_from_analysis: bool,
 }
 
 impl From<Category> for CategoryResponse {
@@ -85,6 +89,7 @@ impl From<Category> for CategoryResponse {
             parent_id: category.parent_id,
             icon: category.icon,
             color: category.color,
+            is_excluded_from_analysis: category.is_excluded_from_analysis,
         }
     }
 }

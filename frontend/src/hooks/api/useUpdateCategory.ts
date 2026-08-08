@@ -21,6 +21,7 @@ export default function useUpdateCategory() {
         icon: string;
         color: string;
         parent_category_id: string;
+        is_excluded_from_analysis: boolean;
       }>;
     }) => updateCategory(id, data),
     onSuccess: (_, variables) => {

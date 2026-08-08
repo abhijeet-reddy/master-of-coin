@@ -1,4 +1,4 @@
-import { Box, Card, HStack, VStack, Text, IconButton } from '@chakra-ui/react';
+import { Box, Card, HStack, Text, IconButton } from '@chakra-ui/react';
 import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import type { Category } from '@/types';
 
@@ -18,8 +18,8 @@ export const CategoryCard = ({ category, onClick, onEdit, onDelete }: CategoryCa
       transition="all 0.2s"
     >
       <Card.Body>
-        <HStack justify="space-between" align="start">
-          <HStack gap={3} flex={1} align="stretch">
+        <HStack justify="space-between" align="center">
+          <HStack gap={3} flex={1} align="center">
             <Box
               width="4px"
               borderRadius="full"
@@ -29,11 +29,9 @@ export const CategoryCard = ({ category, onClick, onEdit, onDelete }: CategoryCa
             />
             <Text fontSize="2xl">{category.icon}</Text>
 
-            <VStack align="start" gap={1} flex={1} justify="center">
-              <Text fontWeight="semibold" fontSize="lg">
-                {category.name}
-              </Text>
-            </VStack>
+            <Text fontWeight="semibold" fontSize="lg" flex={1}>
+              {category.name}
+            </Text>
           </HStack>
 
           {/* Action Buttons */}

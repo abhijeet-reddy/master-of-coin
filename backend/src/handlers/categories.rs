@@ -88,6 +88,7 @@ pub async fn update(
         color: request.color,
         icon: request.icon,
         parent_id: None,
+        is_excluded_from_analysis: request.is_excluded_from_analysis,
     };
 
     let updated_category = repositories::category::update_category(&state.db, id, updates).await?;

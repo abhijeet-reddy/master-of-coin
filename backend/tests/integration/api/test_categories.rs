@@ -428,6 +428,93 @@ async fn test_update_category_partial() {
     assert_eq!(updated_category.name, "New Name Only");
     assert_eq!(updated_category.icon, Some("🎨".to_string()));
     assert_eq!(updated_category.color, Some("#9B59B6".to_string()));
+    // Exclusion flag defaults to false and is untouched by a partial update
+    assert!(!updated_category.is_excluded_from_analysis);
+}
+
+/// Test toggling the `is_excluded_from_analysis` flag via update.
+///
+/// Verifies that:
+/// - A newly created category defaults to not excluded
+/// - PUT with `is_excluded_from_analysis: true` marks it excluded
+/// - The flag persists and is returned by the list endpoint
+/// - PUT with `is_excluded_from_analysis: false` clears it again
+#[tokio::test]
+async fn test_update_category_exclude_from_analysis() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("excludeuser_{}", timestamp),
+        &format!("exclude_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Exclude Test User",
+    )
+    .await;
+
+    // Create a category — defaults to not excluded
+    let create_request = json!({
+        "name": "Investments",
+        "icon": "📈",
+        "color": "#16A085"
+    });
+    let create_response =
+        post_authenticated(&server, "/api/v1/categories", &auth.token, &create_request).await;
+    assert_status(&create_response, 201);
+    let category: CategoryResponse = extract_json(create_response);
+    assert!(
+        !category.is_excluded_from_analysis,
+        "New category should default to not excluded"
+    );
+
+    // Mark it excluded from analysis
+    let exclude_request = json!({ "is_excluded_from_analysis": true });
+    let exclude_response = put_authenticated(
+        &server,
+        &format!("/api/v1/categories/{}", category.id),
+        &auth.token,
+        &exclude_request,
+    )
+    .await;
+    assert_status(&exclude_response, 200);
+    let excluded: CategoryResponse = extract_json(exclude_response);
+    assert!(
+        excluded.is_excluded_from_analysis,
+        "Category should be excluded after update"
+    );
+    // Other fields are untouched by the flag-only update
+    assert_eq!(excluded.name, "Investments");
+    assert_eq!(excluded.icon, Some("📈".to_string()));
+
+    // Flag persists via the list endpoint
+    let list_response = get_authenticated(&server, "/api/v1/categories", &auth.token).await;
+    assert_status(&list_response, 200);
+    let categories: Vec<CategoryResponse> = extract_json(list_response);
+    let listed = categories
+        .iter()
+        .find(|c| c.id == category.id)
+        .expect("category should be in list");
+    assert!(
+        listed.is_excluded_from_analysis,
+        "Exclusion flag should persist in list results"
+    );
+
+    // Clear the flag again
+    let include_request = json!({ "is_excluded_from_analysis": false });
+    let include_response = put_authenticated(
+        &server,
+        &format!("/api/v1/categories/{}", category.id),
+        &auth.token,
+        &include_request,
+    )
+    .await;
+    assert_status(&include_response, 200);
+    let included: CategoryResponse = extract_json(include_response);
+    assert!(
+        !included.is_excluded_from_analysis,
+        "Category should no longer be excluded after clearing the flag"
+    );
 }
 
 /// Test that updating a non-existent category fails.

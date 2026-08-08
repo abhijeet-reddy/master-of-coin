@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, HStack, Input, VStack } from '@chakra-ui/react';
+import { Button, HStack, Input, Switch, Text, VStack } from '@chakra-ui/react';
 import {
   DialogRoot,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogCloseTrigger,
   DialogBackdrop,
 } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Field } from '@/components/ui/field';
@@ -35,6 +35,7 @@ const categorySchema = z.object({
     .string()
     .min(1, 'Color is required')
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex code (e.g., #FF5733)'),
+  isExcludedFromAnalysis: z.boolean(),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -57,6 +58,7 @@ export const CategoryFormModal = ({
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     reset,
@@ -66,6 +68,7 @@ export const CategoryFormModal = ({
       name: '',
       icon: '📁',
       color: getRandomColor(),
+      isExcludedFromAnalysis: false,
     },
   });
 
@@ -77,28 +80,32 @@ export const CategoryFormModal = ({
           name: category.name,
           icon: category.icon,
           color: category.color,
+          isExcludedFromAnalysis: category.is_excluded_from_analysis ?? false,
         });
       } else {
         reset({
           name: '',
           icon: '📁',
           color: getRandomColor(),
+          isExcludedFromAnalysis: false,
         });
       }
     }
   }, [isOpen, category, reset]);
 
   const handleFormSubmit = (data: CategoryFormData) => {
-    const categoryData = {
-      name: data.name,
-      icon: data.icon,
-      color: data.color,
-    };
-
     if (category) {
       // Update existing category
       updateMutation.mutate(
-        { id: category.id, data: categoryData },
+        {
+          id: category.id,
+          data: {
+            name: data.name,
+            icon: data.icon,
+            color: data.color,
+            is_excluded_from_analysis: data.isExcludedFromAnalysis,
+          },
+        },
         {
           onSuccess: () => {
             onSuccess();
@@ -107,13 +114,20 @@ export const CategoryFormModal = ({
         }
       );
     } else {
-      // Create new category
-      createMutation.mutate(categoryData, {
-        onSuccess: () => {
-          onSuccess();
-          onClose();
+      // Create new category (exclusion defaults to off; toggled via edit)
+      createMutation.mutate(
+        {
+          name: data.name,
+          icon: data.icon,
+          color: data.color,
         },
-      });
+        {
+          onSuccess: () => {
+            onSuccess();
+            onClose();
+          },
+        }
+      );
     }
   };
 
@@ -186,6 +200,31 @@ export const CategoryFormModal = ({
                     }}
                   />
                 </HStack>
+              </Field>
+
+              {/* Exclude from analysis */}
+              <Field
+                label="Exclude from analysis"
+                helperText="When on, this category is left out of spending breakdowns and budgeting. Transactions stay in the ledger and can still use it."
+              >
+                <Controller
+                  name="isExcludedFromAnalysis"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch.Root
+                      checked={field.value}
+                      onCheckedChange={(e) => field.onChange(e.checked)}
+                    >
+                      <Switch.HiddenInput onBlur={field.onBlur} ref={field.ref} />
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
+                      <Switch.Label>
+                        <Text fontSize="sm">{field.value ? 'Excluded' : 'Included'}</Text>
+                      </Switch.Label>
+                    </Switch.Root>
+                  )}
+                />
               </Field>
             </VStack>
           </form>

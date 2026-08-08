@@ -32,6 +32,19 @@ fn current_period_window(range: &BudgetRange, today: NaiveDate) -> (NaiveDate, N
     (start, end)
 }
 
+/// Fetch the IDs of the user's categories that are excluded from analysis.
+///
+/// Used to keep overall (no-category) budget spend consistent with the
+/// category breakdown, which also drops these categories.
+async fn excluded_category_ids(pool: &DbPool, user_id: Uuid) -> Result<Vec<Uuid>, ApiError> {
+    let categories = repositories::category::list_by_user(pool, user_id).await?;
+    Ok(categories
+        .into_iter()
+        .filter(|c| c.is_excluded_from_analysis)
+        .map(|c| c.id)
+        .collect())
+}
+
 /// Budget status information
 #[derive(Debug, serde::Serialize)]
 pub struct BudgetStatus {
@@ -117,6 +130,11 @@ pub async fn get_budget(
         let start_date = Some(window_start.and_hms_opt(0, 0, 0).unwrap().and_utc());
         let end_date = Some(window_end.and_hms_opt(23, 59, 59).unwrap().and_utc());
 
+        // Categories excluded from analysis are dropped from overall
+        // (no-category) budgets; the repository guards this so category-scoped
+        // budgets are unaffected.
+        let exclude_category_ids = excluded_category_ids(pool, user_id).await?;
+
         // Single query: compute split-adjusted spending grouped by currency
         let spending_by_currency = repositories::budget::calculate_spending_by_currency(
             pool,
@@ -125,6 +143,7 @@ pub async fn get_budget(
             account_id,
             start_date,
             end_date,
+            exclude_category_ids,
         )
         .await?;
 
@@ -336,6 +355,11 @@ pub async fn calculate_budget_status(
     let start_date = Some(window_start.and_hms_opt(0, 0, 0).unwrap().and_utc());
     let end_date = Some(window_end.and_hms_opt(23, 59, 59).unwrap().and_utc());
 
+    // Categories excluded from analysis are dropped from overall
+    // (no-category) budgets; the repository guards this so category-scoped
+    // budgets are unaffected.
+    let exclude_category_ids = excluded_category_ids(pool, user_id).await?;
+
     // Single query: compute split-adjusted spending grouped by currency
     let spending_by_currency = repositories::budget::calculate_spending_by_currency(
         pool,
@@ -344,6 +368,7 @@ pub async fn calculate_budget_status(
         account_id,
         start_date,
         end_date,
+        exclude_category_ids,
     )
     .await?;
 

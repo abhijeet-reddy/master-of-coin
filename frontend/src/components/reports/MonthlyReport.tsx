@@ -26,19 +26,25 @@ interface MonthlyReportProps {
 export const MonthlyReport = ({ transactions, categoryBreakdown }: MonthlyReportProps) => {
   const colors = ['#3182CE', '#38A169', '#DD6B20', '#E53E3E', '#805AD5', '#D69E2E'];
 
+  // Categories excluded from analysis drop out of the income/expense totals.
+  const analysableTransactions = useMemo(
+    () => transactions.filter((t) => !t.category?.is_excluded_from_analysis),
+    [transactions]
+  );
+
   const metrics = useMemo(() => {
-    const income = transactions
+    const income = analysableTransactions
       .filter((t) => parseFloat(t.amount) > 0)
       .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
-    const expenses = transactions
+    const expenses = analysableTransactions
       .filter((t) => parseFloat(t.amount) < 0)
       .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0);
 
     const net = income - expenses;
 
     return { income, expenses, net };
-  }, [transactions]);
+  }, [analysableTransactions]);
 
   const incomeExpensesData = useMemo(
     () => [
@@ -63,7 +69,7 @@ export const MonthlyReport = ({ transactions, categoryBreakdown }: MonthlyReport
   const dailyTrend = useMemo(() => {
     const dailyMap = new Map<string, number>();
 
-    transactions.forEach((t) => {
+    analysableTransactions.forEach((t) => {
       const day = formatDate(t.date, 'short');
       const amount = Math.abs(parseFloat(t.amount));
       if (parseFloat(t.amount) < 0) {
@@ -74,7 +80,7 @@ export const MonthlyReport = ({ transactions, categoryBreakdown }: MonthlyReport
     return Array.from(dailyMap.entries())
       .map(([day, amount]) => ({ day, amount }))
       .slice(0, 10);
-  }, [transactions]);
+  }, [analysableTransactions]);
 
   return (
     <VStack gap={6} alignItems="stretch">

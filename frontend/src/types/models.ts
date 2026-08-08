@@ -144,6 +144,7 @@ export interface EnrichedTransaction {
     id: string;
     name: string;
     icon: string;
+    is_excluded_from_analysis?: boolean;
   };
   splits?: TransactionSplit[];
   notes?: string;

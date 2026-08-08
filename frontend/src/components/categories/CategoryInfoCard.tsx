@@ -23,13 +23,7 @@ export const CategoryInfoCard = ({ category, onEdit, onDelete }: CategoryInfoCar
                 <Text fontSize="xl" fontWeight="bold">
                   {category.name}
                 </Text>
-                <HStack gap={2}>
-                  <Box w={3} h={3} borderRadius="full" bg={category.color} />
-                  <Text fontSize="sm" color="fg.muted">
-                    {category.transaction_count} transaction
-                    {category.transaction_count !== 1 ? 's' : ''}
-                  </Text>
-                </HStack>
+                <Box w={4} h={4} borderRadius="full" bg={category.color} />
               </VStack>
             </HStack>
             <HStack gap={1}>

@@ -31,7 +31,6 @@ export interface Category {
   icon: string;
   color: string;
   parent_category_id?: string;
-  transaction_count: number;
   created_at: string;
   is_excluded_from_analysis?: boolean;
 }

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, HStack, Input, Switch, Text, VStack } from '@chakra-ui/react';
+import { Button, HStack, Input, Switch, VStack } from '@chakra-ui/react';
 import {
   DialogRoot,
   DialogContent,
@@ -59,6 +59,7 @@ export const CategoryFormModal = ({
   const {
     register,
     control,
+    watch,
     handleSubmit,
     formState: { errors },
     reset,
@@ -134,6 +135,18 @@ export const CategoryFormModal = ({
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const mutationError = createMutation.error || updateMutation.error;
 
+  // Editing an existing category (vs. creating a new one). The exclude toggle
+  // only makes sense on edit — a brand-new category has nothing to exclude yet,
+  // and the create endpoint does not accept the flag.
+  const isEditing = !!category;
+
+  // State-dependent helper: describe what IS true now, not what would happen.
+  // Label is "Exclude from analysis", so switch ON = excluded.
+  const isExcluded = watch('isExcludedFromAnalysis');
+  const excludeHelperText = isExcluded
+    ? 'Not counted. Still visible in the ledger and on transactions.'
+    : 'Counted in breakdowns and budgets.';
+
   return (
     <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="lg">
       <DialogBackdrop />
@@ -202,30 +215,27 @@ export const CategoryFormModal = ({
                 </HStack>
               </Field>
 
-              {/* Exclude from analysis */}
-              <Field
-                label="Exclude from analysis"
-                helperText="When on, this category is left out of spending breakdowns and budgeting. Transactions stay in the ledger and can still use it."
-              >
-                <Controller
-                  name="isExcludedFromAnalysis"
-                  control={control}
-                  render={({ field }) => (
-                    <Switch.Root
-                      checked={field.value}
-                      onCheckedChange={(e) => field.onChange(e.checked)}
-                    >
-                      <Switch.HiddenInput onBlur={field.onBlur} ref={field.ref} />
-                      <Switch.Control>
-                        <Switch.Thumb />
-                      </Switch.Control>
-                      <Switch.Label>
-                        <Text fontSize="sm">{field.value ? 'Excluded' : 'Included'}</Text>
-                      </Switch.Label>
-                    </Switch.Root>
-                  )}
-                />
-              </Field>
+              {/* Exclude from analysis — edit only; a new category has nothing
+                  to exclude yet and the create endpoint ignores the flag. */}
+              {isEditing && (
+                <Field label="Exclude from analysis" helperText={excludeHelperText}>
+                  <Controller
+                    name="isExcludedFromAnalysis"
+                    control={control}
+                    render={({ field }) => (
+                      <Switch.Root
+                        checked={field.value}
+                        onCheckedChange={(e) => field.onChange(e.checked)}
+                      >
+                        <Switch.HiddenInput onBlur={field.onBlur} ref={field.ref} />
+                        <Switch.Control>
+                          <Switch.Thumb />
+                        </Switch.Control>
+                      </Switch.Root>
+                    )}
+                  />
+                </Field>
+              )}
             </VStack>
           </form>
         </DialogBody>

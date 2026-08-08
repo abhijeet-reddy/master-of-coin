@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, HStack, Input, Switch, VStack } from '@chakra-ui/react';
+import { Box, Button, HStack, Input, Switch, Text, VStack } from '@chakra-ui/react';
 import {
   DialogRoot,
   DialogContent,
@@ -216,25 +216,36 @@ export const CategoryFormModal = ({
               </Field>
 
               {/* Exclude from analysis — edit only; a new category has nothing
-                  to exclude yet and the create endpoint ignores the flag. */}
+                  to exclude yet and the create endpoint ignores the flag.
+                  Label and switch share one row (matching the other fields'
+                  label+control rhythm); state-dependent helper sits below. */}
               {isEditing && (
-                <Field label="Exclude from analysis" helperText={excludeHelperText}>
-                  <Controller
-                    name="isExcludedFromAnalysis"
-                    control={control}
-                    render={({ field }) => (
-                      <Switch.Root
-                        checked={field.value}
-                        onCheckedChange={(e) => field.onChange(e.checked)}
-                      >
-                        <Switch.HiddenInput onBlur={field.onBlur} ref={field.ref} />
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Root>
-                    )}
-                  />
-                </Field>
+                <Box>
+                  <HStack justify="space-between" align="center">
+                    <Text fontWeight="medium">Exclude from analysis</Text>
+                    <Controller
+                      name="isExcludedFromAnalysis"
+                      control={control}
+                      render={({ field }) => (
+                        <Switch.Root
+                          checked={field.value}
+                          onCheckedChange={(e) => field.onChange(e.checked)}
+                        >
+                          <Switch.HiddenInput onBlur={field.onBlur} ref={field.ref} />
+                          <Switch.Control>
+                            <Switch.Thumb />
+                          </Switch.Control>
+                          <Switch.Label color={field.value ? 'fg' : 'fg.muted'}>
+                            {field.value ? 'On' : 'Off'}
+                          </Switch.Label>
+                        </Switch.Root>
+                      )}
+                    />
+                  </HStack>
+                  <Text fontSize="sm" color="fg.muted" mt={1}>
+                    {excludeHelperText}
+                  </Text>
+                </Box>
               )}
             </VStack>
           </form>

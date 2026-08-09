@@ -27,14 +27,19 @@ const getRandomColor = (): string => {
   return `#${hex.toUpperCase()}`;
 };
 
-// Validation schema
+// Validation schema. Icon and colour are OPTIONAL — the API stores both as
+// nullable, so the form must not force a value (categories created outside the
+// UI, e.g. seeds/API, can have neither). The hex-format check only applies when
+// a colour is actually supplied.
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
-  icon: z.string().min(1, 'Icon is required').max(10, 'Icon must be less than 10 characters'),
+  icon: z.string().max(10, 'Icon must be less than 10 characters').optional(),
   color: z
-    .string()
-    .min(1, 'Color is required')
-    .regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex code (e.g., #FF5733)'),
+    .union([
+      z.literal(''),
+      z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex code (e.g., #FF5733)'),
+    ])
+    .optional(),
   isExcludedFromAnalysis: z.boolean(),
 });
 
@@ -78,9 +83,11 @@ export const CategoryFormModal = ({
     if (isOpen) {
       if (category) {
         reset({
+          // icon/colour are nullable in the API; coalesce to '' so the inputs
+          // stay controlled and an existing category with neither can still save.
           name: category.name,
-          icon: category.icon,
-          color: category.color,
+          icon: category.icon ?? '',
+          color: category.color ?? '',
           isExcludedFromAnalysis: category.is_excluded_from_analysis ?? false,
         });
       } else {
@@ -102,8 +109,8 @@ export const CategoryFormModal = ({
           id: category.id,
           data: {
             name: data.name,
-            icon: data.icon,
-            color: data.color,
+            icon: data.icon ?? '',
+            color: data.color ?? '',
             is_excluded_from_analysis: data.isExcludedFromAnalysis,
           },
         },
@@ -119,8 +126,8 @@ export const CategoryFormModal = ({
       createMutation.mutate(
         {
           name: data.name,
-          icon: data.icon,
-          color: data.color,
+          icon: data.icon ?? '',
+          color: data.color ?? '',
         },
         {
           onSuccess: () => {
@@ -185,9 +192,8 @@ export const CategoryFormModal = ({
               {/* Icon */}
               <Field
                 label="Icon"
-                required
                 errorText={errors.icon?.message}
-                helperText="Enter an emoji (e.g., 🍔, 🎬, 🚗)"
+                helperText="Optional. Enter an emoji (e.g., 🍔, 🎬, 🚗)"
               >
                 <Input {...register('icon')} placeholder="📁" maxLength={10} />
               </Field>
@@ -195,9 +201,8 @@ export const CategoryFormModal = ({
               {/* Color */}
               <Field
                 label="Color"
-                required
                 errorText={errors.color?.message}
-                helperText="Enter a hex color code (e.g., #3B82F6)"
+                helperText="Optional. Enter a hex color code (e.g., #3B82F6)"
               >
                 <HStack gap={2}>
                   <Input {...register('color')} placeholder="#3B82F6" maxLength={7} />

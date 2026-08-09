@@ -23,6 +23,10 @@ const transferSchema = z.object({
     ),
   to_amount: z.string().optional(),
   exchange_rate: z.string().optional(),
+  // Same-currency only: when true, the user is entering a different amount
+  // received on the destination leg (a discount/fee). Cross-currency always
+  // uses to_amount regardless of this flag.
+  different_amount_received: z.boolean().optional(),
   date: z.string().min(1, 'Date is required'),
   time: z.string().min(1, 'Time is required'),
   title: z.string().optional(),
@@ -38,6 +42,7 @@ const DEFAULT_VALUES: TransferFormData = {
   amount: '',
   to_amount: '',
   exchange_rate: '',
+  different_amount_received: false,
   date: new Date().toISOString().split('T')[0],
   time: new Date().toTimeString().slice(0, 5),
   title: '',
@@ -97,6 +102,28 @@ export default function useTransferForm({
 
   const isCrossCurrency =
     !!fromAccount && !!toAccount && fromAccount.currency !== toAccount.currency;
+
+  const differentAmountReceived = watch('different_amount_received') ?? false;
+
+  // Same-currency transfers can opt into an explicit different amount received
+  // (a discount/fee). The to_amount input is shown when cross-currency (always)
+  // or when the same-currency disclosure is toggled on.
+  const showToAmount = isCrossCurrency || (!!fromAccount && !!toAccount && differentAmountReceived);
+
+  // Soft, non-blocking warning if the two same-currency legs differ by more
+  // than ~20% of the sent amount — catches a fat-finger without preventing a
+  // legitimately large discount/fee.
+  const deltaWarning = (() => {
+    if (!showToAmount || isCrossCurrency) return null;
+    const fromAmt = parseFloat(amount || '0');
+    const toAmt = parseFloat(toAmount || '0');
+    if (!(fromAmt > 0) || !(toAmt > 0)) return null;
+    const delta = Math.abs(toAmt - fromAmt);
+    if (delta > 0.2 * fromAmt) {
+      return `The received amount differs from the sent amount by ${((delta / fromAmt) * 100).toFixed(0)}%. Double-check this is intended.`;
+    }
+    return null;
+  })();
 
   // Title placeholder based on selected to-account
   const titlePlaceholder = toAccount ? `Transfer to ${toAccount.name}` : 'Transfer to...';
@@ -165,8 +192,11 @@ export default function useTransferForm({
           data.category_id && data.category_id.trim() !== '' ? data.category_id : undefined,
       };
 
-      // Include to_amount for cross-currency transfers
-      if (isCrossCurrency && data.to_amount) {
+      // Include to_amount when cross-currency (always) or when a same-currency
+      // transfer opts into a different amount received. Otherwise omit it so the
+      // backend keeps the legs equal.
+      const sendToAmount = isCrossCurrency || !!data.different_amount_received;
+      if (sendToAmount && data.to_amount) {
         const parsedToAmount = parseFloat(data.to_amount);
         if (!isNaN(parsedToAmount) && parsedToAmount > 0) {
           request.to_amount = parsedToAmount;
@@ -203,6 +233,9 @@ export default function useTransferForm({
     fromAccount,
     toAccount,
     isCrossCurrency,
+    showToAmount,
+    differentAmountReceived,
+    deltaWarning,
     titlePlaceholder,
   };
 }

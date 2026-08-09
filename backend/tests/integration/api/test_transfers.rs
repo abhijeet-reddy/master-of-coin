@@ -890,3 +890,169 @@ async fn test_convert_soft_deleted_refused() {
     .await;
     assert_status(&response, 404);
 }
+
+// ============================================================================
+// Same-currency UNEQUAL legs (issue #67)
+// ============================================================================
+
+/// Helper: fetch an account's current balance via the API.
+async fn get_account_balance(
+    server: &axum_test::TestServer,
+    token: &str,
+    account_id: uuid::Uuid,
+) -> f64 {
+    let response =
+        get_authenticated(server, &format!("/api/v1/accounts/{}", account_id), token).await;
+    assert_status(&response, 200);
+    let account: AccountResponse = extract_json(response);
+    account.balance
+}
+
+/// The motivating case: a same-currency transfer whose legs differ because the
+/// destination received more than the source paid (a discounted gift-card
+/// top-up). 48.50 leaves the source, 50.00 lands on the destination, and both
+/// balances reflect their own leg. exchange_rate stays 1 (no conversion).
+#[tokio::test]
+async fn test_create_same_currency_transfer_unequal_legs() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("xfer_uneq_{}", timestamp),
+        &format!("xfer_uneq_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Transfer Unequal Legs User",
+    )
+    .await;
+
+    let from_account =
+        create_account_with_currency(&server, &auth.token, "T212 Card", "EUR").await;
+    let to_account =
+        create_account_with_currency(&server, &auth.token, "Tesco Gift Card", "EUR").await;
+
+    // 48.50 out of the source, 50.00 onto the destination (1.50 discount).
+    let request = json!({
+        "from_account_id": from_account.id,
+        "to_account_id": to_account.id,
+        "from_amount": 48.50,
+        "to_amount": 50.00,
+        "date": Utc::now().to_rfc3339()
+    });
+
+    let response = post_authenticated(&server, "/api/v1/transfers", &auth.token, &request).await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+
+    // Legs carry their own amounts — the delta is implicit in the two legs.
+    assert_eq!(
+        transfer.from_transaction.amount, "-48.50",
+        "source leg should be -48.50"
+    );
+    assert_eq!(
+        transfer.to_transaction.amount, "50.00",
+        "destination leg should be 50.00"
+    );
+    assert_eq!(
+        transfer.exchange_rate, "1",
+        "same-currency transfer keeps exchange_rate 1 even when legs differ"
+    );
+
+    // Both balances reflect their own leg (accounts start at 0).
+    let from_balance = get_account_balance(&server, &auth.token, from_account.id).await;
+    let to_balance = get_account_balance(&server, &auth.token, to_account.id).await;
+    assert!(
+        (from_balance - (-48.50)).abs() < 0.001,
+        "source balance should be -48.50, got {}",
+        from_balance
+    );
+    assert!(
+        (to_balance - 50.00).abs() < 0.001,
+        "destination balance should be 50.00, got {}",
+        to_balance
+    );
+}
+
+/// Regression: a same-currency transfer with no to_amount still produces equal
+/// legs. The unequal-legs change must not alter the common path.
+#[tokio::test]
+async fn test_same_currency_transfer_defaults_to_equal_legs() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("xfer_eqdef_{}", timestamp),
+        &format!("xfer_eqdef_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Transfer Equal Default User",
+    )
+    .await;
+
+    let from_account = create_account_with_currency(&server, &auth.token, "A", "EUR").await;
+    let to_account = create_account_with_currency(&server, &auth.token, "B", "EUR").await;
+
+    let request = json!({
+        "from_account_id": from_account.id,
+        "to_account_id": to_account.id,
+        "from_amount": 100.0,
+        "date": Utc::now().to_rfc3339()
+    });
+
+    let response = post_authenticated(&server, "/api/v1/transfers", &auth.token, &request).await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+
+    assert_eq!(transfer.from_transaction.amount, "-100.00");
+    assert_eq!(transfer.to_transaction.amount, "100.00");
+    assert_eq!(transfer.exchange_rate, "1");
+}
+
+/// Convert-to-transfer honours an unequal counterpart_amount for same-currency
+/// too: a -48.50 debit converts to a transfer whose destination leg is 50.00.
+#[tokio::test]
+async fn test_convert_same_currency_unequal_counterpart() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+
+    let auth = register_test_user(
+        &server,
+        &format!("conv_uneq_{}", timestamp),
+        &format!("conv_uneq_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Convert Unequal User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    // A -48.50 debit on source.
+    let txn =
+        create_normal_transaction(&server, &auth.token, source.id, -48.50, json!({})).await;
+
+    // Convert, with the destination leg receiving 50.00 (same currency).
+    let request = json!({ "account_id": dest.id, "counterpart_amount": 50.00 });
+    let response = post_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", txn.id),
+        &auth.token,
+        &request,
+    )
+    .await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+
+    assert_eq!(transfer.from_transaction.id, txn.id);
+    assert_eq!(transfer.from_transaction.amount, "-48.50");
+    assert_eq!(transfer.to_transaction.account_id, dest.id);
+    assert_eq!(transfer.to_transaction.amount, "50.00");
+    assert_eq!(transfer.exchange_rate, "1");
+
+    let dest_balance = get_account_balance(&server, &auth.token, dest.id).await;
+    assert!(
+        (dest_balance - 50.00).abs() < 0.001,
+        "destination balance should be 50.00, got {}",
+        dest_balance
+    );
+}

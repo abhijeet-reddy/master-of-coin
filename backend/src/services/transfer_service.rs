@@ -83,7 +83,13 @@ pub async fn create_transfer(
     let from_amount = request.from_amount;
 
     let (to_amount, exchange_rate) = if same_currency {
-        (from_amount, 1.0_f64)
+        // Same-currency transfers default to equal legs, but honour an explicit
+        // different to_amount so the legs can differ (e.g. a gift-card top-up
+        // bought at a discount: 48.50 out, 50.00 in). There is no currency
+        // conversion, so exchange_rate stays 1.0 — the delta (to_amount minus
+        // from_amount) lives implicitly in the two leg amounts, not in a rate.
+        let to_amt = request.to_amount.unwrap_or(from_amount);
+        (to_amt, 1.0_f64)
     } else if let Some(to_amt) = request.to_amount {
         let rate = to_amt / from_amount;
         (to_amt, rate)
@@ -287,7 +293,21 @@ pub async fn convert_transaction_to_transfer(
 
     let same_currency = original_account.currency == counterpart_account.currency;
     let (counterpart_abs, exchange_rate) = if same_currency {
-        (original_abs.clone(), 1.0_f64)
+        // Same-currency: default the counterpart leg to the original amount, but
+        // honour an explicit different counterpart_amount so the legs can differ
+        // (discount/fee). No conversion, so exchange_rate stays 1.0.
+        if let Some(amt) = request.counterpart_amount {
+            if amt <= 0.0 {
+                return Err(ApiError::Validation(
+                    "counterpart_amount must be positive".to_string(),
+                ));
+            }
+            let amt_bd = BigDecimal::from_str(&format!("{}", amt))
+                .map_err(|_| ApiError::Validation("Invalid counterpart_amount".to_string()))?;
+            (amt_bd, 1.0_f64)
+        } else {
+            (original_abs.clone(), 1.0_f64)
+        }
     } else if let Some(amt) = request.counterpart_amount {
         if amt <= 0.0 {
             return Err(ApiError::Validation(

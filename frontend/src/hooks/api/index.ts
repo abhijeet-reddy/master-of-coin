@@ -5,6 +5,7 @@ export { default as useCreateTransaction } from './useCreateTransaction';
 export { default as useCreateDebtTransaction } from './useCreateDebtTransaction';
 export { default as useCreateTransfer } from './useCreateTransfer';
 export { default as useConvertToTransfer } from './useConvertToTransfer';
+export { default as useConvertCandidates } from './useConvertCandidates';
 export { default as useUpdateTransaction } from './useUpdateTransaction';
 export { default as useDeleteTransaction } from './useDeleteTransaction';
 export { default as useTrashTransactions } from './useTrashTransactions';

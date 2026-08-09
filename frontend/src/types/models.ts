@@ -184,10 +184,22 @@ export interface TransferResponse {
 // Direction is inferred from the transaction's amount sign, so it is never sent.
 export interface ConvertToTransferRequest {
   account_id: string;
+  // When present, LINK this existing transaction on the counterpart account as
+  // the other leg instead of creating a new one. Its own amount is kept.
+  counterpart_transaction_id?: string;
   // Cross-currency only: the absolute amount on the counterpart account's leg.
   counterpart_amount?: number;
   // Alternative to counterpart_amount for cross-currency conversions.
   exchange_rate?: number;
+}
+
+// An existing transaction on the counterpart account offered as the other leg
+// when converting a transaction into a transfer.
+export interface TransferCandidate {
+  id: string;
+  title: string;
+  amount: string;
+  date: string;
 }
 
 export interface CreateTransactionRequest {

@@ -2,6 +2,7 @@ import apiClient from '@/lib/axios';
 import type {
   ConvertToTransferRequest,
   CreateTransferRequest,
+  TransferCandidate,
   TransferResponse,
 } from '@/types';
 
@@ -24,6 +25,24 @@ export async function convertToTransfer(
   const response = await apiClient.post<TransferResponse>(
     `/transactions/${transactionId}/convert-to-transfer`,
     data
+  );
+  return response.data;
+}
+
+/**
+ * List existing transactions on `accountId` that could be linked as the other
+ * leg when converting `transactionId`. Without `search`, returns suggestions
+ * (opposite sign, within a day, closest amount first). With `search`, searches
+ * the whole account by title or notes.
+ */
+export async function getConvertCandidates(
+  transactionId: string,
+  accountId: string,
+  search?: string
+): Promise<TransferCandidate[]> {
+  const response = await apiClient.get<TransferCandidate[]>(
+    `/transactions/${transactionId}/convert-candidates`,
+    { params: { account_id: accountId, ...(search ? { search } : {}) } }
   );
   return response.data;
 }

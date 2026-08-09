@@ -65,6 +65,12 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Version display (issue #83): a beta build is not a release, so it
+          # reports APP_VERSION=beta plus the commit it was built from, e.g.
+          # "beta (a1b2c3d)". github.sha is the branch head being built.
+          build-args: |
+            APP_VERSION=beta
+            GIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=beta-${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=beta-${{ matrix.platform }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true

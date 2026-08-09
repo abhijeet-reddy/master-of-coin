@@ -103,6 +103,15 @@ USER appuser
 # Note: The application uses SERVER_PORT env var (default: 13153)
 EXPOSE 13153
 
+# Version display (issue #83): CI passes the release tag and commit sha as
+# build args; promote them to runtime env so the backend can report them on
+# /health. Unset (e.g. a plain local `docker build`) leaves them empty and the
+# backend falls back to "dev"/"unknown" rather than showing a wrong number.
+ARG APP_VERSION
+ARG GIT_SHA
+ENV APP_VERSION=${APP_VERSION} \
+    GIT_SHA=${GIT_SHA}
+
 # Set environment variables with sensible defaults
 ENV RUST_LOG=info \
     SERVER_HOST=0.0.0.0 \

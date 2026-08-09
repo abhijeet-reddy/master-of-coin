@@ -23,3 +23,4 @@ pub mod splitpro_integration;
 pub mod splitwise_integration;
 pub mod transactions;
 pub mod transfers;
+pub mod version;

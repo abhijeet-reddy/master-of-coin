@@ -51,6 +51,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Emit a BARE semver for steps.meta.outputs.version (0.22.0, not the
+          # raw ref v0.22.0), matching the merge job and the ghcr tag. This
+          # feeds APP_VERSION (issue #83); without it the default was the ref,
+          # which baked APP_VERSION=v0.22.0 and rendered "vv0.22.0" in the UI.
+          tags: |
+            type=semver,pattern={{version}}
 
       # Build and push by digest (no tag yet — tags applied in merge job)
       - name: Build and push by digest

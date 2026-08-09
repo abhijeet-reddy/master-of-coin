@@ -202,6 +202,21 @@ pub fn create_router(state: AppState) -> Router {
                 },
             )),
         )
+        // Candidate transactions to link when converting to a transfer
+        .route(
+            "/transactions/:id/convert-candidates",
+            get(handlers::transfers::convert_candidates).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Debt transactions (paid by others)
         .route(
             "/debt-transactions",

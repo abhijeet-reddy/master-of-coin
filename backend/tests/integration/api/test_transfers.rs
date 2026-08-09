@@ -8,7 +8,9 @@
 
 use crate::common::*;
 use chrono::Utc;
-use master_of_coin_backend::models::{AccountResponse, TransactionResponse, TransferResponse};
+use master_of_coin_backend::models::{
+    AccountResponse, TransactionResponse, TransferCandidate, TransferResponse,
+};
 use serde_json::json;
 
 // ============================================================================
@@ -1066,5 +1068,283 @@ async fn test_convert_same_currency_unequal_counterpart() {
         (dest_balance - 50.00).abs() < 0.001,
         "destination balance should be 50.00, got {}",
         dest_balance
+    );
+}
+
+// ============================================================================
+// Convert-to-transfer: LINK an existing counterpart (issue: convert-link)
+// ============================================================================
+
+/// Fetch convert candidates for a transaction against a counterpart account.
+async fn get_convert_candidates(
+    server: &axum_test::TestServer,
+    token: &str,
+    transaction_id: uuid::Uuid,
+    account_id: uuid::Uuid,
+    search: Option<&str>,
+) -> Vec<TransferCandidate> {
+    let mut path = format!(
+        "/api/v1/transactions/{}/convert-candidates?account_id={}",
+        transaction_id, account_id
+    );
+    if let Some(s) = search {
+        path.push_str(&format!("&search={}", s));
+    }
+    let response = get_authenticated(server, &path, token).await;
+    assert_status(&response, 200);
+    extract_json(response)
+}
+
+/// Link an existing counterpart via convert-to-transfer.
+async fn convert_linking(
+    server: &axum_test::TestServer,
+    token: &str,
+    transaction_id: uuid::Uuid,
+    account_id: uuid::Uuid,
+    counterpart_transaction_id: uuid::Uuid,
+) -> axum_test::TestResponse {
+    let request = json!({
+        "account_id": account_id,
+        "counterpart_transaction_id": counterpart_transaction_id,
+    });
+    post_authenticated(
+        server,
+        &format!("/api/v1/transactions/{}/convert-to-transfer", transaction_id),
+        token,
+        &request,
+    )
+    .await
+}
+
+/// Suggestions: an opposite-sign, same-amount row within the window is a
+/// candidate, and linking it joins the two existing rows without creating a
+/// third. Balances are unchanged (both rows already existed).
+#[tokio::test]
+async fn test_convert_link_suggestion_found_and_links() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_sugg_{}", timestamp),
+        &format!("link_sugg_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Suggestion User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    // Both legs already exist as imported rows on the same day.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    let inc = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
+
+    // Suggestion appears.
+    let candidates =
+        get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    assert_eq!(candidates.len(), 1, "should suggest the matching inflow");
+    assert_eq!(candidates[0].id, inc.id);
+
+    // Link it.
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+    assert_eq!(transfer.from_transaction.id, out.id);
+    assert_eq!(transfer.to_transaction.id, inc.id);
+    assert_eq!(transfer.from_transaction.amount, "-100.00");
+    assert_eq!(transfer.to_transaction.amount, "100.00");
+
+    // No third row was created: still exactly 2 transactions on the ledger.
+    let list = get_authenticated(&server, "/api/v1/transactions", &auth.token).await;
+    let txns: Vec<serde_json::Value> = extract_json(list);
+    assert_eq!(txns.len(), 2, "linking must not create a third transaction");
+}
+
+/// The linked row's category and notes are NOT mutated by linking.
+#[tokio::test]
+async fn test_convert_link_preserves_counterpart_category_and_notes() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_pres_{}", timestamp),
+        &format!("link_pres_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Preserve User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    // Counterpart has its own notes.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -60.0, json!({})).await;
+    let inc = create_normal_transaction(
+        &server,
+        &auth.token,
+        dest.id,
+        60.0,
+        json!({ "notes": "hand set note" }),
+    )
+    .await;
+
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&response, 201);
+
+    // Re-fetch the counterpart; its notes survive.
+    let get = get_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", inc.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get, 200);
+    let fetched: TransactionResponse = extract_json(get);
+    assert_eq!(
+        fetched.notes.as_deref(),
+        Some("hand set note"),
+        "linking must not overwrite the counterpart's notes"
+    );
+    assert_eq!(fetched.amount, "60.00", "counterpart keeps its own amount");
+}
+
+/// The same counterpart row cannot be linked into two transfers. The second
+/// submit is rejected and no second transfers row is created (double-link guard
+/// on the submit path).
+#[tokio::test]
+async fn test_convert_link_double_link_rejected() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_dbl_{}", timestamp),
+        &format!("link_dbl_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Double User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let source2 = create_account_with_currency(&server, &auth.token, "EUR Source2", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -30.0, json!({})).await;
+    let inc = create_normal_transaction(&server, &auth.token, dest.id, 30.0, json!({})).await;
+    let out2 = create_normal_transaction(&server, &auth.token, source2.id, -30.0, json!({})).await;
+
+    // First link succeeds.
+    let r1 = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&r1, 201);
+
+    // Second attempt to link the SAME counterpart (inc) from a different source
+    // must be rejected.
+    let r2 = convert_linking(&server, &auth.token, out2.id, dest.id, inc.id).await;
+    assert_status(&r2, 422);
+}
+
+/// Search finds an out-of-window opposite-sign row that suggestions exclude.
+#[tokio::test]
+async fn test_convert_link_search_finds_out_of_window() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_search_{}", timestamp),
+        &format!("link_search_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Search User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let now = Utc::now();
+    let out = create_normal_transaction(
+        &server,
+        &auth.token,
+        source.id,
+        -75.0,
+        json!({ "date": now.to_rfc3339() }),
+    )
+    .await;
+    // Counterpart is 5 days earlier and a different amount: outside the window
+    // and not amount-matched, so NOT a suggestion.
+    let far = create_normal_transaction(
+        &server,
+        &auth.token,
+        dest.id,
+        70.0,
+        json!({ "title": "Zebra Payout", "date": (now - chrono::Duration::days(5)).to_rfc3339() }),
+    )
+    .await;
+
+    // Suggestions do not include it.
+    let suggestions =
+        get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    assert!(
+        !suggestions.iter().any(|c| c.id == far.id),
+        "out-of-window row must not be a suggestion"
+    );
+
+    // Search by title finds it.
+    let results =
+        get_convert_candidates(&server, &auth.token, out.id, dest.id, Some("Zebra")).await;
+    assert!(
+        results.iter().any(|c| c.id == far.id),
+        "search should find the out-of-window opposite-sign row"
+    );
+
+    // And it can be linked (unequal legs allowed, per #67).
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, far.id).await;
+    assert_status(&response, 201);
+}
+
+/// Search excludes a same-sign row, a soft-deleted row, and an already-linked
+/// row.
+#[tokio::test]
+async fn test_convert_candidates_exclusions() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_excl_{}", timestamp),
+        &format!("link_excl_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Exclusions User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
+
+    // Same-sign row in dest (also an outflow) must never be a candidate.
+    let same_sign =
+        create_normal_transaction(&server, &auth.token, dest.id, -50.0, json!({})).await;
+    // A valid opposite-sign candidate.
+    let good = create_normal_transaction(&server, &auth.token, dest.id, 50.0, json!({})).await;
+
+    let candidates =
+        get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    assert!(
+        candidates.iter().any(|c| c.id == good.id),
+        "opposite-sign match should be a candidate"
+    );
+    assert!(
+        !candidates.iter().any(|c| c.id == same_sign.id),
+        "same-sign row must be excluded"
+    );
+
+    // Link `good`, then it must no longer appear as a candidate for another txn.
+    let out2 = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
+    let r = convert_linking(&server, &auth.token, out.id, dest.id, good.id).await;
+    assert_status(&r, 201);
+    let after =
+        get_convert_candidates(&server, &auth.token, out2.id, dest.id, None).await;
+    assert!(
+        !after.iter().any(|c| c.id == good.id),
+        "an already-linked row must be excluded from candidates"
     );
 }

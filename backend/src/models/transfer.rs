@@ -64,6 +64,24 @@ pub struct ConvertToTransferRequest {
     pub counterpart_amount: Option<f64>,
     /// Alternative to `counterpart_amount` for cross-currency conversions.
     pub exchange_rate: Option<f64>,
+    /// When set, LINK this existing transaction in the counterpart account as
+    /// the other leg instead of CREATING a new one. The id must belong to the
+    /// user, sit in `account_id`, have the opposite sign, and not already be a
+    /// transfer, split, or soft-deleted (re-validated server-side). When absent
+    /// the endpoint creates a new counterpart leg (the original behaviour).
+    pub counterpart_transaction_id: Option<Uuid>,
+}
+
+/// A candidate transaction that could be linked as the counterpart leg of a
+/// convert-to-transfer. Returned by the candidate-search endpoint so the user
+/// can choose one rather than the server guessing.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransferCandidate {
+    pub id: Uuid,
+    pub title: String,
+    /// Signed amount, as a string to preserve decimal precision.
+    pub amount: String,
+    pub date: DateTime<Utc>,
 }
 
 /// Response DTO — what the API returns after creating a transfer.

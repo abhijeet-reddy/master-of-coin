@@ -12,11 +12,20 @@ use crate::{
         account::Account,
         transaction::{Transaction, TransactionFilter},
         transfer::{
-            ConvertToTransferRequest, CreateTransferRequest, TransferCandidate, TransferResponse,
+            ConvertCandidatesResponse, ConvertToTransferRequest, CreateTransferRequest,
+            TransferCandidate, TransferResponse,
         },
     },
     repositories,
 };
+
+/// How many suggestions to show when no search term is given: a short,
+/// closest-amount-first shortlist.
+const SUGGESTION_DISPLAY_LIMIT: usize = 5;
+
+/// How many results to show for an explicit whole-account search: a longer
+/// scan than suggestions, still bounded so the list stays scannable.
+const SEARCH_DISPLAY_LIMIT: usize = 20;
 
 /// Create a transfer between two accounts owned by the same user.
 ///
@@ -249,7 +258,8 @@ pub async fn convert_transaction_to_transfer(
     }
 
     // 4. Refuse if the transaction has splits (a split cannot become a transfer).
-    let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id).await?;
+    let splits =
+        repositories::transaction::list_splits_for_transaction(pool, transaction_id).await?;
     if !splits.is_empty() {
         return Err(ApiError::Validation(
             "Cannot convert a transaction with splits into a transfer. Remove the splits first."
@@ -547,13 +557,21 @@ async fn link_existing_counterpart(
 /// Both modes apply the SAME exclusions: not soft-deleted, not already in a
 /// transfer, no splits, not the original, and opposite sign only. Search relaxes
 /// only the date window, nothing else.
+///
+/// Returns a CAPPED list (5 suggestions, 20 search) plus the TOTAL number of
+/// matches, so the UI can show "showing 5 of 12" whenever the list is
+/// truncated. The total is exact for the rows the repository returned; note
+/// that the repository itself caps at the 100 most-recent rows (issue #87), so
+/// on an account with more than 100 transactions the total can still undercount
+/// older rows. That only bites whole-account search on very busy accounts;
+/// suggestions live inside the plus/minus one day window, well under the cap.
 pub async fn find_convert_candidates(
     pool: &DbPool,
     user_id: Uuid,
     transaction_id: Uuid,
     counterpart_account_id: Uuid,
     search: Option<String>,
-) -> Result<Vec<TransferCandidate>, ApiError> {
+) -> Result<ConvertCandidatesResponse, ApiError> {
     let original = repositories::transaction::find_by_id(pool, transaction_id)
         .await?
         .transaction;
@@ -648,5 +666,24 @@ pub async fn find_convert_candidates(
 
     // Sort closest-amount-first: exact matches lead, near-misses follow.
     candidates.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    Ok(candidates.into_iter().map(|(c, _)| c).collect())
+
+    // Cap the list the UI renders, but report the TOTAL that matched so it can
+    // say "showing 5 of 12" and never silently hide a row behind the cap.
+    // Suggestions are a short shortlist (5); search allows a longer scan (20).
+    let total = candidates.len();
+    let display_limit = if is_search {
+        SEARCH_DISPLAY_LIMIT
+    } else {
+        SUGGESTION_DISPLAY_LIMIT
+    };
+    let shown = candidates
+        .into_iter()
+        .take(display_limit)
+        .map(|(c, _)| c)
+        .collect();
+
+    Ok(ConvertCandidatesResponse {
+        candidates: shown,
+        total,
+    })
 }

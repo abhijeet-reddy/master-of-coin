@@ -1,8 +1,8 @@
 import apiClient from '@/lib/axios';
 import type {
+  ConvertCandidatesResponse,
   ConvertToTransferRequest,
   CreateTransferRequest,
-  TransferCandidate,
   TransferResponse,
 } from '@/types';
 
@@ -39,8 +39,8 @@ export async function getConvertCandidates(
   transactionId: string,
   accountId: string,
   search?: string
-): Promise<TransferCandidate[]> {
-  const response = await apiClient.get<TransferCandidate[]>(
+): Promise<ConvertCandidatesResponse> {
+  const response = await apiClient.get<ConvertCandidatesResponse>(
     `/transactions/${transactionId}/convert-candidates`,
     { params: { account_id: accountId, ...(search ? { search } : {}) } }
   );

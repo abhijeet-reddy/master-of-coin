@@ -84,6 +84,16 @@ pub struct TransferCandidate {
     pub date: DateTime<Utc>,
 }
 
+/// Response for the candidate-search endpoint: a capped list plus the TOTAL
+/// number of matches found, so the UI can say "showing 5 of 12" and never
+/// silently hide a row behind the cap. `total` is the count BEFORE the display
+/// cap is applied, so `total > candidates.len()` means the list was truncated.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConvertCandidatesResponse {
+    pub candidates: Vec<TransferCandidate>,
+    pub total: usize,
+}
+
 /// Response DTO — what the API returns after creating a transfer.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransferResponse {

@@ -202,6 +202,13 @@ export interface TransferCandidate {
   date: string;
 }
 
+// Candidate-search response: a capped list plus the TOTAL number of matches, so
+// the UI can show "showing 5 of 12". total > candidates.length means truncated.
+export interface ConvertCandidatesResponse {
+  candidates: TransferCandidate[];
+  total: number;
+}
+
 export interface CreateTransactionRequest {
   title: string;
   amount: number; // Backend expects f64 (number)

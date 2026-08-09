@@ -9,7 +9,8 @@
 use crate::common::*;
 use chrono::Utc;
 use master_of_coin_backend::models::{
-    AccountResponse, TransactionResponse, TransferCandidate, TransferResponse,
+    AccountResponse, ConvertCandidatesResponse, TransactionResponse, TransferCandidate,
+    TransferResponse,
 };
 use serde_json::json;
 
@@ -940,8 +941,7 @@ async fn test_create_same_currency_transfer_unequal_legs() {
     )
     .await;
 
-    let from_account =
-        create_account_with_currency(&server, &auth.token, "T212 Card", "EUR").await;
+    let from_account = create_account_with_currency(&server, &auth.token, "T212 Card", "EUR").await;
     let to_account =
         create_account_with_currency(&server, &auth.token, "Tesco Gift Card", "EUR").await;
 
@@ -1042,8 +1042,7 @@ async fn test_convert_same_currency_unequal_counterpart() {
     let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
 
     // A -48.50 debit on source.
-    let txn =
-        create_normal_transaction(&server, &auth.token, source.id, -48.50, json!({})).await;
+    let txn = create_normal_transaction(&server, &auth.token, source.id, -48.50, json!({})).await;
 
     // Convert, with the destination leg receiving 50.00 (same currency).
     let request = json!({ "account_id": dest.id, "counterpart_amount": 50.00 });
@@ -1076,13 +1075,14 @@ async fn test_convert_same_currency_unequal_counterpart() {
 // ============================================================================
 
 /// Fetch convert candidates for a transaction against a counterpart account.
-async fn get_convert_candidates(
+/// Fetch the raw candidate response (capped list plus total match count).
+async fn get_convert_candidates_response(
     server: &axum_test::TestServer,
     token: &str,
     transaction_id: uuid::Uuid,
     account_id: uuid::Uuid,
     search: Option<&str>,
-) -> Vec<TransferCandidate> {
+) -> ConvertCandidatesResponse {
     let mut path = format!(
         "/api/v1/transactions/{}/convert-candidates?account_id={}",
         transaction_id, account_id
@@ -1093,6 +1093,19 @@ async fn get_convert_candidates(
     let response = get_authenticated(server, &path, token).await;
     assert_status(&response, 200);
     extract_json(response)
+}
+
+/// Convenience wrapper returning just the displayed candidate list.
+async fn get_convert_candidates(
+    server: &axum_test::TestServer,
+    token: &str,
+    transaction_id: uuid::Uuid,
+    account_id: uuid::Uuid,
+    search: Option<&str>,
+) -> Vec<TransferCandidate> {
+    get_convert_candidates_response(server, token, transaction_id, account_id, search)
+        .await
+        .candidates
 }
 
 /// Link an existing counterpart via convert-to-transfer.
@@ -1109,7 +1122,10 @@ async fn convert_linking(
     });
     post_authenticated(
         server,
-        &format!("/api/v1/transactions/{}/convert-to-transfer", transaction_id),
+        &format!(
+            "/api/v1/transactions/{}/convert-to-transfer",
+            transaction_id
+        ),
         token,
         &request,
     )
@@ -1140,8 +1156,7 @@ async fn test_convert_link_suggestion_found_and_links() {
     let inc = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
 
     // Suggestion appears.
-    let candidates =
-        get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
     assert_eq!(candidates.len(), 1, "should suggest the matching inflow");
     assert_eq!(candidates[0].id, inc.id);
 
@@ -1286,8 +1301,7 @@ async fn test_convert_link_search_finds_out_of_window() {
     .await;
 
     // Suggestions do not include it.
-    let suggestions =
-        get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let suggestions = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
     assert!(
         !suggestions.iter().any(|c| c.id == far.id),
         "out-of-window row must not be a suggestion"
@@ -1332,8 +1346,7 @@ async fn test_convert_candidates_exclusions() {
     // A valid opposite-sign candidate.
     let good = create_normal_transaction(&server, &auth.token, dest.id, 50.0, json!({})).await;
 
-    let candidates =
-        get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
     assert!(
         candidates.iter().any(|c| c.id == good.id),
         "opposite-sign match should be a candidate"
@@ -1347,8 +1360,7 @@ async fn test_convert_candidates_exclusions() {
     let out2 = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
     let r = convert_linking(&server, &auth.token, out.id, dest.id, good.id).await;
     assert_status(&r, 201);
-    let after =
-        get_convert_candidates(&server, &auth.token, out2.id, dest.id, None).await;
+    let after = get_convert_candidates(&server, &auth.token, out2.id, dest.id, None).await;
     assert!(
         !after.iter().any(|c| c.id == good.id),
         "an already-linked row must be excluded from candidates"
@@ -1455,4 +1467,71 @@ async fn test_convert_link_double_link_rejected_from_side() {
     // link `out` as its counterpart must be rejected.
     let r2 = convert_linking(&server, &auth.token, inc2.id, source.id, out.id).await;
     assert_status(&r2, 422);
+}
+
+/// Suggestions are capped at 5, but the response reports the TRUE total so the
+/// UI can say "showing 5 of N". With 8 opposite-sign rows in the window, the
+/// displayed list is 5 and total is 8.
+#[tokio::test]
+async fn test_convert_candidates_capped_with_total() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_cap_{}", timestamp),
+        &format!("link_cap_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Cap User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    // A -100 debit to convert; 8 opposite-sign (positive) rows on dest, all
+    // today so they sit inside the plus/minus one day suggestion window.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    for i in 0..8 {
+        let amount = 100.0 + i as f64; // 100..107, distinct so ordering is stable
+        create_normal_transaction(&server, &auth.token, dest.id, amount, json!({})).await;
+    }
+
+    let response =
+        get_convert_candidates_response(&server, &auth.token, out.id, dest.id, None).await;
+    assert_eq!(response.total, 8, "total must be the true match count");
+    assert_eq!(
+        response.candidates.len(),
+        5,
+        "suggestions must be capped at 5"
+    );
+    // Closest amount (100.00, gap 0) must still lead despite the cap.
+    assert_eq!(response.candidates[0].amount, "100.00");
+}
+
+/// When the match count is within the cap, total equals the list length (the
+/// UI shows no "of N" line in that case).
+#[tokio::test]
+async fn test_convert_candidates_total_equals_len_when_not_capped() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_nocap_{}", timestamp),
+        &format!("link_nocap_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link No Cap User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
+    create_normal_transaction(&server, &auth.token, dest.id, 101.0, json!({})).await;
+
+    let response =
+        get_convert_candidates_response(&server, &auth.token, out.id, dest.id, None).await;
+    assert_eq!(response.total, 2);
+    assert_eq!(response.candidates.len(), 2);
 }

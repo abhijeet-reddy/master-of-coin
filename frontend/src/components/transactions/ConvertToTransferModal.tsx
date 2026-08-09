@@ -85,10 +85,13 @@ export const ConvertToTransferModal = ({
 
   const debouncedSearch = useDebounce(searchInput, 400);
   const {
-    data: candidates,
+    data: candidateData,
     isLoading: candidatesLoading,
     error: candidatesError,
   } = useConvertCandidates(transactionId, counterpartId, debouncedSearch);
+
+  const candidates = candidateData?.candidates ?? [];
+  const total = candidateData?.total ?? 0;
 
   const originalAbs = Math.abs(Number(transactionAmount));
 
@@ -185,8 +188,12 @@ export const ConvertToTransferModal = ({
     }
   };
 
-  const hasCandidates = !!candidates && candidates.length > 0;
+  const hasCandidates = candidates.length > 0;
   const isSearching = debouncedSearch.trim().length > 0;
+  // The list is capped server-side (5 suggestions, 20 search). Only show the
+  // "showing N of M" line when the total exceeds what we display, so an
+  // untruncated list stays free of noise.
+  const isTruncated = total > candidates.length;
 
   // The submit is valid when linking a chosen candidate, or when creating a new
   // leg (either explicitly, or because there was nothing to link).
@@ -276,9 +283,13 @@ export const ConvertToTransferModal = ({
                 {!candidatesLoading && hasCandidates && (
                   <VStack align="stretch" gap={2}>
                     <Text fontSize="xs" color="fg.muted">
-                      {isSearching
-                        ? 'Matching transactions on this account:'
-                        : 'Suggested transactions to link:'}
+                      {isTruncated
+                        ? isSearching
+                          ? `Showing ${candidates.length} of ${total} results, narrow your search:`
+                          : `Showing ${candidates.length} of ${total} matches:`
+                        : isSearching
+                          ? 'Matching transactions on this account:'
+                          : 'Suggested transactions to link:'}
                     </Text>
                     {candidates.map((candidate) => {
                       const candidateAbs = Math.abs(Number(candidate.amount));

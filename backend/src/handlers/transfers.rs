@@ -3,7 +3,8 @@ use crate::{
     auth::context::AuthContext,
     errors::ApiError,
     models::transfer::{
-        ConvertToTransferRequest, CreateTransferRequest, TransferCandidate, TransferResponse,
+        ConvertCandidatesResponse, ConvertToTransferRequest, CreateTransferRequest,
+        TransferResponse,
     },
     services::transfer_service,
 };
@@ -76,9 +77,9 @@ pub async fn convert_candidates(
     Extension(auth_context): Extension<AuthContext>,
     Path(transaction_id): Path<Uuid>,
     Query(query): Query<ConvertCandidatesQuery>,
-) -> Result<Json<Vec<TransferCandidate>>, ApiError> {
+) -> Result<Json<ConvertCandidatesResponse>, ApiError> {
     let user_id = auth_context.user_id();
-    let candidates = transfer_service::find_convert_candidates(
+    let response = transfer_service::find_convert_candidates(
         &state.db,
         user_id,
         transaction_id,
@@ -87,5 +88,5 @@ pub async fn convert_candidates(
     )
     .await?;
 
-    Ok(Json(candidates))
+    Ok(Json(response))
 }

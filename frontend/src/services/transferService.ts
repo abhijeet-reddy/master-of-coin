@@ -39,13 +39,15 @@ export async function convertToTransfer(
 
 /**
  * List existing transactions on `accountId` that could be linked as the other
- * leg when converting the transaction identified by `referenceId`/`referenceDate`.
+ * leg when converting a transaction of `referenceAmount` dated `referenceDate`.
  *
- * This is expressed as parameters on the shared transactions list endpoint
+ * Expressed as explicit parameters on the shared transactions list endpoint
  * rather than a dedicated route:
- * - `counterpart_of` implies opposite sign to the reference and closest-amount
- *   ordering (resolved server-side).
- * - `in_transfer=false`, `has_splits=false`, `exclude_id`, `is_deleted=false`
+ * - `sign` is the OPPOSITE sign to the reference (a debit's counterpart is a
+ *   credit and vice versa), computed here from `referenceAmount`.
+ * - `closest_to` is the reference's absolute amount, so results are ranked by
+ *   closeness to it (server orders in SQL, before the cap).
+ * - `exclude_id`, `in_transfer=false`, `has_splits=false`, `is_deleted=false`
  *   apply the exclusions.
  * - Without `search`: a plus/minus one day window around the reference date
  *   (suggestions). With `search`: the whole account, no window.
@@ -55,15 +57,20 @@ export async function convertToTransfer(
  */
 export async function getConvertCandidates(
   referenceId: string,
+  referenceAmount: string,
   referenceDate: string,
   accountId: string,
   search?: string
 ): Promise<ConvertCandidatesResponse> {
   const isSearch = !!search;
+  const refAmount = Number(referenceAmount);
+  // The counterpart has the opposite sign to the transaction being converted.
+  const oppositeSign = refAmount < 0 ? 'positive' : 'negative';
   const params: Record<string, string | number | boolean> = {
     account_id: accountId,
-    counterpart_of: referenceId,
     exclude_id: referenceId,
+    sign: oppositeSign,
+    closest_to: Math.abs(refAmount),
     in_transfer: false,
     has_splits: false,
     is_deleted: false,

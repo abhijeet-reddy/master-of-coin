@@ -218,22 +218,24 @@ pub struct TransactionFilter {
     /// Some(true) keeps only those. Generic, and cheaper than a per-row lookup.
     pub has_splits: Option<bool>,
 
-    /// Find candidates that could be the opposite leg of this transaction: it
-    /// implies BOTH "opposite sign to the referenced transaction" AND ordering
-    /// by closest absolute amount to it. The server resolves the referenced
-    /// transaction's sign and amount, so the caller never supplies them.
-    pub counterpart_of: Option<Uuid>,
+    /// Keep only rows of this amount sign: `positive` (credits) or `negative`
+    /// (debits). The convert picker passes the OPPOSITE sign to the transaction
+    /// being converted, computed client-side. Generic.
+    pub sign: Option<AmountSign>,
 
-    /// Derived from `counterpart_of` by the service, never a query param: when
-    /// `Some(true)` keep only positive amounts, `Some(false)` only negative.
-    #[serde(skip)]
-    pub require_amount_positive: Option<bool>,
+    /// When set, order results by closeness of the absolute amount to this
+    /// value, in SQL so the ordering runs BEFORE the LIMIT and the cap keeps the
+    /// closest matches rather than the most recent ones. Generic.
+    pub closest_to: Option<f64>,
+}
 
-    /// Derived from `counterpart_of` by the service, never a query param: when
-    /// set, order results by closeness of the absolute amount to this value
-    /// (in SQL, so it survives the LIMIT rather than being re-sorted after).
-    #[serde(skip)]
-    pub closest_to_abs: Option<f64>,
+/// Amount-sign filter for the transactions list. Deserializes from the query
+/// string as `positive` / `negative`.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AmountSign {
+    Positive,
+    Negative,
 }
 
 /// Query parameters for the delete transaction endpoint

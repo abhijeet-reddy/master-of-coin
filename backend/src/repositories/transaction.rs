@@ -14,6 +14,101 @@ use crate::{
     schema::{debt_transaction_metadata, people, transaction_splits, transactions, transfers},
 };
 
+/// Apply the shared `TransactionFilter` WHERE clauses to a boxed `transactions`
+/// query. Used by BOTH `list_transactions` and `count_transactions` so the two
+/// cannot drift: any filter added here is inherited by both. Ordering, limit
+/// and offset are intentionally NOT here (list applies them, count does not).
+///
+/// A macro rather than a function because the list query carries a joined
+/// select tuple while the count query is a plain `transactions::table`, so the
+/// two have different boxed types; a macro applies identical predicates to
+/// whichever `$query` binding it is handed.
+macro_rules! apply_transaction_filters {
+    ($query:ident, $filters:expr) => {{
+        // Soft-delete: default to active only.
+        if $filters.is_deleted == Some(true) {
+            $query = $query.filter(transactions::is_deleted.eq(true));
+        } else {
+            $query = $query.filter(transactions::is_deleted.eq(false));
+        }
+        if let Some(account_id) = $filters.account_id {
+            $query = $query.filter(transactions::account_id.eq(account_id));
+        }
+        if let Some(category_id) = $filters.category_id {
+            $query = $query.filter(transactions::category_id.eq(category_id));
+        }
+        if let Some(person_id) = $filters.person_id {
+            let split_txn_ids = transaction_splits::table
+                .filter(transaction_splits::person_id.eq(person_id))
+                .select(transaction_splits::transaction_id);
+            $query = $query.filter(transactions::id.eq_any(split_txn_ids));
+        }
+        if let Some(start_date) = $filters.start_date {
+            $query = $query.filter(transactions::date.ge(start_date));
+        }
+        if let Some(end_date) = $filters.end_date {
+            $query = $query.filter(transactions::date.le(end_date));
+        }
+        if let Some(min_amount) = $filters.min_amount {
+            let min_bd = BigDecimal::from_str(&min_amount.to_string()).map_err(|e| {
+                tracing::error!("Failed to convert min_amount to BigDecimal: {}", e);
+                ApiError::Validation("Invalid min_amount".to_string())
+            })?;
+            $query = $query.filter(transactions::amount.ge(min_bd));
+        }
+        if let Some(max_amount) = $filters.max_amount {
+            let max_bd = BigDecimal::from_str(&max_amount.to_string()).map_err(|e| {
+                tracing::error!("Failed to convert max_amount to BigDecimal: {}", e);
+                ApiError::Validation("Invalid max_amount".to_string())
+            })?;
+            $query = $query.filter(transactions::amount.le(max_bd));
+        }
+        if let Some(search) = &$filters.search {
+            let search_pattern = format!("%{}%", search);
+            $query = $query.filter(
+                transactions::title
+                    .ilike(search_pattern.clone())
+                    .or(transactions::notes.ilike(search_pattern)),
+            );
+        }
+        // Exclude a specific id (e.g. the row a counterpart is being found for).
+        if let Some(exclude_id) = $filters.exclude_id {
+            $query = $query.filter(transactions::id.ne(exclude_id));
+        }
+        // Transfer membership via the transfers table (either leg).
+        if let Some(in_transfer) = $filters.in_transfer {
+            let in_transfer_ids = transfers::table
+                .select(transfers::from_transaction_id)
+                .union(transfers::table.select(transfers::to_transaction_id));
+            if in_transfer {
+                $query = $query.filter(transactions::id.eq_any(in_transfer_ids));
+            } else {
+                $query = $query.filter(transactions::id.ne_all(in_transfer_ids));
+            }
+        }
+        // Split presence: a single set-membership test, not a per-row lookup.
+        if let Some(has_splits) = $filters.has_splits {
+            let split_txn_ids =
+                transaction_splits::table.select(transaction_splits::transaction_id);
+            if has_splits {
+                $query = $query.filter(transactions::id.eq_any(split_txn_ids));
+            } else {
+                $query = $query.filter(transactions::id.ne_all(split_txn_ids));
+            }
+        }
+        // Amount sign.
+        match $filters.sign {
+            Some(crate::models::transaction::AmountSign::Positive) => {
+                $query = $query.filter(transactions::amount.gt(BigDecimal::from(0)))
+            }
+            Some(crate::models::transaction::AmountSign::Negative) => {
+                $query = $query.filter(transactions::amount.lt(BigDecimal::from(0)))
+            }
+            None => {}
+        }
+    }};
+}
+
 /// A transaction row joined with optional debt metadata (payer info + expense details).
 pub struct TransactionWithDebtInfo {
     pub transaction: Transaction,
@@ -222,111 +317,20 @@ pub async fn list_transactions(
             ))
             .into_boxed();
 
-        // Apply soft-delete filter: default to showing only active transactions
-        if filters.is_deleted == Some(true) {
-            query = query.filter(transactions::is_deleted.eq(true));
-        } else {
-            query = query.filter(transactions::is_deleted.eq(false));
-        }
-
-        // Apply filters
-        if let Some(account_id) = filters.account_id {
-            query = query.filter(transactions::account_id.eq(account_id));
-        }
-
-        if let Some(category_id) = filters.category_id {
-            query = query.filter(transactions::category_id.eq(category_id));
-        }
-
-        if let Some(person_id) = filters.person_id {
-            // Subquery: find transaction IDs that have a split for this person
-            let split_txn_ids = transaction_splits::table
-                .filter(transaction_splits::person_id.eq(person_id))
-                .select(transaction_splits::transaction_id);
-            query = query.filter(transactions::id.eq_any(split_txn_ids));
-        }
-
-        if let Some(start_date) = filters.start_date {
-            query = query.filter(transactions::date.ge(start_date));
-        }
-
-        if let Some(end_date) = filters.end_date {
-            query = query.filter(transactions::date.le(end_date));
-        }
-
-        if let Some(min_amount) = filters.min_amount {
-            let min_bd = BigDecimal::from_str(&min_amount.to_string()).map_err(|e| {
-                tracing::error!("Failed to convert min_amount to BigDecimal: {}", e);
-                ApiError::Validation("Invalid min_amount".to_string())
-            })?;
-            query = query.filter(transactions::amount.ge(min_bd));
-        }
-
-        if let Some(max_amount) = filters.max_amount {
-            let max_bd = BigDecimal::from_str(&max_amount.to_string()).map_err(|e| {
-                tracing::error!("Failed to convert max_amount to BigDecimal: {}", e);
-                ApiError::Validation("Invalid max_amount".to_string())
-            })?;
-            query = query.filter(transactions::amount.le(max_bd));
-        }
-
-        if let Some(search) = filters.search {
-            let search_pattern = format!("%{}%", search);
-            query = query.filter(
-                transactions::title
-                    .ilike(search_pattern.clone())
-                    .or(transactions::notes.ilike(search_pattern)),
-            );
-        }
-
-        // Exclude a specific transaction id (e.g. the row a counterpart is being
-        // found for should never appear as its own candidate).
-        if let Some(exclude_id) = filters.exclude_id {
-            query = query.filter(transactions::id.ne(exclude_id));
-        }
-
-        // Filter on transfer membership via the transfers table (either leg).
-        if let Some(in_transfer) = filters.in_transfer {
-            let in_transfer_ids = transfers::table
-                .select(transfers::from_transaction_id)
-                .union(transfers::table.select(transfers::to_transaction_id));
-            if in_transfer {
-                query = query.filter(transactions::id.eq_any(in_transfer_ids));
-            } else {
-                query = query.filter(transactions::id.ne_all(in_transfer_ids));
-            }
-        }
-
-        // Filter on split presence. This replaces the previous per-row split
-        // lookup with a single set membership test.
-        if let Some(has_splits) = filters.has_splits {
-            let split_txn_ids =
-                transaction_splits::table.select(transaction_splits::transaction_id);
-            if has_splits {
-                query = query.filter(transactions::id.eq_any(split_txn_ids));
-            } else {
-                query = query.filter(transactions::id.ne_all(split_txn_ids));
-            }
-        }
-
-        // Require a particular sign (used by counterpart search: the opposite
-        // leg of a debit is a credit and vice versa).
-        match filters.require_amount_positive {
-            Some(true) => query = query.filter(transactions::amount.gt(BigDecimal::from(0))),
-            Some(false) => query = query.filter(transactions::amount.lt(BigDecimal::from(0))),
-            None => {}
-        }
+        // Shared WHERE clauses (see apply_transaction_filters). Kept in step
+        // with count_transactions via the same macro.
+        apply_transaction_filters!(query, filters);
 
         // Apply ordering. When a reference amount is given, order by closeness of
         // the absolute amount to it IN SQL, so the ORDER BY runs before the
         // LIMIT and the cap keeps the closest matches rather than the most
-        // recent ones (this is what lets the counterpart search avoid issue #87
-        // on this path). Otherwise fall back to newest-first.
-        if let Some(closest_to_abs) = filters.closest_to_abs {
+        // recent ones (this is what lets the convert candidate search avoid
+        // issue #87 on this path). Otherwise fall back to newest-first.
+        if let Some(closest_to) = filters.closest_to {
             query = query.order(
                 diesel::dsl::sql::<diesel::sql_types::Double>(&format!(
                     "ABS(ABS(transactions.amount) - {})",
-                    closest_to_abs
+                    closest_to
                 ))
                 .asc(),
             );
@@ -401,79 +405,9 @@ pub async fn count_transactions(
             .filter(transactions::user_id.eq(user_id))
             .into_boxed();
 
-        if filters.is_deleted == Some(true) {
-            query = query.filter(transactions::is_deleted.eq(true));
-        } else {
-            query = query.filter(transactions::is_deleted.eq(false));
-        }
-
-        if let Some(account_id) = filters.account_id {
-            query = query.filter(transactions::account_id.eq(account_id));
-        }
-        if let Some(category_id) = filters.category_id {
-            query = query.filter(transactions::category_id.eq(category_id));
-        }
-        if let Some(person_id) = filters.person_id {
-            let split_txn_ids = transaction_splits::table
-                .filter(transaction_splits::person_id.eq(person_id))
-                .select(transaction_splits::transaction_id);
-            query = query.filter(transactions::id.eq_any(split_txn_ids));
-        }
-        if let Some(start_date) = filters.start_date {
-            query = query.filter(transactions::date.ge(start_date));
-        }
-        if let Some(end_date) = filters.end_date {
-            query = query.filter(transactions::date.le(end_date));
-        }
-        if let Some(min_amount) = filters.min_amount {
-            let min_bd = BigDecimal::from_str(&min_amount.to_string()).map_err(|e| {
-                tracing::error!("Failed to convert min_amount to BigDecimal: {}", e);
-                ApiError::Validation("Invalid min_amount".to_string())
-            })?;
-            query = query.filter(transactions::amount.ge(min_bd));
-        }
-        if let Some(max_amount) = filters.max_amount {
-            let max_bd = BigDecimal::from_str(&max_amount.to_string()).map_err(|e| {
-                tracing::error!("Failed to convert max_amount to BigDecimal: {}", e);
-                ApiError::Validation("Invalid max_amount".to_string())
-            })?;
-            query = query.filter(transactions::amount.le(max_bd));
-        }
-        if let Some(search) = filters.search {
-            let search_pattern = format!("%{}%", search);
-            query = query.filter(
-                transactions::title
-                    .ilike(search_pattern.clone())
-                    .or(transactions::notes.ilike(search_pattern)),
-            );
-        }
-        if let Some(exclude_id) = filters.exclude_id {
-            query = query.filter(transactions::id.ne(exclude_id));
-        }
-        if let Some(in_transfer) = filters.in_transfer {
-            let in_transfer_ids = transfers::table
-                .select(transfers::from_transaction_id)
-                .union(transfers::table.select(transfers::to_transaction_id));
-            if in_transfer {
-                query = query.filter(transactions::id.eq_any(in_transfer_ids));
-            } else {
-                query = query.filter(transactions::id.ne_all(in_transfer_ids));
-            }
-        }
-        if let Some(has_splits) = filters.has_splits {
-            let split_txn_ids =
-                transaction_splits::table.select(transaction_splits::transaction_id);
-            if has_splits {
-                query = query.filter(transactions::id.eq_any(split_txn_ids));
-            } else {
-                query = query.filter(transactions::id.ne_all(split_txn_ids));
-            }
-        }
-        match filters.require_amount_positive {
-            Some(true) => query = query.filter(transactions::amount.gt(BigDecimal::from(0))),
-            Some(false) => query = query.filter(transactions::amount.lt(BigDecimal::from(0))),
-            None => {}
-        }
+        // Same WHERE clauses as list_transactions, via the shared macro, so the
+        // count cannot drift from what the list would return.
+        apply_transaction_filters!(query, filters);
 
         query.count().get_result(&mut conn).map_err(|e| {
             tracing::error!("Failed to count transactions for user {}: {}", user_id, e);

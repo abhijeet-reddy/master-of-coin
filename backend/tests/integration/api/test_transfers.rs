@@ -1091,10 +1091,18 @@ async fn get_convert_candidates_response(
     account_id: uuid::Uuid,
     search: Option<&str>,
 ) -> ConvertCandidates {
+    // Counterpart has the opposite sign; rank by closeness to the abs amount.
+    let ref_amount: f64 = reference.amount.parse().unwrap();
+    let opposite_sign = if ref_amount < 0.0 {
+        "positive"
+    } else {
+        "negative"
+    };
+    let closest_to = ref_amount.abs();
     let mut path = format!(
-        "/api/v1/transactions?account_id={}&counterpart_of={}&exclude_id={}\
+        "/api/v1/transactions?account_id={}&sign={}&closest_to={}&exclude_id={}\
          &in_transfer=false&has_splits=false&is_deleted=false",
-        account_id, reference.id, reference.id
+        account_id, opposite_sign, closest_to, reference.id
     );
     if let Some(s) = search {
         path.push_str(&format!("&search={}&limit=20", s));

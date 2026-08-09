@@ -91,7 +91,13 @@ export const ConvertToTransferModal = ({
     data: candidateData,
     isLoading: candidatesLoading,
     error: candidatesError,
-  } = useConvertCandidates(transactionId, transactionDate, counterpartId, debouncedSearch);
+  } = useConvertCandidates(
+    transactionId,
+    transactionAmount,
+    transactionDate,
+    counterpartId,
+    debouncedSearch
+  );
 
   const candidates = candidateData?.candidates ?? [];
   const total = candidateData?.total ?? 0;

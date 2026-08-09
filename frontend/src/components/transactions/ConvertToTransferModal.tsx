@@ -60,6 +60,9 @@ export const ConvertToTransferModal = ({
   const [selectedCandidateId, setSelectedCandidateId] = useState('');
   // Whether the user has switched to creating a brand-new counterpart leg.
   const [createNew, setCreateNew] = useState(false);
+  // Search stays hidden until asked for, so the common case (pick a suggestion)
+  // is one tap. Revealed by "Search this account instead".
+  const [showSearch, setShowSearch] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [counterpartAmount, setCounterpartAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState('');
@@ -120,6 +123,7 @@ export const ConvertToTransferModal = ({
   useEffect(() => {
     setSelectedCandidateId('');
     setCreateNew(false);
+    setShowSearch(false);
     setSearchInput('');
     setCounterpartAmount('');
     setExchangeRate('');
@@ -130,6 +134,7 @@ export const ConvertToTransferModal = ({
     setCounterpartId('');
     setSelectedCandidateId('');
     setCreateNew(false);
+    setShowSearch(false);
     setSearchInput('');
     setCounterpartAmount('');
     setExchangeRate('');
@@ -234,16 +239,30 @@ export const ConvertToTransferModal = ({
                 fall back to creating a new counterpart leg. */}
             {counterpart && !createNew && (
               <VStack align="stretch" gap={3}>
-                <Field
-                  label="Search this account"
-                  helperText="Leave blank to see suggestions near this transaction's date, or search by title or notes."
-                >
-                  <Input
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search existing transactions"
-                  />
-                </Field>
+                {/* Search stays hidden until asked for, so picking a suggestion
+                    is one tap. The reveal button doubles as the affordance. */}
+                {!showSearch ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    alignSelf="start"
+                    onClick={() => setShowSearch(true)}
+                  >
+                    Search this account instead
+                  </Button>
+                ) : (
+                  <Field
+                    label="Search this account"
+                    helperText="Search this account by title or notes to find a transaction outside the suggested window."
+                  >
+                    <Input
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      placeholder="Search existing transactions"
+                      autoFocus
+                    />
+                  </Field>
+                )}
 
                 {candidatesError && <ErrorAlert error={candidatesError} />}
 
@@ -265,6 +284,11 @@ export const ConvertToTransferModal = ({
                       const candidateAbs = Math.abs(Number(candidate.amount));
                       const gap = Math.abs(candidateAbs - originalAbs);
                       const isExact = gap < EXACT_EPSILON;
+                      // Direction tells him if this row is the right one: a fee
+                      // makes the received leg a little "less", a top-up "more".
+                      const gapLabel = `${formatCurrency(gap, counterpart.currency)} ${
+                        candidateAbs < originalAbs ? 'less' : 'more'
+                      }`;
                       const selected = selectedCandidateId === candidate.id;
                       return (
                         <Box
@@ -306,7 +330,7 @@ export const ConvertToTransferModal = ({
                                 </Badge>
                               ) : (
                                 <Badge colorPalette="orange" size="sm">
-                                  Off by {formatCurrency(gap, counterpart.currency)}
+                                  {gapLabel}
                                 </Badge>
                               )}
                             </VStack>

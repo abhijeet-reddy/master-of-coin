@@ -82,4 +82,8 @@ pub struct TransferInfo {
     pub transfer_id: Uuid,
     pub linked_account_id: Uuid,
     pub linked_account_name: String,
+    /// Signed amount of the LINKED (counterpart) leg, as a string to preserve
+    /// decimal precision. Combined with this transaction's own amount it lets
+    /// the UI show unequal-leg transfers (the delta) without another lookup.
+    pub linked_amount: String,
 }

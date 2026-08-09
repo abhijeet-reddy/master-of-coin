@@ -324,6 +324,40 @@ export const TransactionDetailCard = ({
                   {transaction.transfer_info.linked_account_name} ({transaction.account.currency})
                 </Badge>
               </HStack>
+
+              {/* Unequal-leg delta — only shown when the two legs differ.
+                  Positive = destination received more than the source sent
+                  (a discount/bonus); negative = a fee. Presentation only,
+                  derived from the two leg amounts. Equal transfers show nothing. */}
+              {(() => {
+                const thisAbs = Math.abs(amount);
+                const linkedAbs = Math.abs(parseFloat(transaction.transfer_info.linked_amount));
+                const sent = isExpense ? thisAbs : linkedAbs;
+                const received = isExpense ? linkedAbs : thisAbs;
+                const delta = received - sent;
+                if (Math.abs(delta) < 0.005) return null;
+                const isDiscount = delta > 0;
+                return (
+                  <HStack justify="space-between">
+                    <HStack gap={2} color="fg.muted">
+                      <Icon as={FiRepeat} />
+                      <Text fontSize="sm">Sent / received</Text>
+                    </HStack>
+                    <HStack gap={2}>
+                      <Text fontSize="sm" color="fg.muted">
+                        {formatCurrency(sent, transaction.account.currency)}
+                        {' → '}
+                        {formatCurrency(received, transaction.account.currency)}
+                      </Text>
+                      <Badge colorPalette={isDiscount ? 'green' : 'orange'} fontSize="sm">
+                        {isDiscount ? '+' : '-'}
+                        {formatCurrency(Math.abs(delta), transaction.account.currency)}{' '}
+                        {isDiscount ? 'discount' : 'fee'}
+                      </Badge>
+                    </HStack>
+                  </HStack>
+                );
+              })()}
             </VStack>
           </Card.Body>
         </Card.Root>

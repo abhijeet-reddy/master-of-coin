@@ -563,6 +563,12 @@ async fn test_list_transactions_includes_transfer_info() {
         "Savings Fund",
         "from-side transfer_info should have the savings account name"
     );
+    // linked_amount on the from-side is the TO leg (+250.00)
+    assert_eq!(
+        from_transfer_info["linked_amount"].as_str().unwrap(),
+        "250.00",
+        "from-side transfer_info.linked_amount should be the to-leg amount"
+    );
 
     // Find the to-side transaction (positive amount)
     let to_txn = transactions
@@ -590,6 +596,12 @@ async fn test_list_transactions_includes_transfer_info() {
         to_transfer_info["linked_account_name"].as_str().unwrap(),
         "Main Checking",
         "to-side transfer_info should have the checking account name"
+    );
+    // linked_amount on the to-side is the FROM leg (-250.00)
+    assert_eq!(
+        to_transfer_info["linked_amount"].as_str().unwrap(),
+        "-250.00",
+        "to-side transfer_info.linked_amount should be the from-leg amount"
     );
 }
 

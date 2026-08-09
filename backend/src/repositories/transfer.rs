@@ -212,7 +212,7 @@ pub async fn find_transfer_info_for_transactions(
 
         // Query 1: Find transfers where our transaction IDs appear as from_transaction_id.
         // The "linked" side is to_transaction_id → look up that transaction's account.
-        let from_side_matches: Vec<(Uuid, Uuid, Uuid, Uuid, String)> = transfers::table
+        let from_side_matches: Vec<(Uuid, Uuid, Uuid, String, BigDecimal)> = transfers::table
             .inner_join(transactions::table.on(transactions::id.eq(transfers::to_transaction_id)))
             .inner_join(accounts::table.on(accounts::id.eq(transactions::account_id)))
             .filter(transfers::from_transaction_id.eq_any(&ids))
@@ -220,8 +220,8 @@ pub async fn find_transfer_info_for_transactions(
                 transfers::id,
                 transfers::from_transaction_id,
                 transactions::account_id,
-                transactions::account_id, // duplicated for clarity; we use account fields
                 accounts::name,
+                transactions::amount, // the linked (counterpart) leg's amount
             ))
             .load(&mut conn)
             .map_err(|e| {
@@ -229,20 +229,23 @@ pub async fn find_transfer_info_for_transactions(
                 ApiError::from(e)
             })?;
 
-        for (transfer_id, txn_id, linked_account_id, _, linked_account_name) in from_side_matches {
+        for (transfer_id, txn_id, linked_account_id, linked_account_name, linked_amount) in
+            from_side_matches
+        {
             result.insert(
                 txn_id,
                 TransferInfo {
                     transfer_id,
                     linked_account_id,
                     linked_account_name,
+                    linked_amount: linked_amount.to_string(),
                 },
             );
         }
 
         // Query 2: Find transfers where our transaction IDs appear as to_transaction_id.
         // The "linked" side is from_transaction_id → look up that transaction's account.
-        let to_side_matches: Vec<(Uuid, Uuid, Uuid, Uuid, String)> = transfers::table
+        let to_side_matches: Vec<(Uuid, Uuid, Uuid, String, BigDecimal)> = transfers::table
             .inner_join(transactions::table.on(transactions::id.eq(transfers::from_transaction_id)))
             .inner_join(accounts::table.on(accounts::id.eq(transactions::account_id)))
             .filter(transfers::to_transaction_id.eq_any(&ids))
@@ -250,8 +253,8 @@ pub async fn find_transfer_info_for_transactions(
                 transfers::id,
                 transfers::to_transaction_id,
                 transactions::account_id,
-                transactions::account_id,
                 accounts::name,
+                transactions::amount, // the linked (counterpart) leg's amount
             ))
             .load(&mut conn)
             .map_err(|e| {
@@ -259,13 +262,16 @@ pub async fn find_transfer_info_for_transactions(
                 ApiError::from(e)
             })?;
 
-        for (transfer_id, txn_id, linked_account_id, _, linked_account_name) in to_side_matches {
+        for (transfer_id, txn_id, linked_account_id, linked_account_name, linked_amount) in
+            to_side_matches
+        {
             result.insert(
                 txn_id,
                 TransferInfo {
                     transfer_id,
                     linked_account_id,
                     linked_account_name,
+                    linked_amount: linked_amount.to_string(),
                 },
             );
         }

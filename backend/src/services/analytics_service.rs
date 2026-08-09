@@ -118,6 +118,7 @@ pub async fn get_spending_trend(
         limit: None,
         offset: None,
         is_deleted: None,
+        ..Default::default()
     };
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
@@ -182,6 +183,7 @@ pub async fn get_category_breakdown(
         limit: None,
         offset: None,
         is_deleted: None,
+        ..Default::default()
     };
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;
@@ -191,10 +193,8 @@ pub async fn get_category_breakdown(
     // excluded drop out of the breakdown entirely; NULL-category (uncategorised)
     // transactions are never excluded and still contribute.
     let categories = repositories::category::list_by_user(pool, user_id).await?;
-    let category_names: HashMap<Uuid, String> = categories
-        .iter()
-        .map(|c| (c.id, c.name.clone()))
-        .collect();
+    let category_names: HashMap<Uuid, String> =
+        categories.iter().map(|c| (c.id, c.name.clone())).collect();
     let excluded_categories: std::collections::HashSet<Uuid> = categories
         .iter()
         .filter(|c| c.is_excluded_from_analysis)
@@ -328,6 +328,7 @@ async fn get_recent_transactions(
         limit: Some(10), // TODO: Make recent transaction limit configurable
         offset: None,
         is_deleted: None,
+        ..Default::default()
     };
 
     let transactions = repositories::transaction::list_transactions(pool, user_id, filter).await?;

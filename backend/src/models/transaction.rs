@@ -175,7 +175,7 @@ fn validate_optional_amount_not_zero(amount: f64) -> Result<(), validator::Valid
 }
 
 // Filter for querying transactions (renamed from TransactionFilters to match mod.rs export)
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Clone, Default, Deserialize, Validate)]
 pub struct TransactionFilter {
     pub account_id: Option<Uuid>,
     pub category_id: Option<Uuid>,
@@ -205,6 +205,37 @@ pub struct TransactionFilter {
 
     /// Filter by soft-delete status (None or Some(false) = active, Some(true) = deleted)
     pub is_deleted: Option<bool>,
+
+    /// Exclude a single transaction by id (e.g. never return the row you are
+    /// finding a counterpart for). Generic.
+    pub exclude_id: Option<Uuid>,
+
+    /// Filter on transfer membership. Some(false) excludes rows already part of
+    /// a transfer (either leg); Some(true) keeps only those. Generic.
+    pub in_transfer: Option<bool>,
+
+    /// Filter on split presence. Some(false) excludes rows that have splits;
+    /// Some(true) keeps only those. Generic, and cheaper than a per-row lookup.
+    pub has_splits: Option<bool>,
+
+    /// Keep only rows of this amount sign: `positive` (credits) or `negative`
+    /// (debits). The convert picker passes the OPPOSITE sign to the transaction
+    /// being converted, computed client-side. Generic.
+    pub sign: Option<AmountSign>,
+
+    /// When set, order results by closeness of the absolute amount to this
+    /// value, in SQL so the ordering runs BEFORE the LIMIT and the cap keeps the
+    /// closest matches rather than the most recent ones. Generic.
+    pub closest_to: Option<f64>,
+}
+
+/// Amount-sign filter for the transactions list. Deserializes from the query
+/// string as `positive` / `negative`.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AmountSign {
+    Positive,
+    Negative,
 }
 
 /// Query parameters for the delete transaction endpoint

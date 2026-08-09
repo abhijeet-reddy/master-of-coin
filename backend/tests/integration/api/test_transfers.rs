@@ -938,8 +938,7 @@ async fn test_create_same_currency_transfer_unequal_legs() {
     )
     .await;
 
-    let from_account =
-        create_account_with_currency(&server, &auth.token, "T212 Card", "EUR").await;
+    let from_account = create_account_with_currency(&server, &auth.token, "T212 Card", "EUR").await;
     let to_account =
         create_account_with_currency(&server, &auth.token, "Tesco Gift Card", "EUR").await;
 
@@ -1040,8 +1039,7 @@ async fn test_convert_same_currency_unequal_counterpart() {
     let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
 
     // A -48.50 debit on source.
-    let txn =
-        create_normal_transaction(&server, &auth.token, source.id, -48.50, json!({})).await;
+    let txn = create_normal_transaction(&server, &auth.token, source.id, -48.50, json!({})).await;
 
     // Convert, with the destination leg receiving 50.00 (same currency).
     let request = json!({ "account_id": dest.id, "counterpart_amount": 50.00 });
@@ -1067,4 +1065,501 @@ async fn test_convert_same_currency_unequal_counterpart() {
         "destination balance should be 50.00, got {}",
         dest_balance
     );
+}
+
+// ============================================================================
+// Convert-to-transfer: LINK an existing counterpart (issue: convert-link)
+// ============================================================================
+
+/// Fetch convert candidates for a transaction against a counterpart account.
+/// Fetch the raw candidate response (capped list plus total match count).
+/// The candidate picker, expressed on the transactions list endpoint: a capped
+/// list of candidate transactions plus the true total from `X-Total-Count`.
+struct ConvertCandidates {
+    candidates: Vec<TransactionResponse>,
+    total: i64,
+}
+
+/// Query the transactions list for convert candidates, mirroring exactly what
+/// the frontend sends: `counterpart_of` (opposite sign + closest-amount order),
+/// the exclusions, a plus/minus one day window for suggestions, and the display
+/// cap. Returns the capped list and the honest total from the header.
+async fn get_convert_candidates_response(
+    server: &axum_test::TestServer,
+    token: &str,
+    reference: &TransactionResponse,
+    account_id: uuid::Uuid,
+    search: Option<&str>,
+) -> ConvertCandidates {
+    // Counterpart has the opposite sign; rank by closeness to the abs amount.
+    let ref_amount: f64 = reference.amount.parse().unwrap();
+    let opposite_sign = if ref_amount < 0.0 {
+        "positive"
+    } else {
+        "negative"
+    };
+    let closest_to = ref_amount.abs();
+    let mut path = format!(
+        "/api/v1/transactions?account_id={}&sign={}&closest_to={}&exclude_id={}\
+         &in_transfer=false&has_splits=false&is_deleted=false",
+        account_id, opposite_sign, closest_to, reference.id
+    );
+    if let Some(s) = search {
+        path.push_str(&format!("&search={}&limit=20", s));
+    } else {
+        // Suggestions: plus/minus one day around the reference date, cap 5.
+        let start = reference.date - chrono::Duration::days(1);
+        let end = reference.date + chrono::Duration::days(1);
+        path.push_str(&format!(
+            "&start_date={}&end_date={}&limit=5",
+            urlencoding::encode(&start.to_rfc3339()),
+            urlencoding::encode(&end.to_rfc3339()),
+        ));
+    }
+    let response = get_authenticated(server, &path, token).await;
+    assert_status(&response, 200);
+    let total: i64 = response
+        .maybe_header("x-total-count")
+        .map(|v| v.to_str().unwrap().parse().unwrap())
+        .unwrap_or(0);
+    let candidates: Vec<TransactionResponse> = extract_json(response);
+    ConvertCandidates { candidates, total }
+}
+
+/// Convenience wrapper returning just the displayed candidate list.
+async fn get_convert_candidates(
+    server: &axum_test::TestServer,
+    token: &str,
+    reference: &TransactionResponse,
+    account_id: uuid::Uuid,
+    search: Option<&str>,
+) -> Vec<TransactionResponse> {
+    get_convert_candidates_response(server, token, reference, account_id, search)
+        .await
+        .candidates
+}
+
+/// Link an existing counterpart via convert-to-transfer.
+async fn convert_linking(
+    server: &axum_test::TestServer,
+    token: &str,
+    transaction_id: uuid::Uuid,
+    account_id: uuid::Uuid,
+    counterpart_transaction_id: uuid::Uuid,
+) -> axum_test::TestResponse {
+    let request = json!({
+        "account_id": account_id,
+        "counterpart_transaction_id": counterpart_transaction_id,
+    });
+    post_authenticated(
+        server,
+        &format!(
+            "/api/v1/transactions/{}/convert-to-transfer",
+            transaction_id
+        ),
+        token,
+        &request,
+    )
+    .await
+}
+
+/// Suggestions: an opposite-sign, same-amount row within the window is a
+/// candidate, and linking it joins the two existing rows without creating a
+/// third. Balances are unchanged (both rows already existed).
+#[tokio::test]
+async fn test_convert_link_suggestion_found_and_links() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_sugg_{}", timestamp),
+        &format!("link_sugg_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Suggestion User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    // Both legs already exist as imported rows on the same day.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    let inc = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
+
+    // Suggestion appears.
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
+    assert_eq!(candidates.len(), 1, "should suggest the matching inflow");
+    assert_eq!(candidates[0].id, inc.id);
+
+    // Link it.
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+    assert_eq!(transfer.from_transaction.id, out.id);
+    assert_eq!(transfer.to_transaction.id, inc.id);
+    assert_eq!(transfer.from_transaction.amount, "-100.00");
+    assert_eq!(transfer.to_transaction.amount, "100.00");
+
+    // No third row was created: still exactly 2 transactions on the ledger.
+    let list = get_authenticated(&server, "/api/v1/transactions", &auth.token).await;
+    let txns: Vec<serde_json::Value> = extract_json(list);
+    assert_eq!(txns.len(), 2, "linking must not create a third transaction");
+}
+
+/// The linked row's category and notes are NOT mutated by linking.
+#[tokio::test]
+async fn test_convert_link_preserves_counterpart_category_and_notes() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_pres_{}", timestamp),
+        &format!("link_pres_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Preserve User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let category = create_test_category(&server, &auth.token, "Groceries").await;
+
+    // Counterpart has its own hand-set category and notes.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -60.0, json!({})).await;
+    let inc = create_normal_transaction(
+        &server,
+        &auth.token,
+        dest.id,
+        60.0,
+        json!({ "notes": "hand set note", "category_id": category.id }),
+    )
+    .await;
+
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&response, 201);
+
+    // Re-fetch the counterpart; its category, notes and amount all survive.
+    let get = get_authenticated(
+        &server,
+        &format!("/api/v1/transactions/{}", inc.id),
+        &auth.token,
+    )
+    .await;
+    assert_status(&get, 200);
+    let fetched: TransactionResponse = extract_json(get);
+    assert_eq!(
+        fetched.notes.as_deref(),
+        Some("hand set note"),
+        "linking must not overwrite the counterpart's notes"
+    );
+    assert_eq!(
+        fetched.category_id,
+        Some(category.id),
+        "linking must not overwrite the counterpart's category"
+    );
+    assert_eq!(fetched.amount, "60.00", "counterpart keeps its own amount");
+}
+
+/// The same counterpart row cannot be linked into two transfers. The second
+/// submit is rejected and no second transfers row is created (double-link guard
+/// on the submit path).
+#[tokio::test]
+async fn test_convert_link_double_link_rejected() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_dbl_{}", timestamp),
+        &format!("link_dbl_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Double User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let source2 = create_account_with_currency(&server, &auth.token, "EUR Source2", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -30.0, json!({})).await;
+    let inc = create_normal_transaction(&server, &auth.token, dest.id, 30.0, json!({})).await;
+    let out2 = create_normal_transaction(&server, &auth.token, source2.id, -30.0, json!({})).await;
+
+    // First link succeeds.
+    let r1 = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&r1, 201);
+
+    // Second attempt to link the SAME counterpart (inc) from a different source
+    // must be rejected.
+    let r2 = convert_linking(&server, &auth.token, out2.id, dest.id, inc.id).await;
+    assert_status(&r2, 422);
+}
+
+/// Search finds an out-of-window opposite-sign row that suggestions exclude.
+#[tokio::test]
+async fn test_convert_link_search_finds_out_of_window() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_search_{}", timestamp),
+        &format!("link_search_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Search User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let now = Utc::now();
+    let out = create_normal_transaction(
+        &server,
+        &auth.token,
+        source.id,
+        -75.0,
+        json!({ "date": now.to_rfc3339() }),
+    )
+    .await;
+    // Counterpart is 5 days earlier and a different amount: outside the window
+    // and not amount-matched, so NOT a suggestion.
+    let far = create_normal_transaction(
+        &server,
+        &auth.token,
+        dest.id,
+        70.0,
+        json!({ "title": "Zebra Payout", "date": (now - chrono::Duration::days(5)).to_rfc3339() }),
+    )
+    .await;
+
+    // Suggestions do not include it.
+    let suggestions = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
+    assert!(
+        !suggestions.iter().any(|c| c.id == far.id),
+        "out-of-window row must not be a suggestion"
+    );
+
+    // Search by title finds it.
+    let results = get_convert_candidates(&server, &auth.token, &out, dest.id, Some("Zebra")).await;
+    assert!(
+        results.iter().any(|c| c.id == far.id),
+        "search should find the out-of-window opposite-sign row"
+    );
+
+    // And it can be linked (unequal legs allowed, per #67).
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, far.id).await;
+    assert_status(&response, 201);
+}
+
+/// Search excludes a same-sign row, a soft-deleted row, and an already-linked
+/// row.
+#[tokio::test]
+async fn test_convert_candidates_exclusions() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_excl_{}", timestamp),
+        &format!("link_excl_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Exclusions User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
+
+    // Same-sign row in dest (also an outflow) must never be a candidate.
+    let same_sign =
+        create_normal_transaction(&server, &auth.token, dest.id, -50.0, json!({})).await;
+    // A valid opposite-sign candidate.
+    let good = create_normal_transaction(&server, &auth.token, dest.id, 50.0, json!({})).await;
+
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
+    assert!(
+        candidates.iter().any(|c| c.id == good.id),
+        "opposite-sign match should be a candidate"
+    );
+    assert!(
+        !candidates.iter().any(|c| c.id == same_sign.id),
+        "same-sign row must be excluded"
+    );
+
+    // Link `good`, then it must no longer appear as a candidate for another txn.
+    let out2 = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
+    let r = convert_linking(&server, &auth.token, out.id, dest.id, good.id).await;
+    assert_status(&r, 201);
+    let after = get_convert_candidates(&server, &auth.token, &out2, dest.id, None).await;
+    assert!(
+        !after.iter().any(|c| c.id == good.id),
+        "an already-linked row must be excluded from candidates"
+    );
+}
+
+/// Near-miss suggestion: a fee means the counterpart amount differs slightly
+/// (50.00 sent, 49.87 received). It must STILL be suggested (no exact-amount
+/// filter), and linkable.
+#[tokio::test]
+async fn test_convert_link_suggestion_includes_near_miss() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_near_{}", timestamp),
+        &format!("link_near_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Near Miss User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "Revolut", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "AIB", "EUR").await;
+
+    // 50.00 leaves, 49.87 arrives after a fee, same day.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
+    let near = create_normal_transaction(&server, &auth.token, dest.id, 49.87, json!({})).await;
+
+    // Suggested despite the 0.13 gap.
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
+    assert!(
+        candidates.iter().any(|c| c.id == near.id),
+        "a near-miss (fee) opposite-sign row must still be suggested"
+    );
+
+    // And linkable, producing unequal legs.
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, near.id).await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+    assert_eq!(transfer.from_transaction.amount, "-50.00");
+    assert_eq!(transfer.to_transaction.amount, "49.87");
+}
+
+/// Closest-amount-first ordering: when several opposite-sign rows sit in the
+/// window, the exact match is ranked ahead of a near-miss.
+#[tokio::test]
+async fn test_convert_candidates_sorted_closest_amount_first() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_sort_{}", timestamp),
+        &format!("link_sort_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Sort User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    // A near-miss and an exact match, both opposite sign, both in window.
+    let _near = create_normal_transaction(&server, &auth.token, dest.id, 90.0, json!({})).await;
+    let exact = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
+
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
+    assert!(candidates.len() >= 2, "both rows should be candidates");
+    assert_eq!(
+        candidates[0].id, exact.id,
+        "the exact-amount match should be ranked first"
+    );
+}
+
+/// Double-link guard also holds when the already-linked row is the FROM (source)
+/// leg of the first transfer, not just the TO leg.
+#[tokio::test]
+async fn test_convert_link_double_link_rejected_from_side() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_dblf_{}", timestamp),
+        &format!("link_dblf_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Double From User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let dest2 = create_account_with_currency(&server, &auth.token, "EUR Dest2", "EUR").await;
+
+    // First transfer: `out` (a -40 source) linked to `inc` in dest.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -40.0, json!({})).await;
+    let inc = create_normal_transaction(&server, &auth.token, dest.id, 40.0, json!({})).await;
+    let inc2 = create_normal_transaction(&server, &auth.token, dest2.id, 40.0, json!({})).await;
+
+    let r1 = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&r1, 201);
+
+    // `out` is now the FROM leg of a transfer. Converting inc2 and trying to
+    // link `out` as its counterpart must be rejected.
+    let r2 = convert_linking(&server, &auth.token, inc2.id, source.id, out.id).await;
+    assert_status(&r2, 422);
+}
+
+/// Suggestions are capped at 5, but the response reports the TRUE total so the
+/// UI can say "showing 5 of N". With 8 opposite-sign rows in the window, the
+/// displayed list is 5 and total is 8.
+#[tokio::test]
+async fn test_convert_candidates_capped_with_total() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_cap_{}", timestamp),
+        &format!("link_cap_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Cap User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    // A -100 debit to convert; 8 opposite-sign (positive) rows on dest, all
+    // today so they sit inside the plus/minus one day suggestion window.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    for i in 0..8 {
+        let amount = 100.0 + i as f64; // 100..107, distinct so ordering is stable
+        create_normal_transaction(&server, &auth.token, dest.id, amount, json!({})).await;
+    }
+
+    let response = get_convert_candidates_response(&server, &auth.token, &out, dest.id, None).await;
+    assert_eq!(response.total, 8, "total must be the true match count");
+    assert_eq!(
+        response.candidates.len(),
+        5,
+        "suggestions must be capped at 5"
+    );
+    // Closest amount (100.00, gap 0) must still lead despite the cap.
+    assert_eq!(response.candidates[0].amount, "100.00");
+}
+
+/// When the match count is within the cap, total equals the list length (the
+/// UI shows no "of N" line in that case).
+#[tokio::test]
+async fn test_convert_candidates_total_equals_len_when_not_capped() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_nocap_{}", timestamp),
+        &format!("link_nocap_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link No Cap User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
+    create_normal_transaction(&server, &auth.token, dest.id, 101.0, json!({})).await;
+
+    let response = get_convert_candidates_response(&server, &auth.token, &out, dest.id, None).await;
+    assert_eq!(response.total, 2);
+    assert_eq!(response.candidates.len(), 2);
 }

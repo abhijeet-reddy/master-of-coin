@@ -306,6 +306,31 @@ pub async fn list_transactions(
     Ok(responses)
 }
 
+/// Count transactions matching `filters`, honouring the same ownership checks
+/// as [`list_transactions`] but ignoring pagination. Used to report an honest
+/// total (e.g. "showing 5 of 12") that is NOT subject to the list's 100-row cap.
+pub async fn count_transactions(
+    pool: &DbPool,
+    user_id: Uuid,
+    filters: TransactionFilter,
+) -> Result<i64, ApiError> {
+    filters.validate().map_err(|e| {
+        tracing::warn!("Transaction filter validation failed: {}", e);
+        ApiError::Validation(e.to_string())
+    })?;
+
+    if let Some(account_id) = filters.account_id {
+        let account = repositories::account::find_by_id(pool, account_id).await?;
+        if account.user_id != user_id {
+            return Err(ApiError::Unauthorized(
+                "Account does not belong to user".to_string(),
+            ));
+        }
+    }
+
+    repositories::transaction::count_transactions(pool, user_id, filters).await
+}
+
 /// Update a transaction
 pub async fn update_transaction(
     pool: &DbPool,

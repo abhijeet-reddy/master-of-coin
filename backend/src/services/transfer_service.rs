@@ -8,6 +8,8 @@ use crate::{
     errors::ApiError,
     models::{
         NewTransaction, TransactionResponse,
+        account::Account,
+        transaction::Transaction,
         transfer::{ConvertToTransferRequest, CreateTransferRequest, TransferResponse},
     },
     repositories,
@@ -244,7 +246,8 @@ pub async fn convert_transaction_to_transfer(
     }
 
     // 4. Refuse if the transaction has splits (a split cannot become a transfer).
-    let splits = repositories::transaction::list_splits_for_transaction(pool, transaction_id).await?;
+    let splits =
+        repositories::transaction::list_splits_for_transaction(pool, transaction_id).await?;
     if !splits.is_empty() {
         return Err(ApiError::Validation(
             "Cannot convert a transaction with splits into a transfer. Remove the splits first."
@@ -282,6 +285,21 @@ pub async fn convert_transaction_to_transfer(
 
     // 7. Direction from sign. `original_is_source` == original amount is negative.
     let original_is_source = original.amount < zero;
+
+    // 7b. LINK PATH: if the caller chose an existing counterpart transaction,
+    // link the two rows instead of creating a new leg. Neither row is mutated.
+    if let Some(counterpart_txn_id) = request.counterpart_transaction_id {
+        return link_existing_counterpart(
+            pool,
+            user_id,
+            &original,
+            original_is_source,
+            &original_account,
+            &counterpart_account,
+            counterpart_txn_id,
+        )
+        .await;
+    }
 
     // 8. Resolve the counterpart leg's amount (and the transfer's exchange rate).
     // The original leg keeps its own signed amount; the new leg gets the opposite sign.
@@ -388,6 +406,119 @@ pub async fn convert_transaction_to_transfer(
         (original_response, new_response)
     } else {
         (new_response, original_response)
+    };
+
+    Ok(TransferResponse {
+        id: transfer.id,
+        from_transaction: from_response,
+        to_transaction: to_response,
+        exchange_rate: format!("{}", transfer.exchange_rate),
+        created_at: transfer.created_at,
+    })
+}
+
+/// Link an EXISTING counterpart transaction as the other leg of a transfer,
+/// instead of creating a new one. Both rows keep their own amount/category/
+/// notes/title/date; only the joining `transfers` row is inserted.
+///
+/// Re-validates the chosen counterpart at submit time (it could have changed
+/// since the candidate search): must be owned by the user, sit in the chosen
+/// counterpart account, have the opposite sign to the original, not be
+/// soft-deleted, not already belong to a transfer, and not have splits.
+async fn link_existing_counterpart(
+    pool: &DbPool,
+    user_id: Uuid,
+    original: &Transaction,
+    original_is_source: bool,
+    original_account: &Account,
+    counterpart_account: &Account,
+    counterpart_txn_id: Uuid,
+) -> Result<TransferResponse, ApiError> {
+    if counterpart_txn_id == original.id {
+        return Err(ApiError::Validation(
+            "Cannot link a transaction to itself".to_string(),
+        ));
+    }
+
+    // Load and validate the chosen counterpart (find_by_id excludes soft-deleted).
+    let counterpart = repositories::transaction::find_by_id(pool, counterpart_txn_id)
+        .await?
+        .transaction;
+    if counterpart.user_id != user_id {
+        return Err(ApiError::Unauthorized(
+            "Counterpart transaction does not belong to user".to_string(),
+        ));
+    }
+    if counterpart.account_id != counterpart_account.id {
+        return Err(ApiError::Validation(
+            "Counterpart transaction is not in the chosen account".to_string(),
+        ));
+    }
+
+    // Opposite sign is mandatory: two outflows (or two inflows) are not a transfer.
+    let zero = BigDecimal::from(0);
+    let counterpart_is_source = counterpart.amount < zero;
+    if counterpart.amount == zero || counterpart_is_source == original_is_source {
+        return Err(ApiError::Validation(
+            "Counterpart transaction must have the opposite sign to the original".to_string(),
+        ));
+    }
+
+    // Reject if the counterpart already belongs to a transfer.
+    if repositories::transfer::find_transfer_by_transaction_id(pool, counterpart_txn_id)
+        .await?
+        .is_some()
+    {
+        return Err(ApiError::Validation(
+            "Counterpart transaction is already part of a transfer".to_string(),
+        ));
+    }
+
+    // Reject if the counterpart has splits.
+    let splits =
+        repositories::transaction::list_splits_for_transaction(pool, counterpart_txn_id).await?;
+    if !splits.is_empty() {
+        return Err(ApiError::Validation(
+            "Cannot link a transaction with splits into a transfer".to_string(),
+        ));
+    }
+
+    // Assign from/to slots by the ORIGINAL's direction. The original keeps its
+    // side; the counterpart takes the opposite. The legs keep their own amounts,
+    // so no rate is computed here; store 1.0 as the marker, matching the
+    // same-currency create path. The delta display reads the two real amounts.
+    let (from_id, to_id) = if original_is_source {
+        (original.id, counterpart.id)
+    } else {
+        (counterpart.id, original.id)
+    };
+
+    let exchange_rate_bd = BigDecimal::from(1);
+    let transfer = repositories::transfer::link_existing_transactions_atomic(
+        pool,
+        from_id,
+        to_id,
+        exchange_rate_bd,
+    )
+    .await?;
+
+    tracing::info!(
+        "Linked transaction {} to existing transaction {} as transfer {} for user {}",
+        original.id,
+        counterpart.id,
+        transfer.id,
+        user_id
+    );
+
+    let _ = original_account; // kept for symmetry with the create-path signature
+
+    // Build the response with legs in from/to order.
+    let original_response = TransactionResponse::from(original.clone());
+    let counterpart_response = TransactionResponse::from(counterpart);
+    let (from_response, to_response) = if original_is_source {
+        (original_response, counterpart_response)
+    } else {
+        (counterpart_response, original_response)
     };
 
     Ok(TransferResponse {

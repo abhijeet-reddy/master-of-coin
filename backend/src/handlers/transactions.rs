@@ -18,17 +18,33 @@ use uuid::Uuid;
 
 /// List transactions with optional filters
 /// GET /transactions
+///
+/// Every response carries an `X-Total-Count` header with the total number of
+/// matches for the given filters BEFORE the list cap, so any caller can tell
+/// how many pages exist (this is the missing half of the endpoint's existing
+/// limit/offset pagination). The response BODY is unchanged: still a bare array,
+/// so existing callers keep working and simply ignore the header.
 pub async fn list(
     State(state): State<AppState>,
     Extension(auth_context): Extension<AuthContext>,
     Query(filters): Query<TransactionFilter>,
-) -> Result<Json<Vec<TransactionResponse>>, ApiError> {
+) -> Result<axum::response::Response, ApiError> {
     let user_id = auth_context.user_id();
     tracing::info!("Listing transactions for user {}", user_id);
 
+    // The total uses the SAME filters as the list (via the shared repo helper),
+    // and is uncapped, so "N" in "showing 5 of N" is the true match count rather
+    // than a post-cap figure.
+    let total =
+        transaction_service::count_transactions(&state.db, user_id, filters.clone()).await?;
+
     let transactions = transaction_service::list_transactions(&state.db, user_id, filters).await?;
 
-    Ok(Json(transactions))
+    let mut response = Json(transactions).into_response();
+    if let Ok(value) = total.to_string().parse() {
+        response.headers_mut().insert("X-Total-Count", value);
+    }
+    Ok(response)
 }
 
 /// Create a new transaction

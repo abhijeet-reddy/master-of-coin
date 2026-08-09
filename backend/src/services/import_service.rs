@@ -83,6 +83,7 @@ pub async fn check_duplicates(
             limit: Some(1000),
             offset: None,
             is_deleted: None,
+            ..Default::default()
         },
     )
     .await?;

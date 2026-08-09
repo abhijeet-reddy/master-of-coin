@@ -125,6 +125,118 @@ pub async fn join_transaction_into_transfer_atomic(
     })?
 }
 
+/// Return the subset of the given transaction IDs that already belong to a
+/// transfer (as either the from or to leg). Used to exclude already-linked
+/// rows from convert-to-transfer candidate results.
+pub async fn transaction_ids_in_transfers(
+    pool: &DbPool,
+    transaction_ids: &[Uuid],
+) -> Result<std::collections::HashSet<Uuid>, ApiError> {
+    if transaction_ids.is_empty() {
+        return Ok(std::collections::HashSet::new());
+    }
+    let ids = transaction_ids.to_vec();
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        let rows: Vec<(Uuid, Uuid)> = transfers::table
+            .filter(
+                transfers::from_transaction_id
+                    .eq_any(&ids)
+                    .or(transfers::to_transaction_id.eq_any(&ids)),
+            )
+            .select((transfers::from_transaction_id, transfers::to_transaction_id))
+            .load(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to query transaction ids in transfers: {}", e);
+                ApiError::from(e)
+            })?;
+
+        let requested: std::collections::HashSet<Uuid> = ids.into_iter().collect();
+        let mut linked = std::collections::HashSet::new();
+        for (from_id, to_id) in rows {
+            if requested.contains(&from_id) {
+                linked.insert(from_id);
+            }
+            if requested.contains(&to_id) {
+                linked.insert(to_id);
+            }
+        }
+        Ok(linked)
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Atomically link two EXISTING transactions into a transfer by inserting only
+/// the joining `transfers` row. Neither transaction is mutated.
+///
+/// Inside the DB transaction it re-checks that NEITHER leg already belongs to a
+/// transfer and fails with a validation error if so, closing the race/stale-UI
+/// window where a row could be linked into two transfers between the candidate
+/// search and this submit.
+pub async fn link_existing_transactions_atomic(
+    pool: &DbPool,
+    from_transaction_id: Uuid,
+    to_transaction_id: Uuid,
+    exchange_rate: BigDecimal,
+) -> Result<Transfer, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        conn.transaction(|conn| {
+            // Re-check both legs are still unlinked, inside the transaction.
+            let already: i64 = transfers::table
+                .filter(
+                    transfers::from_transaction_id
+                        .eq(from_transaction_id)
+                        .or(transfers::to_transaction_id.eq(from_transaction_id))
+                        .or(transfers::from_transaction_id.eq(to_transaction_id))
+                        .or(transfers::to_transaction_id.eq(to_transaction_id)),
+                )
+                .count()
+                .get_result(conn)?;
+            if already > 0 {
+                // Surface as a rollback with a recognisable error.
+                return Err(diesel::result::Error::RollbackTransaction);
+            }
+
+            let new_transfer = NewTransfer {
+                from_transaction_id,
+                to_transaction_id,
+                exchange_rate,
+            };
+            let transfer: Transfer = diesel::insert_into(transfers::table)
+                .values(&new_transfer)
+                .get_result(conn)?;
+            Ok(transfer)
+        })
+        .map_err(|e: diesel::result::Error| match e {
+            diesel::result::Error::RollbackTransaction => ApiError::Validation(
+                "One of the transactions is already part of a transfer".to_string(),
+            ),
+            other => {
+                tracing::error!("Failed to link transactions into transfer: {}", other);
+                ApiError::from(other)
+            }
+        })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
 /// Find a transfer by either of its linked transaction IDs.
 ///
 /// Returns `None` if the transaction is not part of a transfer.

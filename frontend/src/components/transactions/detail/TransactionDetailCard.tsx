@@ -363,8 +363,7 @@ export const TransactionDetailCard = ({
                         {isDiscount ? 'Discount' : 'Fee'}
                       </Text>
                       <Badge colorPalette={isDiscount ? 'green' : 'orange'} fontSize="sm">
-                        {formatCurrency(Math.abs(delta), transaction.account.currency)}{' '}
-                        {isDiscount ? 'discount' : 'fee'}
+                        {formatCurrency(Math.abs(delta), transaction.account.currency)}
                       </Badge>
                     </HStack>
                   </VStack>

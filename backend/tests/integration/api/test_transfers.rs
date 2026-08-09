@@ -1176,22 +1176,23 @@ async fn test_convert_link_preserves_counterpart_category_and_notes() {
 
     let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
     let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let category = create_test_category(&server, &auth.token, "Groceries").await;
 
-    // Counterpart has its own notes.
+    // Counterpart has its own hand-set category and notes.
     let out = create_normal_transaction(&server, &auth.token, source.id, -60.0, json!({})).await;
     let inc = create_normal_transaction(
         &server,
         &auth.token,
         dest.id,
         60.0,
-        json!({ "notes": "hand set note" }),
+        json!({ "notes": "hand set note", "category_id": category.id }),
     )
     .await;
 
     let response = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
     assert_status(&response, 201);
 
-    // Re-fetch the counterpart; its notes survive.
+    // Re-fetch the counterpart; its category, notes and amount all survive.
     let get = get_authenticated(
         &server,
         &format!("/api/v1/transactions/{}", inc.id),
@@ -1204,6 +1205,11 @@ async fn test_convert_link_preserves_counterpart_category_and_notes() {
         fetched.notes.as_deref(),
         Some("hand set note"),
         "linking must not overwrite the counterpart's notes"
+    );
+    assert_eq!(
+        fetched.category_id,
+        Some(category.id),
+        "linking must not overwrite the counterpart's category"
     );
     assert_eq!(fetched.amount, "60.00", "counterpart keeps its own amount");
 }
@@ -1347,4 +1353,106 @@ async fn test_convert_candidates_exclusions() {
         !after.iter().any(|c| c.id == good.id),
         "an already-linked row must be excluded from candidates"
     );
+}
+
+/// Near-miss suggestion: a fee means the counterpart amount differs slightly
+/// (50.00 sent, 49.87 received). It must STILL be suggested (no exact-amount
+/// filter), and linkable.
+#[tokio::test]
+async fn test_convert_link_suggestion_includes_near_miss() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_near_{}", timestamp),
+        &format!("link_near_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Near Miss User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "Revolut", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "AIB", "EUR").await;
+
+    // 50.00 leaves, 49.87 arrives after a fee, same day.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
+    let near = create_normal_transaction(&server, &auth.token, dest.id, 49.87, json!({})).await;
+
+    // Suggested despite the 0.13 gap.
+    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    assert!(
+        candidates.iter().any(|c| c.id == near.id),
+        "a near-miss (fee) opposite-sign row must still be suggested"
+    );
+
+    // And linkable, producing unequal legs.
+    let response = convert_linking(&server, &auth.token, out.id, dest.id, near.id).await;
+    assert_status(&response, 201);
+    let transfer: TransferResponse = extract_json(response);
+    assert_eq!(transfer.from_transaction.amount, "-50.00");
+    assert_eq!(transfer.to_transaction.amount, "49.87");
+}
+
+/// Closest-amount-first ordering: when several opposite-sign rows sit in the
+/// window, the exact match is ranked ahead of a near-miss.
+#[tokio::test]
+async fn test_convert_candidates_sorted_closest_amount_first() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_sort_{}", timestamp),
+        &format!("link_sort_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Sort User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+
+    let out = create_normal_transaction(&server, &auth.token, source.id, -100.0, json!({})).await;
+    // A near-miss and an exact match, both opposite sign, both in window.
+    let _near = create_normal_transaction(&server, &auth.token, dest.id, 90.0, json!({})).await;
+    let exact = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
+
+    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    assert!(candidates.len() >= 2, "both rows should be candidates");
+    assert_eq!(
+        candidates[0].id, exact.id,
+        "the exact-amount match should be ranked first"
+    );
+}
+
+/// Double-link guard also holds when the already-linked row is the FROM (source)
+/// leg of the first transfer, not just the TO leg.
+#[tokio::test]
+async fn test_convert_link_double_link_rejected_from_side() {
+    let server = create_test_server().await;
+    let timestamp = Utc::now().timestamp_nanos_opt().unwrap();
+    let auth = register_test_user(
+        &server,
+        &format!("link_dblf_{}", timestamp),
+        &format!("link_dblf_{}@example.com", timestamp),
+        "SecurePass123!",
+        "Link Double From User",
+    )
+    .await;
+
+    let source = create_account_with_currency(&server, &auth.token, "EUR Source", "EUR").await;
+    let dest = create_account_with_currency(&server, &auth.token, "EUR Dest", "EUR").await;
+    let dest2 = create_account_with_currency(&server, &auth.token, "EUR Dest2", "EUR").await;
+
+    // First transfer: `out` (a -40 source) linked to `inc` in dest.
+    let out = create_normal_transaction(&server, &auth.token, source.id, -40.0, json!({})).await;
+    let inc = create_normal_transaction(&server, &auth.token, dest.id, 40.0, json!({})).await;
+    let inc2 = create_normal_transaction(&server, &auth.token, dest2.id, 40.0, json!({})).await;
+
+    let r1 = convert_linking(&server, &auth.token, out.id, dest.id, inc.id).await;
+    assert_status(&r1, 201);
+
+    // `out` is now the FROM leg of a transfer. Converting inc2 and trying to
+    // link `out` as its counterpart must be rejected.
+    let r2 = convert_linking(&server, &auth.token, inc2.id, source.id, out.id).await;
+    assert_status(&r2, 422);
 }

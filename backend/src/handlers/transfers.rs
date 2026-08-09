@@ -21,8 +21,9 @@ pub struct ConvertCandidatesQuery {
     /// The counterpart account to search within.
     pub account_id: Uuid,
     /// Optional text search (title or notes). When omitted, returns suggestions
-    /// (opposite sign, exact amount, within plus or minus one day). When
-    /// present, searches the whole account with the window relaxed.
+    /// (opposite-sign rows within plus or minus one day, closest amount first,
+    /// including near-misses like fee-adjusted amounts). When present, searches
+    /// the whole account with the day window relaxed.
     pub search: Option<String>,
 }
 

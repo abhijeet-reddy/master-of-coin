@@ -536,15 +536,17 @@ async fn link_existing_counterpart(
 /// as the other leg when converting `transaction_id`.
 ///
 /// Two modes:
-/// - Suggestions (search = None): opposite sign, exact absolute amount, within
-///   plus or minus one day of the original's date (inclusive), sorted by date
-///   closeness. The fast path.
+/// - Suggestions (search = None): opposite sign, within plus or minus one day
+///   of the original's date (inclusive), sorted closest-amount-first. Amount is
+///   NOT filtered, so a near-miss (e.g. 50.00 sent, 49.87 received after a fee)
+///   is still suggested; the UI marks exact matches and shows the gap on the
+///   rest. The fast path.
 /// - Search (search = Some): same account, any amount, any date, text match on
 ///   title or notes. The escape hatch.
 ///
 /// Both modes apply the SAME exclusions: not soft-deleted, not already in a
 /// transfer, no splits, not the original, and opposite sign only. Search relaxes
-/// only the amount and date window, nothing else.
+/// only the date window, nothing else.
 pub async fn find_convert_candidates(
     pool: &DbPool,
     user_id: Uuid,
@@ -574,21 +576,16 @@ pub async fn find_convert_candidates(
     let original_abs_f64 = f64::from_str(&original_abs.to_string()).unwrap_or(0.0);
     let is_search = search.is_some();
 
-    // Suggestions constrain amount + date; search leaves them open. The plus or
-    // minus one day window is applied to the original's timestamp.
-    let (start_date, end_date, min_amount, max_amount): (
-        Option<DateTime<Utc>>,
-        Option<DateTime<Utc>>,
-        Option<f64>,
-        Option<f64>,
-    ) = if is_search {
-        (None, None, None, None)
+    // Suggestions constrain the DATE window only; they do NOT filter by amount,
+    // so a near-miss (e.g. 50.00 sent, 49.87 received after a fee) is still
+    // shown. Results are sorted closest-amount-first below, and the UI marks the
+    // exact matches and shows the gap on the rest. Search leaves date open too.
+    let (start_date, end_date): (Option<DateTime<Utc>>, Option<DateTime<Utc>>) = if is_search {
+        (None, None)
     } else {
         (
             Some(original.date - Duration::days(1)),
             Some(original.date + Duration::days(1)),
-            Some(original_abs_f64),
-            Some(original_abs_f64),
         )
     };
 
@@ -598,8 +595,8 @@ pub async fn find_convert_candidates(
         start_date,
         end_date,
         person_id: None,
-        min_amount,
-        max_amount,
+        min_amount: None,
+        max_amount: None,
         search,
         limit: Some(1000),
         offset: None,
@@ -612,7 +609,7 @@ pub async fn find_convert_candidates(
     let ids: Vec<Uuid> = rows.iter().map(|r| r.transaction.id).collect();
     let already_linked = repositories::transfer::transaction_ids_in_transfers(pool, &ids).await?;
 
-    let mut candidates: Vec<(TransferCandidate, i64)> = Vec::new();
+    let mut candidates: Vec<(TransferCandidate, f64)> = Vec::new();
     for row in rows {
         let txn = row.transaction;
         if txn.id == original.id {
@@ -634,7 +631,10 @@ pub async fn find_convert_candidates(
         if !splits.is_empty() {
             continue;
         }
-        let closeness = (txn.date - original.date).num_seconds().abs();
+        // Rank by how close the counterpart's absolute amount is to the
+        // original's, so the most likely match (exact, then near-miss) is first.
+        let txn_abs_f64 = f64::from_str(&txn.amount.abs().to_string()).unwrap_or(f64::MAX);
+        let amount_gap = (txn_abs_f64 - original_abs_f64).abs();
         candidates.push((
             TransferCandidate {
                 id: txn.id,
@@ -642,11 +642,11 @@ pub async fn find_convert_candidates(
                 amount: format!("{}", txn.amount),
                 date: txn.date,
             },
-            closeness,
+            amount_gap,
         ));
     }
 
-    // Sort by date closeness so the most likely match is first.
-    candidates.sort_by_key(|(_, closeness)| *closeness);
+    // Sort closest-amount-first: exact matches lead, near-misses follow.
+    candidates.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     Ok(candidates.into_iter().map(|(c, _)| c).collect())
 }

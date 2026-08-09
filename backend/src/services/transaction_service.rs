@@ -219,7 +219,7 @@ pub async fn get_transaction(
 pub async fn list_transactions(
     pool: &DbPool,
     user_id: Uuid,
-    filters: TransactionFilter,
+    mut filters: TransactionFilter,
 ) -> Result<Vec<TransactionResponse>, ApiError> {
     // Validate filters
     filters.validate().map_err(|e| {
@@ -245,6 +245,27 @@ pub async fn list_transactions(
                 "Category does not belong to user".to_string(),
             ));
         }
+    }
+
+    // Resolve `counterpart_of` into the sign + closest-amount ordering the
+    // repository understands. The referenced transaction is the leg being
+    // converted; a candidate counterpart must have the OPPOSITE sign, and the
+    // list is ranked by closeness of the absolute amount to it. Doing this here
+    // keeps the client from supplying (and possibly drifting) the sign/amount.
+    if let Some(counterpart_of) = filters.counterpart_of {
+        let reference = repositories::transaction::find_by_id(pool, counterpart_of)
+            .await?
+            .transaction;
+        if reference.user_id != user_id {
+            return Err(ApiError::Unauthorized(
+                "Transaction does not belong to user".to_string(),
+            ));
+        }
+        let zero = bigdecimal::BigDecimal::from(0);
+        // Opposite sign: a debit's counterpart is a credit and vice versa.
+        filters.require_amount_positive = Some(reference.amount < zero);
+        let abs = reference.amount.abs();
+        filters.closest_to_abs = Some(std::str::FromStr::from_str(&abs.to_string()).unwrap_or(0.0));
     }
 
     // Determine if we're listing soft-deleted transactions (for permanent_delete_at computation)
@@ -304,6 +325,47 @@ pub async fn list_transactions(
     }
 
     Ok(responses)
+}
+
+/// Count transactions matching `filters`, honouring the same `counterpart_of`
+/// resolution and ownership checks as [`list_transactions`] but ignoring
+/// pagination. Used to report an honest total (e.g. "showing 5 of 12") that is
+/// NOT subject to the list's 100-row cap.
+pub async fn count_transactions(
+    pool: &DbPool,
+    user_id: Uuid,
+    mut filters: TransactionFilter,
+) -> Result<i64, ApiError> {
+    filters.validate().map_err(|e| {
+        tracing::warn!("Transaction filter validation failed: {}", e);
+        ApiError::Validation(e.to_string())
+    })?;
+
+    if let Some(account_id) = filters.account_id {
+        let account = repositories::account::find_by_id(pool, account_id).await?;
+        if account.user_id != user_id {
+            return Err(ApiError::Unauthorized(
+                "Account does not belong to user".to_string(),
+            ));
+        }
+    }
+
+    if let Some(counterpart_of) = filters.counterpart_of {
+        let reference = repositories::transaction::find_by_id(pool, counterpart_of)
+            .await?
+            .transaction;
+        if reference.user_id != user_id {
+            return Err(ApiError::Unauthorized(
+                "Transaction does not belong to user".to_string(),
+            ));
+        }
+        let zero = bigdecimal::BigDecimal::from(0);
+        filters.require_amount_positive = Some(reference.amount < zero);
+        let abs = reference.amount.abs();
+        filters.closest_to_abs = Some(std::str::FromStr::from_str(&abs.to_string()).unwrap_or(0.0));
+    }
+
+    repositories::transaction::count_transactions(pool, user_id, filters).await
 }
 
 /// Update a transaction

@@ -13,6 +13,7 @@ import { getConvertCandidates } from '@/services/transferService';
  */
 export default function useConvertCandidates(
   transactionId: string,
+  transactionDate: string,
   accountId: string,
   search?: string
 ) {
@@ -20,7 +21,8 @@ export default function useConvertCandidates(
 
   return useQuery({
     queryKey: ['convert-candidates', transactionId, accountId, trimmed ?? ''],
-    queryFn: () => getConvertCandidates(transactionId, accountId, trimmed || undefined),
+    queryFn: () =>
+      getConvertCandidates(transactionId, transactionDate, accountId, trimmed || undefined),
     enabled: !!transactionId && !!accountId,
   });
 }

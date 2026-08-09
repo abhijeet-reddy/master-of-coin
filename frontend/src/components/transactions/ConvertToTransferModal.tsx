@@ -24,6 +24,8 @@ interface ConvertToTransferModalProps {
   onClose: () => void;
   /** The transaction being converted. */
   transactionId: string;
+  /** The transaction's date (ISO), used to window candidate suggestions. */
+  transactionDate: string;
   /** The transaction's own account id (excluded from the counterpart picker). */
   transactionAccountId: string;
   /** The transaction's amount as a string (sign drives direction messaging). */
@@ -49,6 +51,7 @@ export const ConvertToTransferModal = ({
   open,
   onClose,
   transactionId,
+  transactionDate,
   transactionAccountId,
   transactionAmount,
   transactionCurrency,
@@ -88,7 +91,7 @@ export const ConvertToTransferModal = ({
     data: candidateData,
     isLoading: candidatesLoading,
     error: candidatesError,
-  } = useConvertCandidates(transactionId, counterpartId, debouncedSearch);
+  } = useConvertCandidates(transactionId, transactionDate, counterpartId, debouncedSearch);
 
   const candidates = candidateData?.candidates ?? [];
   const total = candidateData?.total ?? 0;

@@ -1,5 +1,4 @@
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Duration, Utc};
 use std::str::FromStr;
 use uuid::Uuid;
 use validator::Validate;
@@ -10,22 +9,11 @@ use crate::{
     models::{
         NewTransaction, TransactionResponse,
         account::Account,
-        transaction::{Transaction, TransactionFilter},
-        transfer::{
-            ConvertCandidatesResponse, ConvertToTransferRequest, CreateTransferRequest,
-            TransferCandidate, TransferResponse,
-        },
+        transaction::Transaction,
+        transfer::{ConvertToTransferRequest, CreateTransferRequest, TransferResponse},
     },
     repositories,
 };
-
-/// How many suggestions to show when no search term is given: a short,
-/// closest-amount-first shortlist.
-const SUGGESTION_DISPLAY_LIMIT: usize = 5;
-
-/// How many results to show for an explicit whole-account search: a longer
-/// scan than suggestions, still bounded so the list stays scannable.
-const SEARCH_DISPLAY_LIMIT: usize = 20;
 
 /// Create a transfer between two accounts owned by the same user.
 ///
@@ -539,151 +527,5 @@ async fn link_existing_counterpart(
         to_transaction: to_response,
         exchange_rate: format!("{}", transfer.exchange_rate),
         created_at: transfer.created_at,
-    })
-}
-
-/// Find candidate transactions in `counterpart_account_id` that could be linked
-/// as the other leg when converting `transaction_id`.
-///
-/// Two modes:
-/// - Suggestions (search = None): opposite sign, within plus or minus one day
-///   of the original's date (inclusive), sorted closest-amount-first. Amount is
-///   NOT filtered, so a near-miss (e.g. 50.00 sent, 49.87 received after a fee)
-///   is still suggested; the UI marks exact matches and shows the gap on the
-///   rest. The fast path.
-/// - Search (search = Some): same account, any amount, any date, text match on
-///   title or notes. The escape hatch.
-///
-/// Both modes apply the SAME exclusions: not soft-deleted, not already in a
-/// transfer, no splits, not the original, and opposite sign only. Search relaxes
-/// only the date window, nothing else.
-///
-/// Returns a CAPPED list (5 suggestions, 20 search) plus the TOTAL number of
-/// matches, so the UI can show "showing 5 of 12" whenever the list is
-/// truncated. The total is exact for the rows the repository returned; note
-/// that the repository itself caps at the 100 most-recent rows (issue #87), so
-/// on an account with more than 100 transactions the total can still undercount
-/// older rows. That only bites whole-account search on very busy accounts;
-/// suggestions live inside the plus/minus one day window, well under the cap.
-pub async fn find_convert_candidates(
-    pool: &DbPool,
-    user_id: Uuid,
-    transaction_id: Uuid,
-    counterpart_account_id: Uuid,
-    search: Option<String>,
-) -> Result<ConvertCandidatesResponse, ApiError> {
-    let original = repositories::transaction::find_by_id(pool, transaction_id)
-        .await?
-        .transaction;
-    if original.user_id != user_id {
-        return Err(ApiError::Unauthorized(
-            "Transaction does not belong to user".to_string(),
-        ));
-    }
-    let counterpart_account =
-        repositories::account::find_by_id(pool, counterpart_account_id).await?;
-    if counterpart_account.user_id != user_id {
-        return Err(ApiError::Unauthorized(
-            "Account does not belong to user".to_string(),
-        ));
-    }
-
-    let zero = BigDecimal::from(0);
-    let original_is_source = original.amount < zero;
-    let original_abs = original.amount.abs();
-    let original_abs_f64 = f64::from_str(&original_abs.to_string()).unwrap_or(0.0);
-    let is_search = search.is_some();
-
-    // Suggestions constrain the DATE window only; they do NOT filter by amount,
-    // so a near-miss (e.g. 50.00 sent, 49.87 received after a fee) is still
-    // shown. Results are sorted closest-amount-first below, and the UI marks the
-    // exact matches and shows the gap on the rest. Search leaves date open too.
-    let (start_date, end_date): (Option<DateTime<Utc>>, Option<DateTime<Utc>>) = if is_search {
-        (None, None)
-    } else {
-        (
-            Some(original.date - Duration::days(1)),
-            Some(original.date + Duration::days(1)),
-        )
-    };
-
-    let filter = TransactionFilter {
-        account_id: Some(counterpart_account_id),
-        category_id: None,
-        start_date,
-        end_date,
-        person_id: None,
-        min_amount: None,
-        max_amount: None,
-        search,
-        limit: Some(1000),
-        offset: None,
-        is_deleted: Some(false),
-    };
-
-    let rows = repositories::transaction::list_transactions(pool, user_id, filter).await?;
-
-    // Which of these are already part of a transfer?
-    let ids: Vec<Uuid> = rows.iter().map(|r| r.transaction.id).collect();
-    let already_linked = repositories::transfer::transaction_ids_in_transfers(pool, &ids).await?;
-
-    let mut candidates: Vec<(TransferCandidate, f64)> = Vec::new();
-    for row in rows {
-        let txn = row.transaction;
-        if txn.id == original.id {
-            continue; // never the original itself
-        }
-        if txn.amount == zero {
-            continue;
-        }
-        // Opposite sign only (never relaxed, even in search).
-        let txn_is_source = txn.amount < zero;
-        if txn_is_source == original_is_source {
-            continue;
-        }
-        if already_linked.contains(&txn.id) {
-            continue;
-        }
-        // No splits.
-        let splits = repositories::transaction::list_splits_for_transaction(pool, txn.id).await?;
-        if !splits.is_empty() {
-            continue;
-        }
-        // Rank by how close the counterpart's absolute amount is to the
-        // original's, so the most likely match (exact, then near-miss) is first.
-        let txn_abs_f64 = f64::from_str(&txn.amount.abs().to_string()).unwrap_or(f64::MAX);
-        let amount_gap = (txn_abs_f64 - original_abs_f64).abs();
-        candidates.push((
-            TransferCandidate {
-                id: txn.id,
-                title: txn.title,
-                amount: format!("{}", txn.amount),
-                date: txn.date,
-            },
-            amount_gap,
-        ));
-    }
-
-    // Sort closest-amount-first: exact matches lead, near-misses follow.
-    candidates.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    // Cap the list the UI renders, but report the TOTAL that matched so it can
-    // say "showing 5 of 12" and never silently hide a row behind the cap.
-    // Suggestions are a short shortlist (5); search allows a longer scan (20).
-    let total = candidates.len();
-    let display_limit = if is_search {
-        SEARCH_DISPLAY_LIMIT
-    } else {
-        SUGGESTION_DISPLAY_LIMIT
-    };
-    let shown = candidates
-        .into_iter()
-        .take(display_limit)
-        .map(|(c, _)| c)
-        .collect();
-
-    Ok(ConvertCandidatesResponse {
-        candidates: shown,
-        total,
     })
 }

@@ -8,10 +8,7 @@
 
 use crate::common::*;
 use chrono::Utc;
-use master_of_coin_backend::models::{
-    AccountResponse, ConvertCandidatesResponse, TransactionResponse, TransferCandidate,
-    TransferResponse,
-};
+use master_of_coin_backend::models::{AccountResponse, TransactionResponse, TransferResponse};
 use serde_json::json;
 
 // ============================================================================
@@ -1076,34 +1073,60 @@ async fn test_convert_same_currency_unequal_counterpart() {
 
 /// Fetch convert candidates for a transaction against a counterpart account.
 /// Fetch the raw candidate response (capped list plus total match count).
+/// The candidate picker, expressed on the transactions list endpoint: a capped
+/// list of candidate transactions plus the true total from `X-Total-Count`.
+struct ConvertCandidates {
+    candidates: Vec<TransactionResponse>,
+    total: i64,
+}
+
+/// Query the transactions list for convert candidates, mirroring exactly what
+/// the frontend sends: `counterpart_of` (opposite sign + closest-amount order),
+/// the exclusions, a plus/minus one day window for suggestions, and the display
+/// cap. Returns the capped list and the honest total from the header.
 async fn get_convert_candidates_response(
     server: &axum_test::TestServer,
     token: &str,
-    transaction_id: uuid::Uuid,
+    reference: &TransactionResponse,
     account_id: uuid::Uuid,
     search: Option<&str>,
-) -> ConvertCandidatesResponse {
+) -> ConvertCandidates {
     let mut path = format!(
-        "/api/v1/transactions/{}/convert-candidates?account_id={}",
-        transaction_id, account_id
+        "/api/v1/transactions?account_id={}&counterpart_of={}&exclude_id={}\
+         &in_transfer=false&has_splits=false&is_deleted=false",
+        account_id, reference.id, reference.id
     );
     if let Some(s) = search {
-        path.push_str(&format!("&search={}", s));
+        path.push_str(&format!("&search={}&limit=20", s));
+    } else {
+        // Suggestions: plus/minus one day around the reference date, cap 5.
+        let start = reference.date - chrono::Duration::days(1);
+        let end = reference.date + chrono::Duration::days(1);
+        path.push_str(&format!(
+            "&start_date={}&end_date={}&limit=5",
+            urlencoding::encode(&start.to_rfc3339()),
+            urlencoding::encode(&end.to_rfc3339()),
+        ));
     }
     let response = get_authenticated(server, &path, token).await;
     assert_status(&response, 200);
-    extract_json(response)
+    let total: i64 = response
+        .maybe_header("x-total-count")
+        .map(|v| v.to_str().unwrap().parse().unwrap())
+        .unwrap_or(0);
+    let candidates: Vec<TransactionResponse> = extract_json(response);
+    ConvertCandidates { candidates, total }
 }
 
 /// Convenience wrapper returning just the displayed candidate list.
 async fn get_convert_candidates(
     server: &axum_test::TestServer,
     token: &str,
-    transaction_id: uuid::Uuid,
+    reference: &TransactionResponse,
     account_id: uuid::Uuid,
     search: Option<&str>,
-) -> Vec<TransferCandidate> {
-    get_convert_candidates_response(server, token, transaction_id, account_id, search)
+) -> Vec<TransactionResponse> {
+    get_convert_candidates_response(server, token, reference, account_id, search)
         .await
         .candidates
 }
@@ -1156,7 +1179,7 @@ async fn test_convert_link_suggestion_found_and_links() {
     let inc = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
 
     // Suggestion appears.
-    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
     assert_eq!(candidates.len(), 1, "should suggest the matching inflow");
     assert_eq!(candidates[0].id, inc.id);
 
@@ -1301,15 +1324,14 @@ async fn test_convert_link_search_finds_out_of_window() {
     .await;
 
     // Suggestions do not include it.
-    let suggestions = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let suggestions = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
     assert!(
         !suggestions.iter().any(|c| c.id == far.id),
         "out-of-window row must not be a suggestion"
     );
 
     // Search by title finds it.
-    let results =
-        get_convert_candidates(&server, &auth.token, out.id, dest.id, Some("Zebra")).await;
+    let results = get_convert_candidates(&server, &auth.token, &out, dest.id, Some("Zebra")).await;
     assert!(
         results.iter().any(|c| c.id == far.id),
         "search should find the out-of-window opposite-sign row"
@@ -1346,7 +1368,7 @@ async fn test_convert_candidates_exclusions() {
     // A valid opposite-sign candidate.
     let good = create_normal_transaction(&server, &auth.token, dest.id, 50.0, json!({})).await;
 
-    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
     assert!(
         candidates.iter().any(|c| c.id == good.id),
         "opposite-sign match should be a candidate"
@@ -1360,7 +1382,7 @@ async fn test_convert_candidates_exclusions() {
     let out2 = create_normal_transaction(&server, &auth.token, source.id, -50.0, json!({})).await;
     let r = convert_linking(&server, &auth.token, out.id, dest.id, good.id).await;
     assert_status(&r, 201);
-    let after = get_convert_candidates(&server, &auth.token, out2.id, dest.id, None).await;
+    let after = get_convert_candidates(&server, &auth.token, &out2, dest.id, None).await;
     assert!(
         !after.iter().any(|c| c.id == good.id),
         "an already-linked row must be excluded from candidates"
@@ -1391,7 +1413,7 @@ async fn test_convert_link_suggestion_includes_near_miss() {
     let near = create_normal_transaction(&server, &auth.token, dest.id, 49.87, json!({})).await;
 
     // Suggested despite the 0.13 gap.
-    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
     assert!(
         candidates.iter().any(|c| c.id == near.id),
         "a near-miss (fee) opposite-sign row must still be suggested"
@@ -1428,7 +1450,7 @@ async fn test_convert_candidates_sorted_closest_amount_first() {
     let _near = create_normal_transaction(&server, &auth.token, dest.id, 90.0, json!({})).await;
     let exact = create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
 
-    let candidates = get_convert_candidates(&server, &auth.token, out.id, dest.id, None).await;
+    let candidates = get_convert_candidates(&server, &auth.token, &out, dest.id, None).await;
     assert!(candidates.len() >= 2, "both rows should be candidates");
     assert_eq!(
         candidates[0].id, exact.id,
@@ -1496,8 +1518,7 @@ async fn test_convert_candidates_capped_with_total() {
         create_normal_transaction(&server, &auth.token, dest.id, amount, json!({})).await;
     }
 
-    let response =
-        get_convert_candidates_response(&server, &auth.token, out.id, dest.id, None).await;
+    let response = get_convert_candidates_response(&server, &auth.token, &out, dest.id, None).await;
     assert_eq!(response.total, 8, "total must be the true match count");
     assert_eq!(
         response.candidates.len(),
@@ -1530,8 +1551,7 @@ async fn test_convert_candidates_total_equals_len_when_not_capped() {
     create_normal_transaction(&server, &auth.token, dest.id, 100.0, json!({})).await;
     create_normal_transaction(&server, &auth.token, dest.id, 101.0, json!({})).await;
 
-    let response =
-        get_convert_candidates_response(&server, &auth.token, out.id, dest.id, None).await;
+    let response = get_convert_candidates_response(&server, &auth.token, &out, dest.id, None).await;
     assert_eq!(response.total, 2);
     assert_eq!(response.candidates.len(), 2);
 }

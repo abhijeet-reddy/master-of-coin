@@ -175,7 +175,7 @@ fn validate_optional_amount_not_zero(amount: f64) -> Result<(), validator::Valid
 }
 
 // Filter for querying transactions (renamed from TransactionFilters to match mod.rs export)
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Clone, Default, Deserialize, Validate)]
 pub struct TransactionFilter {
     pub account_id: Option<Uuid>,
     pub category_id: Option<Uuid>,
@@ -205,6 +205,35 @@ pub struct TransactionFilter {
 
     /// Filter by soft-delete status (None or Some(false) = active, Some(true) = deleted)
     pub is_deleted: Option<bool>,
+
+    /// Exclude a single transaction by id (e.g. never return the row you are
+    /// finding a counterpart for). Generic.
+    pub exclude_id: Option<Uuid>,
+
+    /// Filter on transfer membership. Some(false) excludes rows already part of
+    /// a transfer (either leg); Some(true) keeps only those. Generic.
+    pub in_transfer: Option<bool>,
+
+    /// Filter on split presence. Some(false) excludes rows that have splits;
+    /// Some(true) keeps only those. Generic, and cheaper than a per-row lookup.
+    pub has_splits: Option<bool>,
+
+    /// Find candidates that could be the opposite leg of this transaction: it
+    /// implies BOTH "opposite sign to the referenced transaction" AND ordering
+    /// by closest absolute amount to it. The server resolves the referenced
+    /// transaction's sign and amount, so the caller never supplies them.
+    pub counterpart_of: Option<Uuid>,
+
+    /// Derived from `counterpart_of` by the service, never a query param: when
+    /// `Some(true)` keep only positive amounts, `Some(false)` only negative.
+    #[serde(skip)]
+    pub require_amount_positive: Option<bool>,
+
+    /// Derived from `counterpart_of` by the service, never a query param: when
+    /// set, order results by closeness of the absolute amount to this value
+    /// (in SQL, so it survives the LIMIT rather than being re-sorted after).
+    #[serde(skip)]
+    pub closest_to_abs: Option<f64>,
 }
 
 /// Query parameters for the delete transaction endpoint

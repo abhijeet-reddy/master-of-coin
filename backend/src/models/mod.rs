@@ -97,7 +97,7 @@ pub use split_provider::{SplitProviderResponse, SplitwiseCredentials};
 pub use split_sync_record::SplitSyncStatusResponse;
 pub use transaction::TransactionResponse;
 pub use transaction_split::TransactionSplitResponse;
-pub use transfer::{ConvertCandidatesResponse, TransferCandidate, TransferInfo, TransferResponse};
+pub use transfer::{TransferInfo, TransferResponse};
 pub use user::UserResponse;
 
 // Re-export API key specific types

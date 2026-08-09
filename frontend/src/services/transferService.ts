@@ -3,8 +3,16 @@ import type {
   ConvertCandidatesResponse,
   ConvertToTransferRequest,
   CreateTransferRequest,
+  Transaction,
   TransferResponse,
 } from '@/types';
+
+// Display caps for the convert candidate picker. Suggestions are a short
+// shortlist; search allows a longer scan. Kept in step with the picker UI,
+// which shows "Showing 5 of N" only when the total exceeds these.
+const SUGGESTION_LIMIT = 5;
+const SEARCH_LIMIT = 20;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Create a transfer between two accounts
@@ -31,18 +39,55 @@ export async function convertToTransfer(
 
 /**
  * List existing transactions on `accountId` that could be linked as the other
- * leg when converting `transactionId`. Without `search`, returns suggestions
- * (opposite sign, within a day, closest amount first). With `search`, searches
- * the whole account by title or notes.
+ * leg when converting the transaction identified by `referenceId`/`referenceDate`.
+ *
+ * This is expressed as parameters on the shared transactions list endpoint
+ * rather than a dedicated route:
+ * - `counterpart_of` implies opposite sign to the reference and closest-amount
+ *   ordering (resolved server-side).
+ * - `in_transfer=false`, `has_splits=false`, `exclude_id`, `is_deleted=false`
+ *   apply the exclusions.
+ * - Without `search`: a plus/minus one day window around the reference date
+ *   (suggestions). With `search`: the whole account, no window.
+ *
+ * The true match count comes back in the `X-Total-Count` header, so the caller
+ * can show "Showing 5 of 12" even though the list itself is capped.
  */
 export async function getConvertCandidates(
-  transactionId: string,
+  referenceId: string,
+  referenceDate: string,
   accountId: string,
   search?: string
 ): Promise<ConvertCandidatesResponse> {
-  const response = await apiClient.get<ConvertCandidatesResponse>(
-    `/transactions/${transactionId}/convert-candidates`,
-    { params: { account_id: accountId, ...(search ? { search } : {}) } }
-  );
-  return response.data;
+  const isSearch = !!search;
+  const params: Record<string, string | number | boolean> = {
+    account_id: accountId,
+    counterpart_of: referenceId,
+    exclude_id: referenceId,
+    in_transfer: false,
+    has_splits: false,
+    is_deleted: false,
+    limit: isSearch ? SEARCH_LIMIT : SUGGESTION_LIMIT,
+  };
+  if (isSearch) {
+    params.search = search;
+  } else {
+    // Suggestions: plus/minus one day around the reference date.
+    const ref = new Date(referenceDate).getTime();
+    params.start_date = new Date(ref - DAY_MS).toISOString();
+    params.end_date = new Date(ref + DAY_MS).toISOString();
+  }
+
+  const response = await apiClient.get<Transaction[]>('/transactions', { params });
+  const headerTotal = Number(response.headers['x-total-count']);
+  const candidates = response.data.map((t) => ({
+    id: t.id,
+    title: t.title,
+    amount: t.amount,
+    date: t.date,
+  }));
+  return {
+    candidates,
+    total: Number.isFinite(headerTotal) ? headerTotal : candidates.length,
+  };
 }

@@ -72,28 +72,6 @@ pub struct ConvertToTransferRequest {
     pub counterpart_transaction_id: Option<Uuid>,
 }
 
-/// A candidate transaction that could be linked as the counterpart leg of a
-/// convert-to-transfer. Returned by the candidate-search endpoint so the user
-/// can choose one rather than the server guessing.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TransferCandidate {
-    pub id: Uuid,
-    pub title: String,
-    /// Signed amount, as a string to preserve decimal precision.
-    pub amount: String,
-    pub date: DateTime<Utc>,
-}
-
-/// Response for the candidate-search endpoint: a capped list plus the TOTAL
-/// number of matches found, so the UI can say "showing 5 of 12" and never
-/// silently hide a row behind the cap. `total` is the count BEFORE the display
-/// cap is applied, so `total > candidates.len()` means the list was truncated.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ConvertCandidatesResponse {
-    pub candidates: Vec<TransferCandidate>,
-    pub total: usize,
-}
-
 /// Response DTO — what the API returns after creating a transfer.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransferResponse {

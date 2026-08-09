@@ -310,6 +310,7 @@ export const TransactionDetailPage = () => {
         open={isConvertOpen}
         onClose={onConvertClose}
         transactionId={transaction.id}
+        transactionDate={transaction.date}
         transactionAccountId={transaction.account.id}
         transactionAmount={transaction.amount}
         transactionCurrency={transaction.account.currency}

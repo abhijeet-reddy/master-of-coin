@@ -40,6 +40,8 @@ export const TransferFormModal = ({
     fromAccount,
     toAccount,
     isCrossCurrency,
+    showToAmount,
+    deltaWarning,
     titlePlaceholder,
   } = useTransferForm({ open, accounts, categories, onSuccess, onClose });
 
@@ -177,6 +179,53 @@ export const TransferFormModal = ({
                       />
                     </Field>
                   </VStack>
+                </Box>
+              )}
+
+              {/* Same-currency: optional different amount received (discount/fee).
+                  Hidden behind a disclosure so the common equal transfer stays
+                  a single amount box. */}
+              {!isCrossCurrency && fromAccount && toAccount && (
+                <VStack align="stretch" gap={2}>
+                  <label
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                  >
+                    <input type="checkbox" {...register('different_amount_received')} />
+                    <Text fontSize="sm">Different amount received</Text>
+                  </label>
+
+                  {showToAmount && (
+                    <Field
+                      label="Amount received"
+                      helperText="The amount that lands on the destination, if it differs from the amount sent (e.g. a discount or fee)."
+                      errorText={errors.to_amount?.message}
+                    >
+                      <Input
+                        {...register('to_amount', {
+                          onChange: () => setLastEditedField('to_amount'),
+                        })}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </Field>
+                  )}
+                </VStack>
+              )}
+
+              {/* Soft, non-blocking warning for a large same-currency delta */}
+              {deltaWarning && (
+                <Box
+                  p={3}
+                  borderWidth="1px"
+                  borderColor="orange.300"
+                  borderRadius="md"
+                  bg="orange.50"
+                >
+                  <Text fontSize="sm" color="orange.800">
+                    {deltaWarning}
+                  </Text>
                 </Box>
               )}
 

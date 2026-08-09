@@ -125,6 +125,9 @@ export interface TransferInfo {
   transfer_id: string;
   linked_account_id: string;
   linked_account_name: string;
+  // Signed amount of the linked (counterpart) leg, as a string. With this
+  // transaction's own amount it lets the UI show unequal-leg transfers.
+  linked_amount: string;
 }
 
 // Enriched transaction

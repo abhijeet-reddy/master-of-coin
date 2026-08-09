@@ -324,6 +324,51 @@ export const TransactionDetailCard = ({
                   {transaction.transfer_info.linked_account_name} ({transaction.account.currency})
                 </Badge>
               </HStack>
+
+              {/* Unequal-leg delta, shown only when the two legs differ.
+                  Positive delta means the destination received more than the
+                  source sent (a discount or bonus); negative means a fee.
+                  Presentation only, derived from the two leg amounts. Equal
+                  transfers show nothing. The 0.005 epsilon suppresses only
+                  sub-half-cent float noise, so a real 0.01 difference still
+                  shows. No arrow or dash glyphs in the copy per house style. */}
+              {(() => {
+                const thisAbs = Math.abs(amount);
+                const linkedAbs = Math.abs(parseFloat(transaction.transfer_info.linked_amount));
+                const sent = isExpense ? thisAbs : linkedAbs;
+                const received = isExpense ? linkedAbs : thisAbs;
+                const delta = received - sent;
+                if (Math.abs(delta) < 0.005) return null;
+                const isDiscount = delta > 0;
+                return (
+                  <VStack align="stretch" gap={2}>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" color="fg.muted">
+                        Sent
+                      </Text>
+                      <Text fontSize="sm">
+                        {formatCurrency(sent, transaction.account.currency)}
+                      </Text>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" color="fg.muted">
+                        Received
+                      </Text>
+                      <Text fontSize="sm">
+                        {formatCurrency(received, transaction.account.currency)}
+                      </Text>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" color="fg.muted">
+                        {isDiscount ? 'Discount' : 'Fee'}
+                      </Text>
+                      <Badge colorPalette={isDiscount ? 'green' : 'orange'} fontSize="sm">
+                        {formatCurrency(Math.abs(delta), transaction.account.currency)}
+                      </Badge>
+                    </HStack>
+                  </VStack>
+                );
+              })()}
             </VStack>
           </Card.Body>
         </Card.Root>

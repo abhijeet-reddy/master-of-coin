@@ -57,8 +57,10 @@ pub struct CreateTransferRequest {
 pub struct ConvertToTransferRequest {
     /// The counterpart account for the other leg of the transfer.
     pub account_id: Uuid,
-    /// For cross-currency conversions: the absolute amount on the counterpart
-    /// account's leg. Ignored when both accounts share a currency.
+    /// The absolute amount on the counterpart account's leg. Optional. When
+    /// omitted the counterpart leg mirrors the original amount. When supplied it
+    /// is honoured for same-currency transfers too, so the two legs can differ
+    /// (e.g. a discounted gift-card top-up), not just cross-currency ones.
     pub counterpart_amount: Option<f64>,
     /// Alternative to `counterpart_amount` for cross-currency conversions.
     pub exchange_rate: Option<f64>,
@@ -80,4 +82,8 @@ pub struct TransferInfo {
     pub transfer_id: Uuid,
     pub linked_account_id: Uuid,
     pub linked_account_name: String,
+    /// Signed amount of the LINKED (counterpart) leg, as a string to preserve
+    /// decimal precision. Combined with this transaction's own amount it lets
+    /// the UI show unequal-leg transfers (the delta) without another lookup.
+    pub linked_amount: String,
 }

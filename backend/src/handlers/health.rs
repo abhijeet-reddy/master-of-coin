@@ -12,6 +12,11 @@ use crate::AppState;
 ///
 /// Returns 200 OK with `{"status": "healthy"}` if the DB pool is reachable,
 /// or 503 Service Unavailable with `{"status": "unhealthy", "error": "..."}` otherwise.
+///
+/// Deliberately does NOT report the build version: this endpoint is public
+/// (outside `/api/v1` auth), and the repo is public, so exposing the commit sha
+/// here would point anyone at the exact deployed source. Version/commit live on
+/// the authenticated `GET /api/v1/version` route instead (issue #83).
 pub async fn check(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
     match state.db.get() {
         Ok(_conn) => (

@@ -61,6 +61,13 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Version display (issue #83): APP_VERSION MUST come from the SAME
+          # value that feeds the image label (steps.meta.outputs.version), so
+          # the displayed version and the org.opencontainers.image.version label
+          # can never disagree. Do not derive the version a second way here.
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true

@@ -14,6 +14,7 @@ import {
   MdSettings,
 } from 'react-icons/md';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVersion } from '@/hooks';
 import { getInitials } from '@/utils/formatters/text';
 
 interface SidebarProps {
@@ -56,6 +57,41 @@ const NavItem = ({ icon: IconComponent, label, to, onClick, isCollapsed }: NavIt
         </Box>
       )}
     </NavLink>
+  );
+};
+
+/**
+ * Deployed build version (issue #83), read from the authenticated
+ * /api/v1/version endpoint. Shows the release tag ("v0.21.0"), or "vdev" for a
+ * local build. The commit sha stays on the endpoint and is not shown here; the
+ * tag is what is read at a glance.
+ *
+ * The line is HIDDEN entirely when there is no version to show — no session,
+ * still loading, or the request failed — rather than rendering a blank or an
+ * error next to a "Version" label, which would look like a broken app. It only
+ * appears once a real version has been fetched.
+ */
+const VersionLine = ({ enabled, isCollapsed }: { enabled: boolean; isCollapsed?: boolean }) => {
+  const { data } = useVersion(enabled);
+
+  // Nothing to show yet (unauthenticated, loading, or errored): render nothing.
+  if (!data?.version) {
+    return null;
+  }
+
+  return (
+    <Box
+      px={isCollapsed ? 2 : 4}
+      py={2}
+      borderTopWidth="1px"
+      borderColor="border"
+      display="flex"
+      justifyContent="center"
+    >
+      <Text fontSize="xs" color="fg.muted" title={`v${data.version}`} truncate>
+        {`v${data.version}`}
+      </Text>
+    </Box>
   );
 };
 
@@ -219,6 +255,9 @@ export const Sidebar = ({ onClose, isCollapsed = false }: SidebarProps) => {
           )}
         </Box>
       )}
+
+      {/* Deployed version (issue #83) */}
+      <VersionLine enabled={!!user} isCollapsed={isCollapsed} />
     </Box>
   );
 };

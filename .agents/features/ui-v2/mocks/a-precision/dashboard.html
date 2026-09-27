@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard · Master of Coin</title>
+<meta name="color-scheme" content="light dark">
+<script>
+(function () {
+  var q = new URLSearchParams(location.search).get('theme'), s = null;
+  try { s = localStorage.getItem('moc-a-theme'); } catch (e) {}
+  var t = q || s || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+<link rel="stylesheet" href="style.css">
+<script src="../shared/data.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body data-page="dashboard">
+<noscript><p style="padding:24px">This mock needs JavaScript to render.</p></noscript>
+</body>
+</html>

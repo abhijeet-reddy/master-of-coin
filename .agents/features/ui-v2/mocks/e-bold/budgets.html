@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Budgets · Master of Coin</title>
+<meta name="color-scheme" content="light dark">
+<script>
+  (function () {
+    var t = localStorage.getItem('moc-e-theme');
+    var q = new URLSearchParams(location.search);
+    if (q.get('theme')) t = q.get('theme');
+    if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    if (q.get('motion') === 'reduce') document.documentElement.classList.add('reduce');
+  })();
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="budgets">
+<a class="skip" href="#main">Skip to content</a>
+<div class="app" id="app"></div>
+<script src="../shared/data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

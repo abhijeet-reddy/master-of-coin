@@ -74,6 +74,17 @@ impl AuthContext {
         matches!(self, AuthContext::ApiKey { .. })
     }
 
+    /// Account-level changes (profile, password, preferences) need a user session.
+    /// API keys get a 403 regardless of their scopes.
+    pub fn require_session(&self) -> Result<(), crate::errors::ApiError> {
+        if self.is_api_key() {
+            return Err(crate::errors::ApiError::Forbidden(
+                "This action requires a signed-in user session, not an API key".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Get the API key ID if authenticated via API key
     ///
     /// # Returns

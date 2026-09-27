@@ -177,8 +177,17 @@ fn validate_optional_amount_not_zero(amount: f64) -> Result<(), validator::Valid
 // Filter for querying transactions (renamed from TransactionFilters to match mod.rs export)
 #[derive(Debug, Clone, Default, Deserialize, Validate)]
 pub struct TransactionFilter {
-    pub account_id: Option<Uuid>,
-    pub category_id: Option<Uuid>,
+    /// One or more account ids; the query string accepts a comma-separated list.
+    #[serde(default, deserialize_with = "deserialize_uuid_list")]
+    pub account_id: Option<Vec<Uuid>>,
+    /// One or more category ids, comma-separated; `uncategorised` matches rows
+    /// with no category and can be combined with ids.
+    #[serde(default, deserialize_with = "deserialize_category_filter")]
+    pub category_id: Option<CategoryFilter>,
+
+    /// Rows paid by someone else (a debt_transaction_metadata row exists):
+    /// `only` keeps just those, `exclude` drops them.
+    pub paid_by_others: Option<PaidByOthers>,
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
 
@@ -227,6 +236,73 @@ pub struct TransactionFilter {
     /// value, in SQL so the ordering runs BEFORE the LIMIT and the cap keeps the
     /// closest matches rather than the most recent ones. Generic.
     pub closest_to: Option<f64>,
+}
+
+/// `paid_by_others` filter value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PaidByOthers {
+    Only,
+    Exclude,
+}
+
+/// Parsed `category_id` filter: explicit ids and/or "no category".
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CategoryFilter {
+    pub ids: Vec<Uuid>,
+    pub uncategorised: bool,
+}
+
+impl CategoryFilter {
+    pub fn ids(ids: Vec<Uuid>) -> Self {
+        Self {
+            ids,
+            uncategorised: false,
+        }
+    }
+}
+
+fn split_list(raw: &str) -> impl Iterator<Item = &str> {
+    raw.split(',').map(str::trim).filter(|s| !s.is_empty())
+}
+
+fn deserialize_uuid_list<'de, D>(deserializer: D) -> Result<Option<Vec<Uuid>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: Option<String> = Option::deserialize(deserializer)?;
+    let Some(raw) = raw else { return Ok(None) };
+    let ids = split_list(&raw)
+        .map(|s| {
+            Uuid::parse_str(s)
+                .map_err(|_| serde::de::Error::custom(format!("invalid account_id: {}", s)))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(if ids.is_empty() { None } else { Some(ids) })
+}
+
+fn deserialize_category_filter<'de, D>(deserializer: D) -> Result<Option<CategoryFilter>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: Option<String> = Option::deserialize(deserializer)?;
+    let Some(raw) = raw else { return Ok(None) };
+    let mut filter = CategoryFilter::default();
+    for part in split_list(&raw) {
+        if part.eq_ignore_ascii_case("uncategorised") || part.eq_ignore_ascii_case("uncategorized")
+        {
+            filter.uncategorised = true;
+        } else {
+            let id = Uuid::parse_str(part)
+                .map_err(|_| serde::de::Error::custom(format!("invalid category_id: {}", part)))?;
+            filter.ids.push(id);
+        }
+    }
+    Ok(if filter.ids.is_empty() && !filter.uncategorised {
+        None
+    } else {
+        Some(filter)
+    })
 }
 
 /// Amount-sign filter for the transactions list. Deserializes from the query
@@ -344,4 +420,28 @@ impl From<crate::repositories::transaction::TransactionWithDebtInfo> for Transac
             permanent_delete_at: None, // Computed in service layer
         }
     }
+}
+
+/// Maximum ids accepted by `POST /transactions/bulk-delete`.
+pub const BULK_DELETE_MAX: usize = 500;
+
+/// POST /transactions/bulk-delete body.
+#[derive(Debug, Deserialize)]
+pub struct BulkDeleteTransactionsRequest {
+    pub ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BulkDeleteFailure {
+    pub id: Uuid,
+    pub error: String,
+}
+
+/// Result of a bulk soft delete. `deleted_ids` includes the partner leg of any
+/// transfer (both legs are always deleted together); `deleted` is its length.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct BulkDeleteTransactionsResponse {
+    pub deleted: usize,
+    pub deleted_ids: Vec<Uuid>,
+    pub failed: Vec<BulkDeleteFailure>,
 }

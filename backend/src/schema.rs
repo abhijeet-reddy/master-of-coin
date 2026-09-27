@@ -54,6 +54,7 @@ diesel::table! {
         notes -> Nullable<Text>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        archived_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -321,6 +322,23 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::CurrencyCode;
+
+    user_preferences (user_id) {
+        user_id -> Uuid,
+        default_currency -> CurrencyCode,
+        #[max_length = 16]
+        date_format -> Varchar,
+        #[max_length = 16]
+        number_locale -> Varchar,
+        week_start -> Int2,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Uuid,
         #[max_length = 50]
@@ -362,6 +380,7 @@ diesel::joinable!(transaction_splits -> transactions (transaction_id));
 diesel::joinable!(transactions -> accounts (account_id));
 diesel::joinable!(transactions -> categories (category_id));
 diesel::joinable!(transactions -> users (user_id));
+diesel::joinable!(user_preferences -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
@@ -382,5 +401,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     transaction_splits,
     transactions,
     transfers,
+    user_preferences,
     users,
 );

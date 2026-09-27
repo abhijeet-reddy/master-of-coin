@@ -1,18 +1,17 @@
 use axum::{
     Json,
-    extract::{Extension, Query, State},
+    extract::{Extension, Path, Query, State},
 };
+use uuid::Uuid;
 
 use crate::{
     AppState,
     auth::context::AuthContext,
     errors::ApiError,
-    models::{
-        background_job::BackgroundJob,
-        job_summary::{BackgroundJobSummary, ListJobsQuery},
+    models::job_summary::{
+        BackgroundJobDetail, BackgroundJobSummary, ListJobsQuery, parse_job_type,
     },
     repositories::background_job::BackgroundJobRepository,
-    types::JobType,
 };
 
 /// List all background jobs for the current user.
@@ -44,47 +43,25 @@ pub async fn list_jobs(
 
     let jobs = BackgroundJobRepository::list_by_user(&state.db, user_id, job_type, limit, offset)?;
 
-    let summaries: Vec<BackgroundJobSummary> = jobs.iter().map(to_summary).collect();
+    let summaries: Vec<BackgroundJobSummary> =
+        jobs.iter().map(BackgroundJobSummary::from_job).collect();
 
     Ok(Json(summaries))
 }
 
-/// Parse a `job_type` query-string value into a [`JobType`] enum variant.
+/// Get one background job with its full input and result.
 ///
-/// Accepts `"DRIFT_DETECTION"` and `"BULK_SYNC"` (case-sensitive, matching
-/// the serde serialisation of [`JobType`]).
-fn parse_job_type(value: &str) -> Result<JobType, ApiError> {
-    match value {
-        "DRIFT_DETECTION" => Ok(JobType::DriftDetection),
-        "BULK_SYNC" => Ok(JobType::BulkSync),
-        "PORTFOLIO_SYNC" => Ok(JobType::PortfolioSync),
-        other => Err(ApiError::BadRequest(format!(
-            "Invalid job_type '{}'. Must be DRIFT_DETECTION, BULK_SYNC, or PORTFOLIO_SYNC",
-            other
-        ))),
-    }
-}
-
-/// Convert a full [`BackgroundJob`] row into a lightweight [`BackgroundJobSummary`].
+/// Returns 404 when the job does not exist or belongs to another user.
 ///
-/// The `summary` field is extracted from the `result` JSONB column:
-/// - For `DRIFT_DETECTION`: extracts the `summary` key from the `DriftReport`
-/// - For `BULK_SYNC`: extracts the `summary` key from the `BulkSyncReport`
-/// - If `result` is `None` or parsing fails, `summary` is set to `None`
-fn to_summary(job: &BackgroundJob) -> BackgroundJobSummary {
-    let summary = job
-        .result
-        .as_ref()
-        .and_then(|result_json| result_json.get("summary").cloned());
-
-    BackgroundJobSummary {
-        id: job.id,
-        job_type: job.job_type,
-        status: job.status,
-        created_at: job.created_at,
-        started_at: job.started_at,
-        completed_at: job.completed_at,
-        error: job.error.clone(),
-        summary,
-    }
+/// GET /api/v1/jobs/:id
+pub async fn get_job(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(job_id): Path<Uuid>,
+) -> Result<Json<BackgroundJobDetail>, ApiError> {
+    let user_id = auth_context.user_id();
+    let job = BackgroundJobRepository::find_by_id(&state.db, job_id)?
+        .filter(|j| j.user_id == user_id)
+        .ok_or_else(|| ApiError::NotFound("Job not found".to_string()))?;
+    Ok(Json(BackgroundJobDetail::from_job(job)))
 }

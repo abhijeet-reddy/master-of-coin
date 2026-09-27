@@ -1,4 +1,5 @@
 pub mod cron;
+pub mod decimal;
 pub mod encryption;
 pub mod oauth_state;
 

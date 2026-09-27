@@ -21,7 +21,8 @@ pub async fn list(
     let user_id = auth_context.user_id();
     tracing::info!("Listing budgets for user {}", user_id);
 
-    let budgets = budget_service::list_budgets(&state.db, user_id).await?;
+    let budgets =
+        budget_service::list_budgets(&state.db, user_id, &*state.exchange_rate_provider).await?;
 
     Ok(Json(budgets))
 }
@@ -102,4 +103,45 @@ pub async fn add_range(
     let range = budget_service::add_range(&state.db, budget_id, user_id, request).await?;
 
     Ok((StatusCode::CREATED, Json(range)))
+}
+
+/// List a budget's ranges (newest start_date first)
+/// GET /budgets/:id/ranges
+pub async fn list_ranges(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(budget_id): Path<Uuid>,
+) -> Result<Json<Vec<crate::models::BudgetRangeResponse>>, ApiError> {
+    let ranges = budget_service::list_ranges(&state.db, budget_id, auth_context.user_id()).await?;
+    Ok(Json(ranges))
+}
+
+/// Replace a budget range
+/// PUT /budgets/:id/ranges/:range_id
+pub async fn update_range(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path((budget_id, range_id)): Path<(Uuid, Uuid)>,
+    Json(request): Json<CreateBudgetRangeRequest>,
+) -> Result<Json<crate::models::BudgetRangeResponse>, ApiError> {
+    let range = budget_service::update_range(
+        &state.db,
+        budget_id,
+        range_id,
+        auth_context.user_id(),
+        request,
+    )
+    .await?;
+    Ok(Json(range))
+}
+
+/// Delete a budget range (not the last one)
+/// DELETE /budgets/:id/ranges/:range_id
+pub async fn delete_range(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path((budget_id, range_id)): Path<(Uuid, Uuid)>,
+) -> Result<StatusCode, ApiError> {
+    budget_service::delete_range(&state.db, budget_id, range_id, auth_context.user_id()).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

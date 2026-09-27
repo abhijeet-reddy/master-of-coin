@@ -2,26 +2,31 @@ use crate::{
     AppState,
     auth::context::AuthContext,
     errors::ApiError,
-    models::{AccountResponse, CreateAccountRequest, SetBalanceRequest, UpdateAccountRequest},
+    models::{
+        AccountResponse, CreateAccountRequest, SetBalanceRequest, UpdateAccountRequest,
+        account::ListAccountsQuery,
+    },
     services::account_service,
 };
 use axum::{
     Json,
-    extract::{Extension, Path, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
 };
 use uuid::Uuid;
 
 /// List all accounts for the authenticated user
-/// GET /accounts
+/// GET /accounts?include_archived=true
 pub async fn list(
     State(state): State<AppState>,
     Extension(auth_context): Extension<AuthContext>,
+    Query(query): Query<ListAccountsQuery>,
 ) -> Result<Json<Vec<AccountResponse>>, ApiError> {
     let user_id = auth_context.user_id();
     tracing::info!("Listing accounts for user {}", user_id);
 
-    let accounts = account_service::list_accounts(&state.db, user_id).await?;
+    let accounts =
+        account_service::list_accounts(&state.db, user_id, query.include_archived).await?;
 
     Ok(Json(accounts))
 }
@@ -100,5 +105,27 @@ pub async fn set_balance(
 
     let account = account_service::set_balance(&state.db, id, user_id, request).await?;
 
+    Ok(Json(account))
+}
+
+/// Archive an account
+/// POST /accounts/:id/archive
+pub async fn archive(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<AccountResponse>, ApiError> {
+    let account = account_service::archive_account(&state.db, id, auth_context.user_id()).await?;
+    Ok(Json(account))
+}
+
+/// Unarchive an account
+/// POST /accounts/:id/unarchive
+pub async fn unarchive(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<AccountResponse>, ApiError> {
+    let account = account_service::unarchive_account(&state.db, id, auth_context.user_id()).await?;
     Ok(Json(account))
 }

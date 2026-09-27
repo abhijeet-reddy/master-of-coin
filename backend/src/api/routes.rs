@@ -93,7 +93,60 @@ pub fn create_router(state: AppState) -> Router {
     // Protected routes (authentication required)
     let protected_routes = Router::new()
         // Auth routes (no scope check needed - always accessible)
-        .route("/auth/me", get(handlers::auth::get_current_user))
+        .route(
+            "/auth/me",
+            get(handlers::auth::get_current_user).patch(handlers::auth::update_current_user),
+        )
+        // Password change and preferences (session only: API keys get 403 in the handler)
+        .route(
+            "/auth/change-password",
+            post(handlers::auth::change_password),
+        )
+        .route(
+            "/preferences",
+            get(handlers::preferences::get).put(handlers::preferences::update),
+        )
+        // Analytics series (derived from transactions: Transactions read scope)
+        .route(
+            "/analytics/net-worth-history",
+            get(handlers::analytics::net_worth_history).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
+            "/analytics/monthly",
+            get(handlers::analytics::monthly).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Read,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/analytics/spending-trend",
+            get(handlers::analytics::spending_trend).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Read,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
         // Dashboard (no scope check - read-only summary)
         .route("/dashboard", get(handlers::dashboard::get_summary))
         // Deployed build version (no scope check - authenticated read-only, issue #83)
@@ -235,6 +288,18 @@ pub fn create_router(state: AppState) -> Router {
         )
         // Jobs listing - all background jobs for current user
         .route(
+            "/jobs/:id",
+            get(handlers::jobs::get_job).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Transactions,
+                    OperationType::Read,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
             "/jobs",
             get(handlers::jobs::list_jobs).layer(middleware::from_fn(|auth, req, next| {
                 require_scope(
@@ -362,6 +427,20 @@ pub fn create_router(state: AppState) -> Router {
             )),
         )
         .route(
+            "/schedules/:id/run",
+            post(handlers::schedules::run_schedule).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        .route(
             "/schedules/:id",
             get(handlers::schedules::get_schedule).layer(middleware::from_fn(|auth, req, next| {
                 require_scope(
@@ -390,6 +469,21 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/schedules/:id",
             delete(handlers::schedules::delete_schedule).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(
+                        ResourceType::Transactions,
+                        OperationType::Write,
+                        auth,
+                        req,
+                        next,
+                    )
+                },
+            )),
+        )
+        // Bulk soft delete (max 500, one DB transaction)
+        .route(
+            "/transactions/bulk-delete",
+            post(handlers::transactions::bulk_delete).layer(middleware::from_fn(
                 |auth, req, next| {
                     require_scope(
                         ResourceType::Transactions,
@@ -490,6 +584,30 @@ pub fn create_router(state: AppState) -> Router {
                 )
             })),
         )
+        .route(
+            "/accounts/:id/archive",
+            post(handlers::accounts::archive).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Accounts,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
+        .route(
+            "/accounts/:id/unarchive",
+            post(handlers::accounts::unarchive).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(
+                    ResourceType::Accounts,
+                    OperationType::Write,
+                    auth,
+                    req,
+                    next,
+                )
+            })),
+        )
         // Budgets - with scope enforcement
         .route(
             "/budgets",
@@ -526,6 +644,26 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::budgets::add_range).layer(middleware::from_fn(|auth, req, next| {
                 require_scope(ResourceType::Budgets, OperationType::Write, auth, req, next)
             })),
+        )
+        .route(
+            "/budgets/:id/ranges",
+            get(handlers::budgets::list_ranges).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Read, auth, req, next)
+            })),
+        )
+        .route(
+            "/budgets/:id/ranges/:range_id",
+            put(handlers::budgets::update_range).layer(middleware::from_fn(|auth, req, next| {
+                require_scope(ResourceType::Budgets, OperationType::Write, auth, req, next)
+            })),
+        )
+        .route(
+            "/budgets/:id/ranges/:range_id",
+            delete(handlers::budgets::delete_range).layer(middleware::from_fn(
+                |auth, req, next| {
+                    require_scope(ResourceType::Budgets, OperationType::Write, auth, req, next)
+                },
+            )),
         )
         // People - with scope enforcement
         .route(

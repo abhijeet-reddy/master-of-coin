@@ -175,3 +175,34 @@ pub async fn delete_user(pool: &DbPool, user_id: Uuid) -> Result<(), ApiError> {
         ApiError::Internal
     })?
 }
+
+/// Replace a user's password hash.
+pub async fn update_password_hash(
+    pool: &DbPool,
+    user_id: Uuid,
+    password_hash: String,
+) -> Result<(), ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::update(users::table.find(user_id))
+            .set((
+                users::password_hash.eq(password_hash),
+                users::updated_at.eq(diesel::dsl::now),
+            ))
+            .execute(&mut conn)
+            .map(|_| ())
+            .map_err(|e| {
+                tracing::error!("Failed to update password for user {}: {}", user_id, e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}

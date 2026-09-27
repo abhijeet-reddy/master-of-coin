@@ -12,8 +12,8 @@ use std::collections::HashMap;
 use crate::errors::ApiError;
 use crate::types::CurrencyCode;
 
-/// Primary currency for the application.
-/// TODO: Fetch from user settings in database
+/// Fallback currency when no user preference applies. Per-user totals use
+/// `preferences_service::user_primary_currency` instead.
 pub const PRIMARY_CURRENCY: CurrencyCode = CurrencyCode::Eur;
 
 /// Trait for exchange rate providers.
@@ -21,8 +21,8 @@ pub const PRIMARY_CURRENCY: CurrencyCode = CurrencyCode::Eur;
 /// This abstraction allows swapping between a live API provider (production)
 /// and a mock provider (testing) without changing business logic.
 ///
-/// Only `get_exchange_rates` must be implemented; `convert_currency` and
-/// `convert_to_primary_currency` have default implementations built on top of it.
+/// Only `get_exchange_rates` must be implemented; `convert_currency` has a
+/// default implementation built on top of it.
 #[async_trait]
 pub trait ExchangeRateProvider: Send + Sync {
     /// Get exchange rates for a given base currency.
@@ -72,16 +72,6 @@ pub trait ExchangeRateProvider: Send + Sync {
         );
 
         Ok(converted_amount)
-    }
-
-    /// Convert an amount to the primary currency.
-    async fn convert_to_primary_currency(
-        &self,
-        amount: &BigDecimal,
-        from_currency: CurrencyCode,
-    ) -> Result<BigDecimal, ApiError> {
-        self.convert_currency(amount, from_currency, PRIMARY_CURRENCY)
-            .await
     }
 }
 

@@ -8,7 +8,9 @@
 //! - [`ApiError::Database`]: Database operation errors (Diesel errors)
 //! - [`ApiError::NotFound`]: Resource not found errors (404)
 //! - [`ApiError::Unauthorized`]: Authentication/authorization errors (401)
-//! - [`ApiError::Validation`]: Input validation errors (400)
+//! - [`ApiError::Validation`]: Input validation errors (422)
+//! - [`ApiError::BadRequest`]: Malformed or unsupported requests (400)
+//! - [`ApiError::Forbidden`]: Authenticated but not allowed (403)
 //! - [`ApiError::Conflict`]: Resource conflict errors (409)
 //! - [`ApiError::Internal`]: Internal server errors (500)
 //!

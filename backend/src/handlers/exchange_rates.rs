@@ -3,7 +3,7 @@ use crate::{
     auth::context::AuthContext,
     errors::ApiError,
     models::{ExchangeRateQuery, ExchangeRateResponse},
-    services::exchange_rate_service::PRIMARY_CURRENCY,
+    services::preferences_service,
     types::CurrencyCode,
 };
 use axum::{
@@ -21,7 +21,7 @@ use std::collections::HashMap;
 ///
 /// # Query Parameters
 ///
-/// * `base` - Optional base currency code (defaults to EUR)
+/// * `base` - Optional base currency code (defaults to the user's default currency)
 ///
 /// # Returns
 ///
@@ -36,7 +36,10 @@ pub async fn get_exchange_rates(
     Query(query): Query<ExchangeRateQuery>,
 ) -> Result<Json<ExchangeRateResponse>, ApiError> {
     let user_id = auth_context.user_id();
-    let base_currency = query.base.unwrap_or(PRIMARY_CURRENCY);
+    let base_currency = match query.base {
+        Some(base) => base,
+        None => preferences_service::user_primary_currency(&state.db, user_id).await,
+    };
 
     tracing::info!(
         "Fetching exchange rates for user {} with base currency {}",

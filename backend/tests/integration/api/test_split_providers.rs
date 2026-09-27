@@ -430,7 +430,8 @@ async fn test_set_split_config_wrong_user_person() {
     .await;
 
     let person_a = create_test_person(&server, &auth_a.token, "A Person").await;
-    let provider_b = create_test_split_provider(&pool, auth_b.user.id, SplitProviderType::Splitwise);
+    let provider_b =
+        create_test_split_provider(&pool, auth_b.user.id, SplitProviderType::Splitwise);
 
     let req = json!({"split_provider_id": provider_b.id, "external_user_id": "12345"});
     let resp = put_authenticated(
@@ -465,7 +466,8 @@ async fn test_set_split_config_wrong_user_provider() {
     )
     .await;
 
-    let provider_a = create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
+    let provider_a =
+        create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
     let person_b = create_test_person(&server, &auth_b.token, "B Person").await;
 
     let req = json!({"split_provider_id": provider_a.id, "external_user_id": "12345"});
@@ -597,7 +599,8 @@ async fn test_get_split_config_wrong_user() {
     )
     .await;
 
-    let provider_a = create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
+    let provider_a =
+        create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
     let person_a = create_test_person(&server, &auth_a.token, "A Person").await;
     let path = format!("/api/v1/people/{}/split-config", person_a.id);
 
@@ -698,7 +701,8 @@ async fn test_delete_split_config_wrong_user() {
     )
     .await;
 
-    let provider_a = create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
+    let provider_a =
+        create_test_split_provider(&pool, auth_a.user.id, SplitProviderType::Splitwise);
     let person_a = create_test_person(&server, &auth_a.token, "A Person").await;
     let path = format!("/api/v1/people/{}/split-config", person_a.id);
 

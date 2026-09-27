@@ -25,6 +25,7 @@ pub mod transaction;
 pub mod transaction_split;
 pub mod transfer;
 pub mod user;
+pub mod user_preferences;
 
 // Re-export base models
 pub use account::{Account, CreateAccount, UpdateAccount};

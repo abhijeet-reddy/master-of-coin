@@ -3,7 +3,7 @@
 //! These tests verify the duplicate detection logic against actual database transactions
 
 use bigdecimal::BigDecimal;
-use chrono::{Duration, Utc};
+use chrono::{Duration, SubsecRound, Utc};
 use diesel::prelude::*;
 use master_of_coin_backend::{
     db::{create_pool, run_migrations},
@@ -59,8 +59,9 @@ fn test_duplicate_detection_high_confidence() {
     let user = common::create_test_user(&mut conn, "duplicate_test_high").unwrap();
     let account = common::AccountFactory::new(user.id).build(&mut conn);
 
-    // Create existing transaction in DB
-    let test_date = Utc::now() - Duration::days(5);
+    // Create existing transaction in DB. Truncated to microseconds, the
+    // precision Postgres stores, so the time comparison can match exactly.
+    let test_date = (Utc::now() - Duration::days(5)).trunc_subsecs(6);
     create_test_transaction_in_db(
         &mut conn,
         user.id,

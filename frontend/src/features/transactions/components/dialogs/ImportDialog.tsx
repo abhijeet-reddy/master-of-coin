@@ -23,6 +23,7 @@ import {
   type ImportPreload,
 } from '../../hooks/useImport';
 import { useAccounts } from '../../hooks/useTxQueries';
+import { fromApiDateTime, localDay, toApiDateTime } from '../../lib/datetime';
 import { rowProblem } from '../../lib/importModel';
 import { accountOptions, spendingAccounts } from '../../lib/options';
 import { AlertKind } from '../alertKind';
@@ -289,8 +290,13 @@ function PreviewStep({ imp }: { imp: ImportApi }) {
                     <input
                       type="date"
                       aria-label={`Date, row ${n}`}
-                      value={r.date.slice(0, 10)}
-                      onChange={(e) => imp.edit(r.temp_id, { date: e.target.value })}
+                      value={localDay(r.date)}
+                      onChange={(e) =>
+                        e.target.value &&
+                        imp.edit(r.temp_id, {
+                          date: toApiDateTime(e.target.value, fromApiDateTime(r.date).time),
+                        })
+                      }
                     />
                   </td>
                   <td>

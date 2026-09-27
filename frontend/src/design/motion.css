@@ -230,6 +230,27 @@
   animation: moc-shake 420ms var(--ease-out);
 }
 
+/* Surface sweep: an accent edge runs down a panel, card or ledger once it is on screen.
+   design/sweep.ts sets data-seen when the surface enters the viewport, so surfaces below
+   the fold sweep when you scroll to them instead of off screen. */
+:where(.moc-sweep) {
+  position: relative;
+}
+.moc-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-bottom: 1px solid var(--accent);
+  opacity: 0;
+}
+.moc-sweep[data-seen]::after,
+:root.moc-sweep-all .moc-sweep::after {
+  animation: moc-sweep var(--d6) var(--ease-io) backwards;
+  animation-delay: calc(var(--boot, 0ms) + var(--i, 0) * 55ms + var(--si, 0) * 35ms);
+}
+
 /* Route change: an accent scan line crosses the top of the page. */
 .moc-route-scan {
   position: fixed;

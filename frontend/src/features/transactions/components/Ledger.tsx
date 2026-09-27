@@ -20,6 +20,7 @@ import { activeFilterCount, PAGE_SIZE } from '../lib/filters';
 import type { DayGroup } from '../lib/ledger';
 import { TxRow } from './TxRow';
 import styles from './Transactions.module.css';
+import { cx } from '@/ui/cx';
 
 interface Props {
   f: TransactionFiltersApi;
@@ -166,7 +167,7 @@ export function Ledger({ f, groups, query, base, selection, onOpen }: Props) {
 
   return (
     <section
-      className={styles.ledger}
+      className={cx(styles.ledger, 'moc-sweep')}
       aria-labelledby="tx-ledger-title"
       aria-busy={query.isFetching || undefined}
     >

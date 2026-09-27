@@ -15,7 +15,7 @@ export interface PanelProps {
 /** The Telemetry panel. Place inside a <PanelGrid> for hairline gutters. */
 export function Panel({ title, actions, children, flush = false }: PanelProps) {
   return (
-    <section className={styles.panel} aria-label={title}>
+    <section className={cx(styles.panel, 'moc-sweep')} aria-label={title}>
       {title || actions ? (
         <header className={styles.head}>
           {title ? <h2 className={styles.title}>{title}</h2> : <span />}

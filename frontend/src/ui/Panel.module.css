@@ -7,16 +7,6 @@
   animation: global(moc-pwr) var(--d4) var(--ease-flow) backwards;
   animation-delay: calc(var(--boot, 0ms) + var(--i, 0) * 55ms);
 }
-.panel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-bottom: 1px solid var(--accent);
-  opacity: 0;
-  animation: global(moc-sweep) var(--d6) var(--ease-io) backwards;
-  animation-delay: calc(var(--boot, 0ms) + var(--i, 0) * 55ms);
-}
 .head {
   display: flex;
   align-items: center;

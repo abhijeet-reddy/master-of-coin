@@ -22,6 +22,7 @@ import { usePeopleDialogs } from '../hooks/peopleDialogs';
 import { usePersonWithBalance } from '../hooks/usePeopleQueries';
 import { DebtDirection, personNet } from '../lib/peopleModel';
 import styles from '../components/People.module.css';
+import { cx } from '@/ui/cx';
 
 /** `/people/:id`: the balance, its history, the split provider link and the shared transactions. */
 export function PersonDetailPage() {
@@ -99,7 +100,10 @@ function PersonDetailView() {
           <DebtHistoryPanel person={p} ctx={q.ctx} />
         </GridCell>
       </PanelGrid>
-      <section aria-label={`Transactions shared with ${p.name}`} className={styles.ledger}>
+      <section
+        aria-label={`Transactions shared with ${p.name}`}
+        className={cx(styles.ledger, 'moc-sweep')}
+      >
         <PersonLedger person={p} />
       </section>
     </div>

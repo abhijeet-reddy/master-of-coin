@@ -14,6 +14,7 @@ import { Ledger } from './Ledger';
 import { MonthNav } from './MonthBar';
 import { TxDrawer } from './TxDrawer';
 import styles from './Transactions.module.css';
+import { cx } from '@/ui/cx';
 
 interface ScopedProps {
   origin: Crumb[];
@@ -67,7 +68,7 @@ function ScopedLedgerView({ scope, monthLabel }: Omit<ScopedProps, 'origin'>) {
       : `${flows.count} txn, filters applied`;
   return (
     <div className={styles.page}>
-      <section className={styles.monthbar} aria-label={monthLabel}>
+      <section className={cx(styles.monthbar, 'moc-sweep')} aria-label={monthLabel}>
         <MonthNav f={f} />
         <div className={styles.monthStats}>
           <StatGroup label={`${scope.summaryLabel ?? 'These transactions'}, in ${ctx.base}`}>

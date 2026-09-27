@@ -6,6 +6,7 @@ import { Badge, ControlSize, IconButton, Menu, MenuItem, MenuSeparator } from '@
 import { useCategoryDialogs } from '../hooks/categoryDialogs';
 import { CategoryTile } from './CategoryTile';
 import styles from './Categories.module.css';
+import { cx } from '@/ui/cx';
 
 interface Props {
   category: Category;
@@ -18,7 +19,7 @@ export function CategoryCard({ category: c, thisMonth, lastMonth }: Props) {
   const navigate = useNavigate();
   const dialogs = useCategoryDialogs();
   return (
-    <article className={styles.card} aria-labelledby={`cat-${c.id}`}>
+    <article className={cx(styles.card, 'moc-sweep')} aria-labelledby={`cat-${c.id}`}>
       <CategoryTile category={c} />
       <div className={styles.cardMain}>
         <h3 className={styles.cardName}>

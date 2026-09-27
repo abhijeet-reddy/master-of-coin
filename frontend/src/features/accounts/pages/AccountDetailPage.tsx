@@ -19,6 +19,7 @@ import {
 } from '../hooks/useAccountQueries';
 import { convertBalance, providerState } from '../lib/accountsModel';
 import styles from '../components/Accounts.module.css';
+import { cx } from '@/ui/cx';
 
 /** `/accounts/:id`: summary, balance history, provider and drift, then the account's ledger. */
 export function AccountDetailPage() {
@@ -84,7 +85,7 @@ function AccountDetailView() {
           )}
         </GridCell>
       </PanelGrid>
-      <section aria-label="Transactions" className={styles.ledger}>
+      <section aria-label="Transactions" className={cx(styles.ledger, 'moc-sweep')}>
         <AccountLedger account={a} canAdd={!isInvestmentType(a.account_type)} />
       </section>
     </div>

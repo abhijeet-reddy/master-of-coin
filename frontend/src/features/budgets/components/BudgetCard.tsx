@@ -9,6 +9,7 @@ import { healthTone } from '../lib/health';
 import { CategoryTag, HealthBadge } from './BudgetTags';
 import { Gauge } from './Gauge';
 import styles from './Budgets.module.css';
+import { cx } from '@/ui/cx';
 
 interface Props {
   s: BudgetStats;
@@ -27,7 +28,11 @@ export function BudgetCard({ s, categories, selected, onSelect }: Props) {
   const cur = s.currency;
   const over = s.remaining < 0;
   return (
-    <article className={styles.card} data-selected={selected} aria-labelledby={headingId}>
+    <article
+      className={cx(styles.card, 'moc-sweep')}
+      data-selected={selected}
+      aria-labelledby={headingId}
+    >
       <Gauge percent={s.percent} health={s.health} stroke={7} pace={s.active ? s.elapsedPct : null}>
         <span className={styles.readSmall}>{s.active ? fmt.percent(s.percent) : '--'}</span>
       </Gauge>

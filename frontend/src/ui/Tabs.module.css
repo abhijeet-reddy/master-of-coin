@@ -80,3 +80,7 @@
 .panel[data-state='active'] {
   animation: global(moc-slide-r) var(--d4) var(--ease-flow) backwards;
 }
+/* Radix zeroes the first panel's duration inline (animation-duration: 0s); let it play on page load too. */
+:global(:root:not(.rm)) .panel[data-state='active'] {
+  animation-duration: var(--d4) !important;
+}

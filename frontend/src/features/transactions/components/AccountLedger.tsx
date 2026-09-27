@@ -16,6 +16,7 @@ import { Ledger } from './Ledger';
 import { MonthNav } from './MonthBar';
 import { TxDrawer } from './TxDrawer';
 import styles from './Transactions.module.css';
+import { cx } from '@/ui/cx';
 
 export interface AccountLedgerProps {
   account: Account;
@@ -79,7 +80,7 @@ function AccountLedgerView({ account, canAdd }: AccountLedgerProps) {
           <EntryButtons accountId={account.id} transferOnly={!canAdd} />
         </PageActions>
       )}
-      <section className={styles.monthbar} aria-label="Month">
+      <section className={cx(styles.monthbar, 'moc-sweep')} aria-label="Month">
         <MonthNav f={f} />
         <div className={styles.monthStats}>
           <StatGroup label={`This account, ${cur}, transfers included`}>

@@ -48,7 +48,7 @@ export function AccountCard({ account, provider, converted, base }: AccountCardP
   const sync = useAccountSync(account, provider);
   return (
     <article
-      className={`${styles.card} ${meta.liability ? styles.liab : ''} ${archived ? styles.archivedCard : ''}`}
+      className={`moc-sweep ${styles.card} ${meta.liability ? styles.liab : ''} ${archived ? styles.archivedCard : ''}`}
       aria-labelledby={headingId}
     >
       <span className={`${styles.corner} ${styles.c1}`} aria-hidden />

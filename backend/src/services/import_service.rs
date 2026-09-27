@@ -72,7 +72,7 @@ pub async fn check_duplicates(
         pool,
         user_id,
         TransactionFilter {
-            account_id: Some(account_id),
+            account_id: Some(vec![account_id]),
             category_id: None,
             start_date: Some(start_date.and_hms_opt(0, 0, 0).unwrap().and_utc()),
             end_date: Some(end_date.and_hms_opt(23, 59, 59).unwrap().and_utc()),

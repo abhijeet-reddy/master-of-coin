@@ -1,0 +1,64 @@
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  align-content: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+.boot[data-phase='out'] {
+  animation: boot-out 480ms var(--ease-io) forwards;
+}
+.log {
+  min-width: min(440px, 90vw);
+  font: 500 13px / 1.7 var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.log > div:not(.bar) {
+  white-space: pre;
+  animation: boot-line 1ms steps(1, end) backwards;
+}
+.log b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.dots {
+  color: var(--ink-3);
+}
+.ok {
+  color: var(--pos);
+}
+.bar {
+  position: relative;
+  height: 4px;
+  margin-top: 16px;
+  background: var(--line);
+}
+.bar i {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: left;
+  animation: global(moc-grow-x) var(--ease-flow) backwards;
+}
+.edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+}
+@keyframes boot-line {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes boot-out {
+  to {
+    clip-path: inset(0 0 100% 0);
+  }
+}

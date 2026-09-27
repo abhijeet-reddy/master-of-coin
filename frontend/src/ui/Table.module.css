@@ -1,0 +1,150 @@
+.scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.caption {
+  text-align: left;
+  padding: 10px 14px;
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.th {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font: 600 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-data);
+  vertical-align: middle;
+}
+.table tbody tr:last-child .td {
+  border-bottom: 0;
+}
+.end {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.center {
+  text-align: center;
+}
+.row {
+  transition: background-color var(--d1) ease;
+}
+.clickable {
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .clickable:hover {
+    background: var(--panel-2);
+  }
+}
+.selected {
+  background: var(--accent-soft);
+}
+
+/* Motion: rows rise in on mount (capped), hover draws an accent edge. */
+.row {
+  position: relative;
+  animation: global(moc-rise) var(--d3) var(--ease-flow) backwards;
+  animation-delay: calc(80ms + var(--ri, 0) * 25ms);
+}
+.table tbody .row:nth-child(2) {
+  --ri: 1;
+}
+.table tbody .row:nth-child(3) {
+  --ri: 2;
+}
+.table tbody .row:nth-child(4) {
+  --ri: 3;
+}
+.table tbody .row:nth-child(5) {
+  --ri: 4;
+}
+.table tbody .row:nth-child(6) {
+  --ri: 5;
+}
+.table tbody .row:nth-child(7) {
+  --ri: 6;
+}
+.table tbody .row:nth-child(8) {
+  --ri: 7;
+}
+.table tbody .row:nth-child(9) {
+  --ri: 8;
+}
+.table tbody .row:nth-child(10) {
+  --ri: 9;
+}
+.table tbody .row:nth-child(11) {
+  --ri: 10;
+}
+.table tbody .row:nth-child(12) {
+  --ri: 11;
+}
+.table tbody .row:nth-child(13) {
+  --ri: 12;
+}
+.table tbody .row:nth-child(14) {
+  --ri: 13;
+}
+.table tbody .row:nth-child(15) {
+  --ri: 14;
+}
+.table tbody .row:nth-child(16) {
+  --ri: 15;
+}
+.table tbody .row:nth-child(17) {
+  --ri: 16;
+}
+.table tbody .row:nth-child(18) {
+  --ri: 17;
+}
+.table tbody .row:nth-child(19) {
+  --ri: 18;
+}
+.table tbody .row:nth-child(20) {
+  --ri: 19;
+}
+.table tbody .row:nth-child(21) {
+  --ri: 20;
+}
+.table tbody .row:nth-child(22) {
+  --ri: 21;
+}
+.table tbody .row:nth-child(23) {
+  --ri: 22;
+}
+.table tbody .row:nth-child(24) {
+  --ri: 23;
+}
+.table tbody .row:nth-child(n + 25) {
+  --ri: 24;
+}
+.clickable .td:first-child {
+  box-shadow: inset 0 0 0 0 var(--accent);
+  transition: box-shadow var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .clickable:hover .td:first-child {
+    box-shadow: inset 3px 0 0 0 var(--accent);
+  }
+}
+.selected {
+  animation: global(moc-flash) 600ms var(--ease-out) backwards;
+}
+.th {
+  animation: global(moc-fade) var(--d3) ease backwards;
+}

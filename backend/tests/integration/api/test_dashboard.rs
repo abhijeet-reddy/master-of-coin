@@ -1160,7 +1160,12 @@ async fn test_get_dashboard_debt_overview() {
 // ============================================================================
 
 /// Helper to mark a category as excluded from analysis.
-async fn set_category_excluded(server: &TestServer, token: &str, category_id: &str, excluded: bool) {
+async fn set_category_excluded(
+    server: &TestServer,
+    token: &str,
+    category_id: &str,
+    excluded: bool,
+) {
     let request = json!({ "is_excluded_from_analysis": excluded });
     let response = put_authenticated(
         server,
@@ -1218,16 +1223,7 @@ async fn test_dashboard_breakdown_excludes_flagged_category() {
         None,
     )
     .await;
-    create_test_transaction(
-        &server,
-        &auth.token,
-        account_id,
-        -50.0,
-        "Misc",
-        None,
-        None,
-    )
-    .await;
+    create_test_transaction(&server, &auth.token, account_id, -50.0, "Misc", None, None).await;
 
     // Mark Investments excluded from analysis
     set_category_excluded(&server, &auth.token, investments_id, true).await;
@@ -1313,16 +1309,7 @@ async fn test_no_category_budget_spend_excludes_flagged_category() {
         None,
     )
     .await;
-    create_test_transaction(
-        &server,
-        &auth.token,
-        account_id,
-        -50.0,
-        "Misc",
-        None,
-        None,
-    )
-    .await;
+    create_test_transaction(&server, &auth.token, account_id, -50.0, "Misc", None, None).await;
 
     // Overall budget (no category filter)
     let budget = create_test_budget(&server, &auth.token, "Overall", None, 2000.0).await;
@@ -1330,8 +1317,12 @@ async fn test_no_category_budget_spend_excludes_flagged_category() {
 
     set_category_excluded(&server, &auth.token, investments_id, true).await;
 
-    let response =
-        get_authenticated(&server, &format!("/api/v1/budgets/{}", budget_id), &auth.token).await;
+    let response = get_authenticated(
+        &server,
+        &format!("/api/v1/budgets/{}", budget_id),
+        &auth.token,
+    )
+    .await;
     assert_status(&response, 200);
     let budget_detail: Value = extract_json(response);
 

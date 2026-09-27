@@ -1,0 +1,183 @@
+/* Shared control look: inputs, select triggers, combobox triggers, date triggers. */
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  height: var(--ctl-h);
+  padding: 0 10px;
+  background: var(--bg);
+  border: 1px solid var(--ctl-border);
+  color: var(--ink);
+  font: 400 var(--t-data) / 1 var(--mono);
+  text-align: left;
+  appearance: none;
+  transition: border-color var(--d1) ease;
+}
+.control::placeholder {
+  color: var(--ink-3);
+}
+.control:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -1px;
+}
+.control:disabled,
+.control[data-disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.control[aria-invalid='true'] {
+  border-color: var(--crit);
+}
+@media (hover: hover) and (pointer: fine) {
+  .control:not(:disabled):hover {
+    border-color: var(--ink-2);
+  }
+}
+.placeholder {
+  color: var(--ink-3);
+}
+.value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ink-2);
+}
+/* Popover surfaces: select content, menus, combobox, date picker. */
+.popover {
+  z-index: var(--z-popover);
+  min-width: var(--radix-popper-anchor-width, 200px);
+  max-height: var(--radix-popper-available-height, 360px);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--ink-2);
+  color: var(--ink);
+  transform-origin: var(--radix-popper-transform-origin, top);
+}
+.popover[data-state='open'] {
+  animation: pop-in 150ms var(--ease-out);
+}
+.popover[data-state='closed'] {
+  animation: pop-in 100ms var(--ease-out) reverse;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 12px;
+  font: 500 12px/1.2 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+.option[data-highlighted],
+.option[data-selected='true'] {
+  background: var(--panel-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.option[data-disabled] {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+.option svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.optionHint {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.check {
+  margin-left: auto;
+  color: var(--ink);
+}
+@media (max-width: 760px) {
+  .control {
+    height: 44px;
+    font-size: 16px;
+  }
+  .option {
+    min-height: 44px;
+  }
+}
+
+/* Motion: options cascade in when a list opens; the focus ring snaps in. */
+.popover[data-state='open'] .option {
+  animation: global(moc-slide-l) var(--d2) var(--ease-out) backwards;
+  animation-delay: calc(var(--oi, 0) * 18ms);
+}
+.popover .option:nth-child(2) {
+  --oi: 1;
+}
+.popover .option:nth-child(3) {
+  --oi: 2;
+}
+.popover .option:nth-child(4) {
+  --oi: 3;
+}
+.popover .option:nth-child(5) {
+  --oi: 4;
+}
+.popover .option:nth-child(6) {
+  --oi: 5;
+}
+.popover .option:nth-child(7) {
+  --oi: 6;
+}
+.popover .option:nth-child(8) {
+  --oi: 7;
+}
+.popover .option:nth-child(9) {
+  --oi: 8;
+}
+.popover .option:nth-child(10) {
+  --oi: 9;
+}
+.popover .option:nth-child(11) {
+  --oi: 10;
+}
+.popover .option:nth-child(12) {
+  --oi: 11;
+}
+.option {
+  transition:
+    background-color var(--d1) ease,
+    padding-left var(--d2) var(--ease-out);
+}
+.option[data-highlighted] {
+  padding-left: 14px;
+}
+.control:focus-visible {
+  transition:
+    border-color var(--d1) ease,
+    box-shadow var(--d2) var(--ease-out);
+}
+.chevron {
+  transition: transform var(--d2) var(--ease-out);
+}
+[data-state='open'] > .chevron,
+[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+.control[aria-invalid='true'] {
+  animation: global(moc-shake) 420ms var(--ease-out);
+}

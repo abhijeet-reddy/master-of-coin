@@ -1,0 +1,108 @@
+.skel {
+  display: block;
+  height: 10px;
+  background: var(--line);
+  animation: skel 1.2s steps(4, end) infinite;
+}
+.lines {
+  display: grid;
+  gap: 10px;
+}
+@keyframes skel {
+  50% {
+    opacity: 0.45;
+  }
+}
+:global(:root.rm) .skel {
+  animation: none;
+  opacity: 0.7;
+}
+.box {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 48px 24px;
+  background: var(--panel);
+  text-align: center;
+}
+.compact {
+  padding: 24px 16px;
+  gap: 10px;
+}
+.glyph {
+  font: 600 var(--t-small) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  white-space: pre;
+}
+.title {
+  margin: 0;
+  font: 800 28px / 0.95 var(--sans);
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+.compact .title {
+  font-size: 18px;
+}
+.desc {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--ink-2);
+  font: 400 var(--t-data) / 1.5 var(--sans);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.err {
+  border-top: 3px solid var(--crit);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 14px,
+    var(--crit-soft) 14px 28px
+  );
+}
+.err .title {
+  color: var(--crit);
+}
+.code {
+  font: 500 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Motion: skeletons get a scan-line shimmer; empty states float, errors glitch once. */
+.skel {
+  position: relative;
+  overflow: hidden;
+}
+.skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+  animation: global(moc-shimmer) 1.4s var(--ease-io) infinite;
+}
+:global(:root.rm) .skel::after {
+  display: none;
+}
+.box {
+  animation: global(moc-rise) var(--d4) var(--ease-flow) backwards;
+}
+.glyph {
+  animation: global(moc-float) 3.2s ease-in-out 400ms 2;
+}
+.err .glyph,
+.err .title {
+  animation: global(moc-glitch) 420ms steps(2, end) 200ms 1;
+}
+.title::after {
+  content: '_' / '';
+  margin-left: 2px;
+  color: var(--accent);
+  opacity: 0;
+  animation: global(moc-cursor) 1s linear 4 backwards;
+}

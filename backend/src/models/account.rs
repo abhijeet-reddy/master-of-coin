@@ -19,6 +19,15 @@ pub struct Account {
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    /// Set when the account is archived. NULL means active.
+    pub archived_at: Option<DateTime<Utc>>,
+}
+
+impl Account {
+    /// An account is active until it is archived.
+    pub fn is_active(&self) -> bool {
+        self.archived_at.is_none()
+    }
 }
 
 #[derive(Debug, Insertable)]
@@ -89,6 +98,16 @@ pub struct AccountResponse {
     pub account_type: AccountType,
     pub currency: CurrencyCode,
     pub balance: f64,
+    /// Derived: `archived_at IS NULL`.
     pub is_active: bool,
+    pub archived_at: Option<DateTime<Utc>>,
     pub notes: Option<String>,
+}
+
+/// Query parameters for `GET /accounts`.
+#[derive(Debug, Default, Deserialize)]
+pub struct ListAccountsQuery {
+    /// Include archived accounts (default false).
+    #[serde(default)]
+    pub include_archived: bool,
 }

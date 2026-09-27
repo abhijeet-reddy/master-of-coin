@@ -64,6 +64,24 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+/// PATCH /auth/me body. Omitted fields are left unchanged.
+#[derive(Debug, Serialize, Deserialize, validator::Validate)]
+pub struct UpdateProfileRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub name: Option<String>,
+    #[validate(email, length(max = 255))]
+    pub email: Option<String>,
+}
+
+/// POST /auth/change-password body.
+#[derive(Debug, Serialize, Deserialize, validator::Validate)]
+pub struct ChangePasswordRequest {
+    #[validate(length(min = 1))]
+    pub current_password: String,
+    #[validate(length(min = 8))]
+    pub new_password: String,
+}
+
 // Response DTOs
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserResponse {

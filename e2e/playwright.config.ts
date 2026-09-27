@@ -32,10 +32,14 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     // Base URL for all tests
-    baseURL: "http://localhost:13153",
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:13153",
 
     // Always run headless (agent cannot see GUI)
     headless: true,
+
+    // Reduced motion: count-up figures and staggered panels settle instantly,
+    // so text and layout assertions never read a mid-animation value.
+    contextOptions: { reducedMotion: "reduce" },
 
     // Screenshot on failure for debugging
     screenshot: "only-on-failure",
@@ -84,6 +88,10 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
+        // E2E_CHANNEL=chrome runs the installed Google Chrome instead of the bundled build.
+        ...(process.env.E2E_CHANNEL
+          ? { channel: process.env.E2E_CHANNEL }
+          : {}),
         // Use saved authentication state
         storageState: "./auth/storage-state.json",
       },

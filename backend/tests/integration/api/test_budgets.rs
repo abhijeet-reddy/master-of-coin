@@ -1375,12 +1375,12 @@ async fn test_full_budget_with_ranges_flow() {
     let monthly: BudgetRangeResponse = extract_json(monthly_response);
     assert_eq!(monthly.period, BudgetPeriod::Monthly);
 
-    // Step 3: Add quarterly range
+    // Step 3: Add quarterly range (ranges may not overlap, so it starts after the monthly one)
     let quarterly_range = json!({
         "limit_amount": 3000.0,
         "period": "QUARTERLY",
-        "start_date": "2024-01-01",
-        "end_date": "2024-03-31"
+        "start_date": "2024-02-01",
+        "end_date": "2024-04-30"
     });
     let quarterly_response = post_authenticated(
         &server,
@@ -1397,8 +1397,8 @@ async fn test_full_budget_with_ranges_flow() {
     let yearly_range = json!({
         "limit_amount": 12000.0,
         "period": "YEARLY",
-        "start_date": "2024-01-01",
-        "end_date": "2024-12-31"
+        "start_date": "2025-01-01",
+        "end_date": "2025-12-31"
     });
     let yearly_response = post_authenticated(
         &server,

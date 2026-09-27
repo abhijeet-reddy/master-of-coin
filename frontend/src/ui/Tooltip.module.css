@@ -1,0 +1,15 @@
+.tip {
+  z-index: var(--z-popover);
+  max-width: 280px;
+  padding: 6px 8px;
+  background: var(--ink);
+  color: var(--bg);
+  font: 500 var(--t-micro) / 1.35 var(--mono);
+  letter-spacing: 0.04em;
+}
+.tip[data-state='delayed-open'] {
+  animation: global(moc-fade) var(--d1) ease;
+}
+.arrow {
+  fill: var(--ink);
+}

@@ -1,161 +1,168 @@
 import { test, expect } from "../../fixtures/test-fixtures";
-import { ScreenshotHelper } from "../../helpers/screenshots";
 import {
-  expectPageTitle,
   collectConsoleErrors,
   expectNoConsoleErrors,
 } from "../../helpers/assertions";
+import {
+  createTx,
+  ledger,
+  monthName,
+  monthsAgo,
+  openLedger,
+  params,
+  rowButton,
+  tag,
+} from "../../helpers/transactions";
 
 /**
- * Transactions page E2E tests.
- *
- * Tests the transactions page functionality:
- * - Page loads correctly
- * - Month navigator works
- * - Transaction filters
- * - Create transaction
- * - Transaction list rendering
+ * Transactions page (UI v2): heading, month bar, ledger, create, the row
+ * drawer and its full page, and bulk delete with undo.
  */
 
-const screenshotHelper = new ScreenshotHelper();
-
-test.describe("Transactions Page", () => {
-  test("transactions page loads with correct title", async ({
-    authenticatedPage,
+test.describe("Transactions page", () => {
+  test("renders heading, month bar and ledger without console errors", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    const errors = collectConsoleErrors(page);
+    await openLedger(page);
 
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    await expectPageTitle(authenticatedPage, "Transactions");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Transactions" }),
+    ).toBeVisible();
+    const month = page.getByRole("region", { name: "Month" });
+    await expect(month).toContainText(monthName(monthsAgo(0)));
+    await expect(month).toContainText("Current month");
+    for (const stat of ["Income", "Spend", "Net", "Spend of income"]) {
+      await expect(month.getByText(stat, { exact: true })).toBeVisible();
+    }
+    await expect(
+      page.getByRole("complementary", { name: "Search and filter" }),
+    ).toBeVisible();
     expectNoConsoleErrors(errors);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "transactions-list",
-    );
   });
 
-  test("month navigator is visible and functional", async ({
-    authenticatedPage,
+  test("month navigation moves back and forward", async ({
+    authenticatedPage: page,
   }) => {
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
+    await openLedger(page);
+    const next = page.getByRole("button", { name: "Next month" });
+    await expect(next).toBeDisabled();
 
-    // Month navigator should show current month
-    const currentMonth = new Date().toLocaleString("default", {
-      month: "long",
-      year: "numeric",
-    });
-    // The month navigator may display the month in various formats
-    // Just verify navigation arrows exist
-    const prevButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /←|‹|prev/i })
-      .first()
-      .or(authenticatedPage.locator('[aria-label*="previous"]').first());
-    const nextButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /→|›|next/i })
-      .first()
-      .or(authenticatedPage.locator('[aria-label*="next"]').first());
-
-    // At least one navigation element should be visible
-    const hasNavigation =
-      (await prevButton.isVisible()) || (await nextButton.isVisible());
-    // Month navigator may not be visible if there are no transactions
-    // This is acceptable
-  });
-
-  test("Add Transaction button is visible", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Look for the add transaction button (may be icon button or text button)
-    const addButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /add|new/i })
-      .first()
-      .or(authenticatedPage.locator('[aria-label*="add"]').first());
-
-    // The page should have some way to add transactions
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "transactions-controls",
-    );
-  });
-
-  test("can open transaction form modal", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Find and click the add transaction button
-    // The button uses FiPlus icon, so look for it
-    const addButtons = authenticatedPage.locator("button");
-    const addButtonCount = await addButtons.count();
-
-    // Try clicking the first button that looks like an add button
-    for (let i = 0; i < addButtonCount; i++) {
-      const button = addButtons.nth(i);
-      const text = await button.textContent();
-      const ariaLabel = await button.getAttribute("aria-label");
-      if (
-        text?.toLowerCase().includes("add") ||
-        text?.toLowerCase().includes("new") ||
-        ariaLabel?.toLowerCase().includes("add")
-      ) {
-        await button.click();
-        break;
-      }
-    }
-
-    // Wait a moment for modal to appear
-    await authenticatedPage.waitForTimeout(500);
-
-    // Take screenshot of whatever state we're in
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "transactions-add-modal",
-    );
-  });
-
-  test("filter toggle opens drawer", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Look for filter button
-    const filterButton = authenticatedPage.locator(
-      '[aria-label="Toggle filters"]',
+    await page.getByRole("button", { name: "Previous month" }).click();
+    await expect.poll(() => params(page).get("month")).toBe(monthsAgo(1));
+    await expect(page.getByRole("region", { name: "Month" })).toContainText(
+      monthName(monthsAgo(1)),
     );
 
-    if (await filterButton.isVisible()) {
-      await filterButton.click();
-      await authenticatedPage.waitForTimeout(500);
+    await next.click();
+    await expect.poll(() => params(page).get("month")).toBeNull();
+  });
 
-      // Filter drawer should be visible
-      const drawer = authenticatedPage
-        .locator('[role="dialog"]')
-        .filter({ hasText: /Filters/ });
-      await expect(drawer).toBeVisible({ timeout: 5000 });
-
-      // Screenshot with filter drawer open
-      await screenshotHelper.capturePageScreenshot(
-        authenticatedPage,
-        "transactions-filters-drawer-open",
-      );
+  test("entry points are visible", async ({ authenticatedPage: page }) => {
+    await openLedger(page);
+    for (const name of ["Add transaction", "Transfer", "Import"]) {
+      await expect(
+        page.getByRole("button", { name, exact: true }).first(),
+      ).toBeVisible();
     }
   });
 
-  test("month summary displays correctly", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
+  test("adds a transaction through the form", async ({
+    authenticatedPage: page,
+  }) => {
+    const title = tag("E2E add ");
+    await openLedger(page);
+    await page
+      .getByRole("button", { name: "Add transaction", exact: true })
+      .first()
+      .click();
 
-    // The month summary should show income/expense totals
-    // Take a screenshot for visual verification
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "transactions-month-summary",
+    const dialog = page.getByRole("dialog", { name: "Add transaction" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel("Account").click();
+    await page.getByRole("option").first().click();
+    await dialog.getByLabel("Title").fill(title);
+    await dialog.getByLabel("Amount").fill("12.34");
+    await dialog.getByRole("button", { name: "Add transaction" }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByText("Transaction added", { exact: true })).toBeVisible();
+    await openLedger(page, `q=${encodeURIComponent(title)}`);
+    await expect(rowButton(page, title)).toBeVisible();
+    await expect(ledger(page)).toContainText("12.34");
+  });
+
+  test("a row opens the drawer, which links to the full page", async ({
+    authenticatedPage: page,
+  }) => {
+    const title = tag("E2E drawer ");
+    const tx = await createTx(page, title, -21.5);
+    await openLedger(page, `q=${encodeURIComponent(title)}`);
+
+    await rowButton(page, title).click();
+    await expect.poll(() => params(page).get("tx")).toBe(tx.id);
+    const drawer = page.getByRole("dialog", { name: "Transaction" });
+    await expect(drawer.getByRole("article", { name: title })).toBeVisible();
+    await expect(drawer).toContainText("21.50");
+
+    await drawer.getByRole("link", { name: "Open as a full page" }).click();
+    await expect(page).toHaveURL(new RegExp(`/transactions/${tx.id}$`));
+    await expect(page.getByRole("article", { name: title })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit" })).toBeVisible();
+  });
+
+  test("the drawer closes with Escape and clears ?tx", async ({
+    authenticatedPage: page,
+  }) => {
+    const title = tag("E2E esc ");
+    const tx = await createTx(page, title, -3);
+    await page.goto(`/transactions?q=${encodeURIComponent(title)}&tx=${tx.id}`);
+    const drawer = page.getByRole("dialog", { name: "Transaction" });
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect.poll(() => params(page).get("tx")).toBeNull();
+  });
+
+  test("bulk delete asks first and can be undone", async ({
+    authenticatedPage: page,
+  }) => {
+    const t = tag("E2E bulk ");
+    await createTx(page, `${t} one`, -1);
+    await createTx(page, `${t} two`, -2);
+    await openLedger(page, `q=${encodeURIComponent(t)}`);
+
+    await page.getByRole("checkbox", { name: `Select ${t} one` }).check();
+    await page.getByRole("checkbox", { name: `Select ${t} two` }).check();
+    const bar = page.getByRole("region", { name: "Bulk actions" });
+    await expect(bar).toContainText("2 selected");
+
+    await bar.getByRole("button", { name: "Delete 2" }).click();
+    const confirm = page.getByRole("dialog", { name: "Delete 2 transactions" });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole("button", { name: "Delete" }).click();
+    await expect(confirm).toBeHidden();
+    await expect(page.getByText("2 transactions deleted", { exact: true })).toBeVisible();
+    await expect(rowButton(page, `${t} one`)).toBeHidden();
+
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByText("2 transactions restored", { exact: true })).toBeVisible();
+    await expect(rowButton(page, `${t} one`)).toBeVisible();
+    await expect(rowButton(page, `${t} two`)).toBeVisible();
+  });
+
+  test("select all on this page selects every visible row", async ({
+    authenticatedPage: page,
+  }) => {
+    const t = tag("E2E all ");
+    await createTx(page, `${t} a`, -1);
+    await createTx(page, `${t} b`, -1);
+    await openLedger(page, `q=${encodeURIComponent(t)}`);
+    await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+    await expect(page.getByRole("region", { name: "Bulk actions" })).toContainText(
+      "2 selected",
     );
+    await page.getByRole("button", { name: "Clear", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Bulk actions" })).toBeHidden();
   });
 });

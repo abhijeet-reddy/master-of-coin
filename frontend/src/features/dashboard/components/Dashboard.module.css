@@ -1,0 +1,467 @@
+/* Dashboard panels. Tokens only; reduced motion is handled globally by :root.rm. */
+.page > * > * {
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
+}
+.page > * > :nth-child(n + 3) {
+  animation-delay: 60ms;
+}
+.page > * > :nth-child(n + 5) {
+  animation-delay: 120ms;
+}
+.page > * > :nth-child(n + 8) {
+  animation-delay: 180ms;
+}
+
+.pad {
+  padding: 14px;
+}
+.pad:empty {
+  display: none;
+}
+.loading {
+  display: grid;
+  gap: 12px;
+}
+.stack {
+  display: grid;
+  gap: 14px;
+}
+.meta {
+  font: 500 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.kicker {
+  margin: 0;
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.hero {
+  display: grid;
+  gap: 10px;
+}
+.figure {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.note {
+  margin: 0;
+  font: 500 var(--t-micro) / 1.4 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.dim {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.nowrap {
+  white-space: nowrap;
+}
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-right: 8px;
+  vertical-align: 0;
+}
+
+/* net worth */
+.deltaUp,
+.deltaDown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 600 var(--t-small) / 1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.deltaUp {
+  color: var(--pos);
+}
+.deltaDown {
+  color: var(--crit);
+}
+.deltaIcon {
+  width: 14px;
+  height: 14px;
+}
+.since {
+  margin-left: 6px;
+  color: var(--ink-3);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.chart {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* balance sheet */
+.tape,
+.tapeTall {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  overflow: hidden;
+}
+.tapeTall {
+  height: 26px;
+}
+.tape > span,
+.tapeTall > span {
+  flex-basis: 0;
+  min-width: 2px;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 8px 0 0;
+  font: 500 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.legend .swatch {
+  margin-right: 6px;
+}
+.rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-data);
+}
+.total {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-bottom: 0;
+  font-weight: 600;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rowName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  text-decoration: none;
+}
+a.rowName:hover,
+.budgetName:hover,
+.txTitle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* budgets */
+.budgets {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.budget {
+  display: grid;
+  gap: 8px;
+}
+.budgetHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.budgetName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 var(--t-small) / 1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+.tick {
+  display: inline-block;
+  width: 2px;
+  height: 10px;
+  margin-right: 4px;
+  background: var(--ink);
+  vertical-align: -1px;
+}
+
+/* top spend */
+.rank {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rankRow {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  row-gap: 5px;
+  align-items: center;
+  font: 500 var(--t-small) / 1.2 var(--mono);
+}
+.rankNo {
+  color: var(--ink-3);
+  font-size: var(--t-micro);
+}
+.rankName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rankBar {
+  grid-column: 2 / -1;
+  height: 5px;
+  background: linear-gradient(90deg, var(--accent) var(--w), var(--line) var(--w));
+}
+
+/* debts */
+.debt {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 6px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-data);
+}
+.debt:last-child {
+  margin-bottom: 12px;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  font: 600 var(--t-small) / 1 var(--mono);
+  grid-row: span 2;
+}
+.divergeLeft,
+.divergeRight {
+  position: relative;
+  grid-column: 2 / -1;
+  height: 5px;
+  background: var(--line);
+}
+.divergeLeft::after,
+.divergeRight::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--w);
+}
+.divergeLeft::after {
+  right: 50%;
+  background: var(--ink-2);
+}
+.divergeRight::after {
+  left: 50%;
+  background: var(--pos);
+}
+
+/* recent activity */
+.txTitle {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.badges > span {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.cat {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.narrowOnly {
+  display: none;
+}
+@media (max-width: 760px) {
+  .wideOnly {
+    display: none;
+  }
+  .narrowOnly {
+    display: block;
+    margin-top: 4px;
+    font: 500 var(--t-micro) / 1.3 var(--mono);
+    letter-spacing: 0.04em;
+    color: var(--ink-3);
+  }
+}
+
+/* provider links */
+.links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.linkText {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.linkText .rowName {
+  font-weight: 600;
+}
+.linkMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  background: var(--pos);
+}
+.fx {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+.kv {
+  display: grid;
+  margin: 0;
+}
+.kv > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font: 500 var(--t-small) / 1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.kv > div:last-child {
+  border-bottom: 0;
+}
+.kv dt {
+  color: var(--ink-2);
+}
+.kv dd {
+  margin: 0;
+}
+.inlineBtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- motion ---------- */
+.tape,
+.tapeTall {
+  animation: global(moc-clip-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: 200ms;
+}
+.swatch {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 260ms;
+}
+.rankBar {
+  animation: global(moc-clip-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: calc(260ms + var(--si, 0) * 35ms);
+}
+.divergeLeft::after,
+.divergeRight::after {
+  animation: global(moc-grow-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: calc(280ms + var(--si, 0) * 35ms);
+}
+.divergeLeft::after {
+  transform-origin: right center;
+}
+.divergeRight::after {
+  transform-origin: left center;
+}
+.deltaIcon {
+  animation: global(moc-slide-l) var(--d4) var(--ease-out) backwards;
+  animation-delay: 240ms;
+}
+.dot {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 300ms;
+}
+.avatar {
+  transition:
+    border-color var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.row,
+.debt,
+.link,
+.rankRow {
+  transition:
+    box-shadow var(--d2) var(--ease-out),
+    background-color var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:not(.total):hover,
+  .debt:hover,
+  .link:hover {
+    background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .debt:hover .avatar {
+    border-color: var(--accent);
+  }
+  .rankRow:hover .rankNo {
+    color: var(--accent);
+  }
+  .budget:hover .tick {
+    background: var(--accent);
+  }
+}

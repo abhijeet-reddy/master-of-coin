@@ -1,0 +1,22 @@
+.error {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--crit);
+  background: var(--crit-soft);
+  color: var(--ink);
+  font: 500 var(--t-small) / 1.4 var(--mono);
+}
+.error svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  color: var(--crit);
+}
+.body {
+  font: 400 var(--t-data) / 1.5 var(--sans);
+  color: var(--ink-2);
+}

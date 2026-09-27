@@ -1,0 +1,22 @@
+.boot {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: var(--ink-3);
+  font: 500 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 800 14px / 1 var(--sans);
+  letter-spacing: -0.04em;
+  animation: global(moc-pulse) 1.2s var(--ease-io) infinite;
+}

@@ -39,6 +39,15 @@ pub async fn start_portfolio_sync(
         body.account_id,
     );
 
+    // Refuse to sync an archived account up front rather than failing in the worker.
+    if let Some(account_id) = body.account_id {
+        let account = crate::repositories::account::find_by_id(&state.db, account_id).await?;
+        if account.user_id != user_id {
+            return Err(ApiError::NotFound("Account not found".to_string()));
+        }
+        crate::services::account_service::ensure_not_archived(&account)?;
+    }
+
     let input = serde_json::to_value(&body).map_err(|e| {
         tracing::error!("Failed to serialize portfolio sync input: {}", e);
         ApiError::Internal

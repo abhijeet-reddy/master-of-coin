@@ -1,0 +1,137 @@
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ctl-border);
+  background: transparent;
+  color: var(--ink);
+  font: 600 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--d1) ease,
+    border-color var(--d1) ease,
+    color var(--d1) ease,
+    transform var(--d1) var(--ease-out);
+}
+.btn svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:not(:disabled):hover {
+    background: var(--panel-2);
+    border-color: var(--ink-2);
+  }
+  .primary:not(:disabled):hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    filter: brightness(1.08);
+  }
+  .danger:not(:disabled):hover {
+    background: var(--crit-soft);
+    border-color: var(--crit);
+  }
+}
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.primary:focus-visible {
+  outline-color: var(--ink);
+}
+.ghost {
+  border-color: transparent;
+}
+.danger {
+  color: var(--crit);
+  border-color: var(--crit);
+}
+.sm {
+  height: var(--ctl-h-sm);
+  padding: 0 8px;
+  font-size: 10.5px;
+}
+.full {
+  width: 100%;
+}
+.icon {
+  width: 32px;
+  padding: 0;
+}
+.icon.sm {
+  width: var(--ctl-h-sm);
+}
+.spin {
+  animation: global(moc-spin) 0.9s linear infinite;
+}
+.loading .label {
+  opacity: 0.7;
+}
+@media (max-width: 760px) {
+  .btn {
+    height: 40px;
+  }
+  .icon {
+    width: 40px;
+  }
+  .sm {
+    height: 32px;
+  }
+  .icon.sm {
+    width: 32px;
+  }
+}
+
+/* Motion: press sinks, hover lifts the icon, primary gets a light sweep. */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+.btn svg {
+  transition: transform var(--d2) var(--ease-out);
+}
+.primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.35) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled) svg {
+    transform: translateX(1px) scale(1.12);
+  }
+  .icon:hover:not(:disabled) svg {
+    transform: rotate(-8deg) scale(1.15);
+  }
+  .primary:hover:not(:disabled)::after {
+    animation: global(moc-shimmer) 700ms var(--ease-io);
+  }
+}

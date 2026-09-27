@@ -148,6 +148,10 @@ pub async fn start_sync(
         ));
     }
 
+    // Archived accounts never sync.
+    let account = repositories::account::find_by_id(&state.db, provider.account_id).await?;
+    crate::services::account_service::ensure_not_archived(&account)?;
+
     tracing::info!(
         "Starting bank sync job for user {} provider {}",
         user_id,

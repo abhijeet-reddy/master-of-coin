@@ -1,0 +1,100 @@
+.menu {
+  min-width: 200px;
+  padding: 4px 0;
+}
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  font: 500 var(--t-small) / 1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+.item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-2);
+  flex: none;
+}
+.item[data-highlighted] {
+  background: var(--panel-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.item[data-disabled] {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+.danger,
+.danger svg {
+  color: var(--crit);
+}
+.sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--line);
+}
+.label {
+  padding: 8px 12px 4px;
+  font: 600 10.5px / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+@media (max-width: 760px) {
+  .item {
+    height: 44px;
+  }
+}
+
+/* Motion: the menu drops open, items cascade and indent on highlight. */
+.menu[data-state='open'] {
+  animation: global(moc-pop) 150ms var(--ease-out);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin, top right);
+}
+.menu[data-state='open'] .item {
+  animation: global(moc-slide-l) var(--d2) var(--ease-out) backwards;
+  animation-delay: calc(var(--mi, 0) * 20ms);
+}
+.menu .item:nth-child(2) {
+  --mi: 1;
+}
+.menu .item:nth-child(3) {
+  --mi: 2;
+}
+.menu .item:nth-child(4) {
+  --mi: 3;
+}
+.menu .item:nth-child(5) {
+  --mi: 4;
+}
+.menu .item:nth-child(6) {
+  --mi: 5;
+}
+.menu .item:nth-child(7) {
+  --mi: 6;
+}
+.menu .item:nth-child(8) {
+  --mi: 7;
+}
+.menu .item:nth-child(9) {
+  --mi: 8;
+}
+.menu .item:nth-child(10) {
+  --mi: 9;
+}
+.item {
+  transition:
+    background-color var(--d1) ease,
+    padding-left var(--d2) var(--ease-out);
+}
+.item[data-highlighted] {
+  padding-left: 16px;
+}

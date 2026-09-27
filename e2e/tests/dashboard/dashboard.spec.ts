@@ -1,143 +1,162 @@
 import { test, expect } from "../../fixtures/test-fixtures";
-import { ScreenshotHelper } from "../../helpers/screenshots";
 import {
   collectConsoleErrors,
   expectNoConsoleErrors,
-  expectPageTitle,
 } from "../../helpers/assertions";
 
 /**
- * Dashboard page tests.
- *
- * Verifies the dashboard renders correctly with all widgets:
- * - Net Worth widget
- * - Debt widget
- * - Budget Progress
- * - Category Breakdown
- * - Recent Transactions
+ * Dashboard (UI v2). Every panel is a labelled region, so the tests find
+ * them by role and name rather than by text or CSS.
  */
 
-const screenshotHelper = new ScreenshotHelper();
+const PANELS = [
+  "Net worth",
+  "Balance sheet",
+  "Income vs spend",
+  "Budgets",
+  "Spend by category",
+  "Top spend",
+  "Debts",
+  "Recent activity",
+  "Provider links",
+];
 
 test.describe("Dashboard", () => {
-  test("renders dashboard with correct title", async ({
-    authenticatedPage,
+  test.beforeEach(async ({ authenticatedPage: page }) => {
+    await page.goto("/dashboard");
+    await page.waitForLoadState("networkidle");
+  });
+
+  test("renders the page heading without console errors", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    const errors = collectConsoleErrors(page);
+    await page.reload();
+    await page.waitForLoadState("networkidle");
 
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    await expectPageTitle(authenticatedPage, "Dashboard");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Dashboard" }),
+    ).toBeVisible();
     expectNoConsoleErrors(errors);
   });
 
-  test("displays subtitle", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    await expect(
-      authenticatedPage.locator("text=Overview of your financial health"),
-    ).toBeVisible();
-  });
-
-  test("dashboard widgets are visible", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Wait for loading to complete
-    // The dashboard may show a loading spinner initially
-    await authenticatedPage.waitForTimeout(2000);
-
-    // Take a screenshot for visual verification of all widgets
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "dashboard-full",
-    );
-  });
-
-  test("debt widget is visible with You Are Owed and You Owe", async ({
-    authenticatedPage,
+  test("shows every panel as a labelled region", async ({
+    authenticatedPage: page,
   }) => {
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Wait for dashboard to fully load
-    await authenticatedPage.waitForTimeout(2000);
-
-    // Verify debt widget sections are visible
-    await expect(authenticatedPage.locator("text=You Are Owed")).toBeVisible();
-    await expect(authenticatedPage.locator("text=You Owe")).toBeVisible();
-    await expect(authenticatedPage.locator("text=Debts")).toBeVisible();
-  });
-
-  test("debt widget navigates to people page on click", async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Wait for dashboard to fully load
-    await authenticatedPage.waitForTimeout(2000);
-
-    // Click the debt widget card (find by the "Debts" heading)
-    await authenticatedPage.locator("text=Debts").click();
-
-    // Verify navigation to people page
-    await authenticatedPage.waitForURL("**/people", { timeout: 10_000 });
-    await expectPageTitle(authenticatedPage, "People");
-  });
-
-  test("budget card navigates to budget detail page on click", async ({
-    authenticatedPage,
-  }) => {
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Wait for dashboard to fully load
-    await authenticatedPage.waitForTimeout(2000);
-
-    // Check if Budget Progress section exists with at least one budget card
-    const budgetCards = authenticatedPage
-      .locator("text=Budget Progress")
-      .locator("..")
-      .locator("[class*='card']");
-    const budgetProgressSection = authenticatedPage.locator(
-      "text=Budget Progress",
-    );
-
-    if (await budgetProgressSection.isVisible()) {
-      // If there are budget cards, click the first one and verify navigation
-      const firstCard = authenticatedPage.locator("[cursor='pointer']").first();
-      // Look for any card with a progress bar inside the Budget Progress section
-      const budgetSection = authenticatedPage
-        .locator("text=Budget Progress")
-        .locator("..");
-      const clickableCards = budgetSection.locator(
-        "[style*='cursor: pointer'], [data-cursor='pointer']",
-      );
-
-      // Take a screenshot to verify budget cards are present
-      await screenshotHelper.capturePageScreenshot(
-        authenticatedPage,
-        "dashboard-budget-progress",
-      );
+    for (const name of PANELS) {
+      const region = page.getByRole("region", { name, exact: true });
+      await expect(region).toBeVisible();
+      await expect(
+        region.getByRole("heading", { level: 2, name }),
+      ).toBeVisible();
     }
   });
 
-  test("dashboard loads without errors after navigation", async ({
-    authenticatedPage,
+  test("panels finish loading", async ({ authenticatedPage: page }) => {
+    for (const name of PANELS) {
+      await expect(
+        page
+          .getByRole("region", { name, exact: true })
+          .locator("[aria-busy='true']"),
+      ).toHaveCount(0, { timeout: 10_000 });
+    }
+  });
+
+  test("net worth notes that past points use today's rates", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    const panel = page.getByRole("region", { name: "Net worth", exact: true });
+    await expect(panel.getByText(/today's exchange rates/i)).toBeVisible();
+  });
 
-    // Navigate to another page first, then back to dashboard
-    await authenticatedPage.goto("/accounts");
-    await authenticatedPage.waitForLoadState("networkidle");
+  test("net worth chart is keyboard readable when history exists", async ({
+    authenticatedPage: page,
+  }) => {
+    const panel = page.getByRole("region", { name: "Net worth", exact: true });
+    const chart = panel.getByRole("group", {
+      name: /^Net worth\. Use arrow keys/,
+    });
+    if ((await chart.count()) === 0) {
+      await expect(panel.getByText("No history yet")).toBeVisible();
+      return;
+    }
+    await expect(chart).toBeVisible();
+  });
 
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
+  test("debts panel shows both totals and links to people", async ({
+    authenticatedPage: page,
+  }) => {
+    const panel = page.getByRole("region", { name: "Debts", exact: true });
+    await expect(panel.getByText("Owed to you", { exact: true })).toBeVisible();
+    await expect(panel.getByText("You owe", { exact: true })).toBeVisible();
 
-    await expectPageTitle(authenticatedPage, "Dashboard");
+    await panel.getByRole("link", { name: /^(\d+ people|People)$/ }).click();
+    await expect(page).toHaveURL(/\/people$/);
+  });
+
+  test("budgets panel links to the budgets page", async ({
+    authenticatedPage: page,
+  }) => {
+    const panel = page.getByRole("region", { name: "Budgets", exact: true });
+    const meters = panel.getByRole("meter");
+    if ((await meters.count()) > 0) {
+      await expect(meters.first()).toHaveAccessibleName(/budget$/);
+    }
+    await panel.getByRole("link", { name: /^(All \d+|Budgets)$/ }).click();
+    await expect(page).toHaveURL(/\/budgets$/);
+  });
+
+  test("a budget row opens its budget", async ({ authenticatedPage: page }) => {
+    const panel = page.getByRole("region", { name: "Budgets", exact: true });
+    const rows = panel.getByRole("listitem");
+    test.skip((await rows.count()) === 0, "no budgets in this environment");
+
+    await rows.first().getByRole("link").first().click();
+    await expect(page).toHaveURL(/\/budgets\/[0-9a-f-]+$/);
+  });
+
+  test("recent activity shows a table or an empty state", async ({
+    authenticatedPage: page,
+  }) => {
+    const panel = page.getByRole("region", {
+      name: "Recent activity",
+      exact: true,
+    });
+    const table = panel.getByRole("table");
+    if ((await table.count()) === 0) {
+      await expect(panel.getByText("No transactions yet")).toBeVisible();
+      return;
+    }
+    await expect(table.getByRole("columnheader").first()).toBeVisible();
+  });
+
+  test("provider sync buttons are named after their account", async ({
+    authenticatedPage: page,
+  }) => {
+    const panel = page.getByRole("region", {
+      name: "Provider links",
+      exact: true,
+    });
+    const buttons = panel.getByRole("button", { name: /^Sync now: / });
+    if ((await buttons.count()) === 0) {
+      await expect(panel.getByText("No linked providers")).toBeVisible();
+      return;
+    }
+    await expect(buttons.first()).toBeEnabled();
+  });
+
+  test("loads cleanly after navigating away and back", async ({
+    authenticatedPage: page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await page.goto("/accounts");
+    await page.waitForLoadState("networkidle");
+    await page.goto("/dashboard");
+    await page.waitForLoadState("networkidle");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Dashboard" }),
+    ).toBeVisible();
     expectNoConsoleErrors(errors);
   });
 });

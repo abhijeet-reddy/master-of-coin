@@ -17,6 +17,8 @@ pub mod investment_provider;
 pub mod live_exchange_rate;
 pub mod mock_exchange_rate;
 pub mod portfolio_sync_service;
+pub mod preferences_service;
+pub mod schedule_service;
 pub mod split_provider;
 pub mod split_sync_service;
 pub mod splitwise_oauth;

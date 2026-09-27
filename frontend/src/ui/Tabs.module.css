@@ -1,0 +1,82 @@
+.list {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab {
+  position: relative;
+  flex: none;
+  height: 38px;
+  padding: 0 14px;
+  background: transparent;
+  border: 0;
+  font: 600 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color var(--d1) ease;
+}
+.tab:focus-visible {
+  outline-offset: -2px;
+}
+.tab[data-state='active'] {
+  color: var(--ink);
+}
+.tab[data-state='active']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--accent);
+}
+.tab[data-disabled] {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+@media (hover: hover) and (pointer: fine) {
+  .tab:not([data-state='active']):hover {
+    color: var(--ink);
+  }
+}
+.count {
+  margin-left: 6px;
+  color: var(--ink-3);
+}
+.panel {
+  padding-top: var(--s-4);
+  outline: none;
+}
+@media (max-width: 760px) {
+  .tab {
+    height: 44px;
+  }
+}
+
+/* Motion: the active bar grows from the centre; panels slide in on switch. */
+.tab[data-state='active']::after {
+  animation: global(moc-grow-x) var(--d3) var(--ease-flow) backwards;
+}
+.tab::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 6px;
+  height: 1px;
+  background: var(--ink-3);
+  transform: scaleX(0);
+  transition: transform var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tab:not([data-state='active']):hover::before {
+    transform: scaleX(1);
+  }
+}
+.panel[data-state='active'] {
+  animation: global(moc-slide-r) var(--d4) var(--ease-flow) backwards;
+}

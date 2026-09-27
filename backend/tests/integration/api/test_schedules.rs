@@ -53,7 +53,10 @@ async fn create_schedule_via_api(
 async fn test_create_schedule_success() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "create").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     let body = json!({
         "name": "Daily drift check",
@@ -92,7 +95,10 @@ async fn test_create_schedule_success() {
 async fn test_list_schedules() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "list").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     // Create two schedules
     let body1 = json!({
@@ -142,7 +148,10 @@ async fn test_list_schedules() {
 async fn test_get_schedule_detail() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "detail").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     // Create a schedule
     let body = json!({
@@ -208,7 +217,10 @@ async fn test_get_schedule_detail() {
 async fn test_update_schedule() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "update").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     // Create a schedule
     let body = json!({
@@ -256,7 +268,10 @@ async fn test_update_schedule() {
 async fn test_delete_schedule() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "delete").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     // Create a schedule
     let body = json!({
@@ -307,8 +322,14 @@ async fn test_schedule_ownership_isolation() {
     let server = create_test_server().await;
     let auth_a = setup_user(&server, "owner_a").await;
     let auth_b = setup_user(&server, "owner_b").await;
-    let _cleanup_a = UserCleanup { pool: get_test_db_pool(), user_id: auth_a.user.id };
-    let _cleanup_b = UserCleanup { pool: get_test_db_pool(), user_id: auth_b.user.id };
+    let _cleanup_a = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth_a.user.id,
+    };
+    let _cleanup_b = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth_b.user.id,
+    };
 
     // User A creates a schedule
     let body = json!({
@@ -355,7 +376,10 @@ async fn test_schedule_ownership_isolation() {
 async fn test_create_schedule_invalid_cron() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "badcron").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     let body = json!({
         "name": "Bad cron schedule",
@@ -376,7 +400,10 @@ async fn test_create_schedule_invalid_cron() {
 async fn test_create_schedule_sub_hourly_rejected() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "subhourly").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     let body = json!({
         "name": "Too frequent schedule",
@@ -397,7 +424,10 @@ async fn test_create_schedule_sub_hourly_rejected() {
 async fn test_schedule_active_inactive_toggle() {
     let server = create_test_server().await;
     let auth = setup_user(&server, "toggle").await;
-    let _cleanup = UserCleanup { pool: get_test_db_pool(), user_id: auth.user.id };
+    let _cleanup = UserCleanup {
+        pool: get_test_db_pool(),
+        user_id: auth.user.id,
+    };
 
     // Create an active schedule
     let body = json!({

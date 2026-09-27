@@ -184,9 +184,7 @@ async fn fetch_splitwise_friends(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            let full_name = format!("{} {}", first_name, last_name)
-                .trim()
-                .to_string();
+            let full_name = format!("{} {}", first_name, last_name).trim().to_string();
 
             Some(SplitwiseFriendResponse {
                 id,

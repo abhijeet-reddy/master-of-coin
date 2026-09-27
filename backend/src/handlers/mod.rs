@@ -1,5 +1,6 @@
 // HTTP request handlers
 pub mod accounts;
+pub mod analytics;
 pub mod api_keys;
 pub mod auth;
 pub mod bank_providers;
@@ -16,6 +17,7 @@ pub mod investment_providers;
 pub mod jobs;
 pub mod people;
 pub mod portfolio_sync;
+pub mod preferences;
 pub mod schedules;
 pub mod split_providers;
 pub mod split_sync;

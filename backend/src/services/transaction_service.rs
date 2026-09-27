@@ -227,25 +227,7 @@ pub async fn list_transactions(
         ApiError::Validation(e.to_string())
     })?;
 
-    // If account_id filter provided, verify ownership
-    if let Some(account_id) = filters.account_id {
-        let account = repositories::account::find_by_id(pool, account_id).await?;
-        if account.user_id != user_id {
-            return Err(ApiError::Unauthorized(
-                "Account does not belong to user".to_string(),
-            ));
-        }
-    }
-
-    // If category_id filter provided, verify ownership
-    if let Some(category_id) = filters.category_id {
-        let category = repositories::category::find_by_id(pool, category_id).await?;
-        if category.user_id != user_id {
-            return Err(ApiError::Unauthorized(
-                "Category does not belong to user".to_string(),
-            ));
-        }
-    }
+    verify_filter_ownership(pool, user_id, &filters).await?;
 
     // Determine if we're listing soft-deleted transactions (for permanent_delete_at computation)
     let listing_deleted = filters.is_deleted == Some(true);
@@ -319,16 +301,47 @@ pub async fn count_transactions(
         ApiError::Validation(e.to_string())
     })?;
 
-    if let Some(account_id) = filters.account_id {
-        let account = repositories::account::find_by_id(pool, account_id).await?;
-        if account.user_id != user_id {
-            return Err(ApiError::Unauthorized(
-                "Account does not belong to user".to_string(),
-            ));
-        }
-    }
+    verify_filter_ownership(pool, user_id, &filters).await?;
 
     repositories::transaction::count_transactions(pool, user_id, filters).await
+}
+
+/// Every account/category id in a list filter must belong to the user. A
+/// foreign or unknown id is a 404 (never 401, which would log the client out).
+async fn verify_filter_ownership(
+    pool: &DbPool,
+    user_id: Uuid,
+    filters: &TransactionFilter,
+) -> Result<(), ApiError> {
+    if let Some(account_ids) = &filters.account_id {
+        for account_id in account_ids {
+            match repositories::account::find_by_id(pool, *account_id).await {
+                Ok(account) if account.user_id == user_id => {}
+                Ok(_) | Err(ApiError::Database(diesel::result::Error::NotFound)) => {
+                    return Err(ApiError::NotFound(format!(
+                        "Account {} not found",
+                        account_id
+                    )));
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+    if let Some(cat) = &filters.category_id {
+        for category_id in &cat.ids {
+            match repositories::category::find_by_id(pool, *category_id).await {
+                Ok(category) if category.user_id == user_id => {}
+                Ok(_) | Err(ApiError::Database(diesel::result::Error::NotFound)) => {
+                    return Err(ApiError::NotFound(format!(
+                        "Category {} not found",
+                        category_id
+                    )));
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Update a transaction
@@ -883,4 +896,53 @@ pub async fn bulk_create_transactions(
         .collect();
 
     Ok(responses)
+}
+
+/// Soft-delete up to [`BULK_DELETE_MAX`] transactions in one DB transaction.
+/// Returns the response plus (transaction_id, split_id) pairs for split sync.
+pub async fn bulk_delete_transactions(
+    pool: &DbPool,
+    user_id: Uuid,
+    request: crate::models::transaction::BulkDeleteTransactionsRequest,
+) -> Result<
+    (
+        crate::models::transaction::BulkDeleteTransactionsResponse,
+        Vec<(Uuid, Uuid)>,
+    ),
+    ApiError,
+> {
+    use crate::models::transaction::{
+        BULK_DELETE_MAX, BulkDeleteFailure, BulkDeleteTransactionsResponse,
+    };
+
+    if request.ids.is_empty() {
+        return Err(ApiError::Validation("ids must not be empty".to_string()));
+    }
+    if request.ids.len() > BULK_DELETE_MAX {
+        return Err(ApiError::Validation(format!(
+            "At most {} ids can be deleted at once",
+            BULK_DELETE_MAX
+        )));
+    }
+
+    let outcome = repositories::transaction::bulk_soft_delete(pool, user_id, request.ids).await?;
+    tracing::info!(
+        "Bulk soft-deleted {} transactions for user {} ({} failed)",
+        outcome.deleted_ids.len(),
+        user_id,
+        outcome.failed.len()
+    );
+
+    Ok((
+        BulkDeleteTransactionsResponse {
+            deleted: outcome.deleted_ids.len(),
+            deleted_ids: outcome.deleted_ids,
+            failed: outcome
+                .failed
+                .into_iter()
+                .map(|(id, error)| BulkDeleteFailure { id, error })
+                .collect(),
+        },
+        outcome.splits,
+    ))
 }

@@ -5,6 +5,7 @@ use crate::{
     models::{
         CreateTransactionRequest, DeleteTransactionQuery, TransactionFilter, TransactionResponse,
         UpdateTransactionRequest,
+        transaction::{BulkDeleteTransactionsRequest, BulkDeleteTransactionsResponse},
     },
     services::{split_sync_service::SplitSyncService, transaction_service},
 };
@@ -308,4 +309,23 @@ async fn trigger_split_sync_deleted(
             );
         }
     }
+}
+
+/// Soft-delete many transactions at once (max 500, one DB transaction)
+/// POST /transactions/bulk-delete
+pub async fn bulk_delete(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Json(request): Json<BulkDeleteTransactionsRequest>,
+) -> Result<Json<BulkDeleteTransactionsResponse>, ApiError> {
+    let user_id = auth_context.user_id();
+    let (response, splits) =
+        transaction_service::bulk_delete_transactions(&state.db, user_id, request).await?;
+
+    // Notify external split providers after the commit (fire-and-forget).
+    for (transaction_id, split_id) in splits {
+        trigger_split_sync_deleted(state.split_sync.clone(), transaction_id, split_id).await;
+    }
+
+    Ok(Json(response))
 }

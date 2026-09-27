@@ -11,44 +11,16 @@ use crate::{
     auth::context::AuthContext,
     errors::ApiError,
     models::{
-        background_job::BackgroundJob,
-        job_summary::BackgroundJobSummary,
+        job_summary::{BackgroundJobSummary, parse_job_type},
         schedule::{
             CreateScheduleRequest, NewSchedule, ScheduleDetailResponse, ScheduleResponse,
             UpdateSchedule, UpdateScheduleRequest,
         },
     },
     repositories::schedule::ScheduleRepository,
-    types::JobType,
+    services::schedule_service,
     utils::cron::{compute_next_run, compute_upcoming_runs, validate_cron, validate_min_frequency},
 };
-
-/// Parse a job_type string (e.g. `"DRIFT_DETECTION"`) into a [`JobType`] enum variant.
-fn parse_job_type(s: &str) -> Result<JobType, ApiError> {
-    match s {
-        "DRIFT_DETECTION" => Ok(JobType::DriftDetection),
-        "BULK_SYNC" => Ok(JobType::BulkSync),
-        "PORTFOLIO_SYNC" => Ok(JobType::PortfolioSync),
-        _ => Err(ApiError::BadRequest(format!("Invalid job type: {}", s))),
-    }
-}
-
-/// Convert a [`BackgroundJob`] into a lightweight [`BackgroundJobSummary`].
-fn job_to_summary(job: &BackgroundJob) -> BackgroundJobSummary {
-    // Extract a summary sub-object from the result JSONB if present
-    let summary = job.result.as_ref().and_then(|r| r.get("summary").cloned());
-
-    BackgroundJobSummary {
-        id: job.id,
-        job_type: job.job_type,
-        status: job.status,
-        created_at: job.created_at,
-        started_at: job.started_at,
-        completed_at: job.completed_at,
-        error: job.error.clone(),
-        summary,
-    }
-}
 
 /// Create a new schedule.
 ///
@@ -146,8 +118,10 @@ pub async fn get_schedule(
     // Query recent jobs triggered by this schedule
     let recent_jobs_raw = ScheduleRepository::find_jobs_by_schedule(&state.db, schedule_id, 20)?;
 
-    let recent_jobs: Vec<BackgroundJobSummary> =
-        recent_jobs_raw.iter().map(job_to_summary).collect();
+    let recent_jobs: Vec<BackgroundJobSummary> = recent_jobs_raw
+        .iter()
+        .map(BackgroundJobSummary::from_job)
+        .collect();
 
     // Compute upcoming runs from the cron expression
     let upcoming_runs = compute_upcoming_runs(&schedule.cron_expr, 10).unwrap_or_default();
@@ -243,4 +217,26 @@ pub async fn delete_schedule(
     ScheduleRepository::delete(&state.db, schedule_id)?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Response for `POST /api/v1/schedules/:id/run`.
+#[derive(Debug, serde::Serialize)]
+pub struct RunScheduleResponse {
+    pub job_id: Uuid,
+}
+
+/// Run a schedule now: queues a pending job with the schedule's input.
+/// `next_run_at` is unchanged. Returns 404 for a missing or foreign schedule.
+///
+/// POST /api/v1/schedules/:id/run
+pub async fn run_schedule(
+    State(state): State<AppState>,
+    Extension(auth_context): Extension<AuthContext>,
+    Path(schedule_id): Path<Uuid>,
+) -> Result<(StatusCode, Json<RunScheduleResponse>), ApiError> {
+    let job = schedule_service::run_now(&state.db, auth_context.user_id(), schedule_id)?;
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(RunScheduleResponse { job_id: job.id }),
+    ))
 }

@@ -17,15 +17,10 @@ export default defineConfig({
         manualChunks: {
           // Vendor chunks for better caching
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'chakra-vendor': [
-            '@chakra-ui/react',
-            '@emotion/react',
-            '@emotion/styled',
-            'framer-motion',
-          ],
-          'query-vendor': ['@tanstack/react-query', '@tanstack/react-query-devtools'],
+          // Devtools are dev-only (lazy in app/providers.tsx), so not bundled here.
+          'query-vendor': ['@tanstack/react-query'],
           'form-vendor': ['react-hook-form', 'zod', '@hookform/resolvers'],
-          'chart-vendor': ['recharts'],
+          'd3-vendor': ['d3-scale', 'd3-shape'],
         },
       },
     },

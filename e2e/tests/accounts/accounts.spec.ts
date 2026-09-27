@@ -1,138 +1,149 @@
 import { test, expect } from "../../fixtures/test-fixtures";
-import { ScreenshotHelper } from "../../helpers/screenshots";
 import {
-  expectPageTitle,
   collectConsoleErrors,
   expectNoConsoleErrors,
 } from "../../helpers/assertions";
+import {
+  ACCOUNT_TYPE_LABELS,
+  archivedToggle,
+  card,
+  cardAction,
+  createAccount,
+  openAccounts,
+  removeAccount,
+  uniqueName,
+} from "../../helpers/accounts";
 
 /**
- * Accounts page E2E tests.
- *
- * Tests CRUD operations for accounts:
- * - List accounts
- * - Create a new account
- * - View account detail
- * - Edit account
- * - Delete account
+ * Accounts list (UI v2): overview panels, the account modal, archive and
+ * unarchive (with the net-worth warning), and delete.
  */
 
-const screenshotHelper = new ScreenshotHelper();
-
-// Unique name to avoid conflicts with existing data
-const TEST_ACCOUNT_NAME = `E2E Test Account ${Date.now()}`;
-
-test.describe("Accounts Page", () => {
-  test("accounts page loads with correct title", async ({
-    authenticatedPage,
+test.describe("Accounts page", () => {
+  test("renders heading, overview panels and actions without console errors", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    const errors = collectConsoleErrors(page);
+    await openAccounts(page);
 
-    await authenticatedPage.goto("/accounts");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    await expectPageTitle(authenticatedPage, "Accounts");
-    await expect(
-      authenticatedPage.locator("text=Manage your financial accounts"),
-    ).toBeVisible();
+    await expect(page.getByRole("region", { name: /Total balance/ })).toBeVisible();
+    await expect(page.getByRole("region", { name: /Exposure by type/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add account" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Connect provider" })).toBeVisible();
     expectNoConsoleErrors(errors);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "accounts-list",
-    );
   });
 
-  test("Add Account button is visible", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/accounts");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    await expect(authenticatedPage.locator("text=Add Account")).toBeVisible();
-  });
-
-  test("can open and close the Add Account modal", async ({
-    authenticatedPage,
+  test("the modal offers exactly the supported account types", async ({
+    authenticatedPage: page,
   }) => {
-    await authenticatedPage.goto("/accounts");
-    await authenticatedPage.waitForLoadState("networkidle");
+    await openAccounts(page);
+    await page.getByRole("button", { name: "Add account" }).click();
+    const dialog = page.getByRole("dialog", { name: "Add account" });
+    await expect(dialog).toBeVisible();
 
-    // Open modal
-    await authenticatedPage.click("text=Add Account");
+    await dialog.getByLabel("Type").click();
+    const options = page.getByRole("option");
+    await expect(options).toHaveText(ACCOUNT_TYPE_LABELS);
+    await page.keyboard.press("Escape");
 
-    // Verify modal is open — use role-based locator to avoid strict mode violations
-    await expect(
-      authenticatedPage.locator('[role="dialog"]').first(),
-    ).toBeVisible();
-    await expect(authenticatedPage.locator('input[name="name"]')).toBeVisible();
-
-    // Screenshot of the form
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "accounts-add-modal",
-    );
-
-    // Close modal
-    await authenticatedPage.click("text=Cancel");
-
-    // Modal should be closed
-    await expect(authenticatedPage.locator('input[name="name"]')).toBeHidden({
-      timeout: 5_000,
-    });
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
   });
 
-  test("can create a new account", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/accounts");
-    await authenticatedPage.waitForLoadState("networkidle");
+  test("creates an account in the modal, then renames it", async ({
+    authenticatedPage: page,
+  }) => {
+    const name = uniqueName("E2E Savings");
+    const renamed = `${name} renamed`;
+    await openAccounts(page);
 
-    // Open the Add Account modal
-    await authenticatedPage.click("text=Add Account");
-    await expect(authenticatedPage.locator('input[name="name"]')).toBeVisible();
+    await page.getByRole("button", { name: "Add account" }).click();
+    const dialog = page.getByRole("dialog", { name: "Add account" });
+    await dialog.getByLabel("Name").fill(name);
+    await dialog.getByLabel("Type").click();
+    await page.getByRole("option", { name: "Savings", exact: true }).click();
+    await dialog.getByLabel("Opening balance").fill("250");
+    await dialog.getByRole("button", { name: "Create account" }).click();
+    await expect(dialog).toBeHidden();
 
-    // Fill in the form
-    await authenticatedPage.fill('input[name="name"]', TEST_ACCOUNT_NAME);
-    await authenticatedPage.selectOption('select[name="type"]', "SAVINGS");
-    await authenticatedPage.fill('input[name="initial_balance"]', "1000");
+    const made = card(page, name);
+    await expect(made).toBeVisible();
+    await expect(made).toContainText("SAV");
+    await expect(made).toContainText("250.00");
 
-    // Submit the form
-    await authenticatedPage.click('button:has-text("Create")');
+    await cardAction(page, name, "Edit");
+    const edit = page.getByRole("dialog", { name: `Edit ${name}` });
+    await edit.getByLabel("Name").fill(renamed);
+    await edit.getByRole("button", { name: "Save changes" }).click();
+    await expect(edit).toBeHidden();
+    await expect(card(page, renamed)).toBeVisible();
 
-    // Wait for modal to close and account to appear in list
-    await authenticatedPage.waitForLoadState("networkidle");
-    await authenticatedPage.waitForTimeout(1000);
-
-    // Verify the new account appears in the list
-    await expect(
-      authenticatedPage.locator(`text=${TEST_ACCOUNT_NAME}`),
-    ).toBeVisible({ timeout: 10_000 });
-
-    // Screenshot after creation
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "accounts-after-create",
-    );
+    const href = await card(page, renamed)
+      .getByRole("link", { name: renamed })
+      .getAttribute("href");
+    await removeAccount(page, href!.split("/").pop()!);
   });
 
-  test("can view account detail page", async ({ authenticatedPage }) => {
-    await authenticatedPage.goto("/accounts");
-    await authenticatedPage.waitForLoadState("networkidle");
+  test("archiving a funded account warns it still counts, and unarchive brings it back", async ({
+    authenticatedPage: page,
+  }) => {
+    const name = uniqueName("E2E Funded");
+    const acc = await createAccount(page, name, { balance: 42 });
+    await openAccounts(page);
 
-    // Click on the first individual account card (not the Total Balance card).
-    // Account cards are Card.Root elements with "Balance" text but not "Total Balance".
-    const accountCards = authenticatedPage
-      .locator('[class*="chakra-card"]')
-      .filter({ hasText: /^(?!.*Total Balance).*Balance/ });
+    await cardAction(page, name, "Archive");
+    const confirm = page.getByRole("dialog", { name: `Archive ${name}?` });
+    await expect(confirm.getByRole("status")).toContainText(
+      "still count toward net worth",
+    );
+    await confirm.getByRole("button", { name: "Archive account" }).click();
+    await expect(confirm).toBeHidden();
 
-    if ((await accountCards.count()) > 0) {
-      await accountCards.first().click();
-      await authenticatedPage.waitForLoadState("networkidle");
+    // Collapsed by default: the card leaves the list.
+    await expect(card(page, name)).toBeHidden();
+    const toggle = archivedToggle(page);
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(page).toHaveURL(/archived=(1|true)/);
+    await expect(card(page, name)).toContainText("Archived");
 
-      // Should be on account detail page
-      expect(authenticatedPage.url()).toContain("/accounts/");
+    await cardAction(page, name, "Unarchive");
+    const back = page.getByRole("dialog", { name: `Unarchive ${name}?` });
+    await back.getByRole("button", { name: "Unarchive account" }).click();
+    await expect(back).toBeHidden();
+    await expect(card(page, name)).not.toContainText("Archived");
 
-      await screenshotHelper.capturePageScreenshot(
-        authenticatedPage,
-        "account-detail",
-      );
-    }
+    await removeAccount(page, acc.id);
+  });
+
+  test("archiving an empty account needs no warning", async ({
+    authenticatedPage: page,
+  }) => {
+    const name = uniqueName("E2E Empty");
+    const acc = await createAccount(page, name, { type: "CASH" });
+    await openAccounts(page);
+
+    await cardAction(page, name, "Archive");
+    const confirm = page.getByRole("dialog", { name: `Archive ${name}?` });
+    await expect(confirm.getByRole("button", { name: "Archive account" })).toBeVisible();
+    await expect(confirm.getByRole("status")).toHaveCount(0);
+    await confirm.getByRole("button", { name: "Cancel" }).click();
+
+    await removeAccount(page, acc.id);
+  });
+
+  test("deletes an account with no transactions", async ({
+    authenticatedPage: page,
+  }) => {
+    const name = uniqueName("E2E Delete");
+    await createAccount(page, name, { type: "CASH" });
+    await openAccounts(page);
+
+    await cardAction(page, name, "Delete");
+    const confirm = page.getByRole("dialog", { name: `Delete ${name}?` });
+    await confirm.getByRole("button", { name: "Delete account" }).click();
+    await expect(confirm).toBeHidden();
+    await expect(card(page, name)).toBeHidden();
   });
 });

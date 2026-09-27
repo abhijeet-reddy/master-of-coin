@@ -26,7 +26,10 @@ const MAX_RETRIES: u32 = 3;
 
 /// Minimum delta (in account currency) to create an adjustment transaction.
 /// Avoids creating transactions for negligible floating-point differences.
-const ADJUSTMENT_THRESHOLD: f64 = 0.01;
+/// Minimum absolute delta (in account currency) worth an adjustment: 0.01.
+fn adjustment_threshold() -> bigdecimal::BigDecimal {
+    bigdecimal::BigDecimal::new(1.into(), 2)
+}
 
 /// Main entry point for portfolio sync.
 ///
@@ -115,6 +118,18 @@ pub async fn execute_portfolio_sync(
     let mut total_failed: i64 = 0;
 
     for inv_provider in &investment_providers {
+        // Archived accounts never sync: an explicit request fails, a sync-all skips them.
+        match repositories::account::find_by_id(pool, inv_provider.account_id).await {
+            Ok(account) if account.archived_at.is_some() => {
+                if account_id_filter.is_some() {
+                    return Err(format!("Account {} is archived", account.id));
+                }
+                tracing::info!("Skipping archived account {} in portfolio sync", account.id);
+                continue;
+            }
+            _ => {}
+        }
+
         let result = sync_single_account(pool, providers, user_id, inv_provider).await;
 
         match result {
@@ -211,7 +226,6 @@ async fn sync_single_account(
 
     // Compute delta
     let delta = &snapshot.stock_value - &current_balance;
-    let delta_f64: f64 = delta.to_string().parse().unwrap_or(0.0);
 
     tracing::info!(
         "Account {} ({}): provider_value={}, current_balance={}, delta={}",
@@ -223,7 +237,7 @@ async fn sync_single_account(
     );
 
     // Create adjustment transaction if delta exceeds threshold
-    let adjustment_transaction_id = if delta_f64.abs() > ADJUSTMENT_THRESHOLD {
+    let adjustment_transaction_id = if delta.abs() > adjustment_threshold() {
         let new_transaction = NewTransaction {
             user_id,
             account_id: inv_provider.account_id,

@@ -9,7 +9,7 @@ import { chromium, type FullConfig } from "@playwright/test";
  * 3. Saves browser storage state (JWT token in localStorage) for reuse by all tests
  */
 
-const BASE_URL = "http://localhost:13153";
+const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:13153";
 const HEALTH_URL = `${BASE_URL}/health`;
 const MAX_HEALTH_RETRIES = 30;
 const HEALTH_RETRY_INTERVAL_MS = 2000;
@@ -55,7 +55,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
 
   // Step 2: Launch browser and log in
   console.log("🔐 Logging in with test credentials...");
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.E2E_CHANNEL });
   const context = await browser.newContext();
   const page = await context.newPage();
 

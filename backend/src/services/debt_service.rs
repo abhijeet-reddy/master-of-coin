@@ -130,7 +130,10 @@ pub async fn settle_debt(
 
     // Look up the current debt to determine the settlement direction
     let current_debt = calculate_debt_for_person(pool, person_id, user_id).await?;
-    let debt_value = BigDecimal::from_str(&current_debt).unwrap_or_default();
+    let debt_value = BigDecimal::from_str(&current_debt).map_err(|e| {
+        tracing::error!("Unparseable debt amount {:?}: {}", current_debt, e);
+        ApiError::Internal
+    })?;
 
     // Determine signed transaction amount based on debt direction:
     // - Positive debt (they owe you) → you receive payment → positive transaction

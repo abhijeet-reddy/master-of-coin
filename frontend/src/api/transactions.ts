@@ -1,0 +1,143 @@
+import { apiClient } from './client';
+import type {
+  Transaction,
+  CreateTransactionRequest,
+  CreateDebtTransactionRequest,
+  UpdateTransactionRequest,
+  UpdateExpenseDetailsRequest,
+  PaginatedResponse,
+  QueryParams,
+} from './types';
+
+/**
+ * Get transactions with optional filters
+ */
+export async function getTransactions(
+  params?: QueryParams
+): Promise<PaginatedResponse<Transaction>> {
+  const limit = params?.limit || 50;
+  const offset = params?.offset || 0;
+
+  const response = await apiClient.get<Transaction[]>('/transactions', {
+    params: {
+      ...params,
+      limit,
+      offset,
+    },
+  });
+
+  // Backend returns a simple array directly (not wrapped in ApiResponse)
+  const transactions = response.data;
+
+  // The server total comes from X-Total-Count (needs CORS exposure); fall back
+  // to "a full page means there may be more".
+  const headerTotal = Number(response.headers['x-total-count']);
+  const total =
+    Number.isFinite(headerTotal) && headerTotal >= 0 ? headerTotal : transactions.length;
+  const has_more = Number.isFinite(headerTotal)
+    ? offset + transactions.length < headerTotal
+    : transactions.length === limit;
+
+  return {
+    data: transactions,
+    pagination: {
+      total,
+      limit,
+      offset,
+      has_more,
+    },
+  };
+}
+
+/**
+ * Get a single transaction by ID
+ */
+export async function getTransaction(id: string): Promise<Transaction> {
+  const response = await apiClient.get<Transaction>(`/transactions/${id}`);
+  return response.data;
+}
+
+/**
+ * Create a new transaction
+ */
+export async function createTransaction(data: CreateTransactionRequest): Promise<Transaction> {
+  const response = await apiClient.post<Transaction>('/transactions', data);
+  return response.data;
+}
+
+/**
+ * Update an existing transaction
+ */
+export async function updateTransaction(
+  id: string,
+  data: UpdateTransactionRequest
+): Promise<Transaction> {
+  const response = await apiClient.put<Transaction>(`/transactions/${id}`, data);
+  return response.data;
+}
+
+/**
+ * Delete a transaction
+ */
+export async function deleteTransaction(id: string): Promise<void> {
+  await apiClient.delete(`/transactions/${id}`);
+}
+
+/**
+ * Create a "paid by others" (debt) transaction
+ */
+export async function createDebtTransaction(
+  data: CreateDebtTransactionRequest
+): Promise<Transaction> {
+  const response = await apiClient.post<Transaction>('/debt-transactions', data);
+  return response.data;
+}
+
+/**
+ * Update expense details (total_cost, expense_participants) on a debt transaction
+ */
+export async function updateDebtExpenseDetails(
+  transactionId: string,
+  data: UpdateExpenseDetailsRequest
+): Promise<Transaction> {
+  const response = await apiClient.put<Transaction>(
+    `/debt-transactions/${transactionId}/metadata`,
+    data
+  );
+  return response.data;
+}
+
+/** Soft-deleted (trashed) transactions, with the server total from X-Total-Count. */
+export async function getTrashTransactions(
+  params?: Pick<QueryParams, 'limit' | 'offset'>
+): Promise<PaginatedResponse<Transaction>> {
+  return getTransactions({ ...params, is_deleted: true });
+}
+
+/**
+ * Restore a soft-deleted transaction
+ */
+export async function restoreTransaction(id: string): Promise<Transaction> {
+  const response = await apiClient.post<Transaction>(`/transactions/${id}/restore`);
+  return response.data;
+}
+
+/**
+ * Permanently delete a soft-deleted transaction (cannot be undone)
+ */
+export async function permanentDeleteTransaction(id: string): Promise<void> {
+  await apiClient.delete(`/transactions/${id}`, {
+    params: { is_permanent: true },
+  });
+}
+
+export interface BulkDeleteResult {
+  deleted: number;
+  failed: { id: string; error: string }[];
+}
+
+/** Soft delete up to 500 transactions in one call. */
+export async function bulkDeleteTransactions(ids: string[]): Promise<BulkDeleteResult> {
+  const response = await apiClient.post<BulkDeleteResult>('/transactions/bulk-delete', { ids });
+  return response.data;
+}

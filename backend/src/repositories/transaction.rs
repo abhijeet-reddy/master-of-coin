@@ -31,11 +31,37 @@ macro_rules! apply_transaction_filters {
         } else {
             $query = $query.filter(transactions::is_deleted.eq(false));
         }
-        if let Some(account_id) = $filters.account_id {
-            $query = $query.filter(transactions::account_id.eq(account_id));
+        if let Some(account_ids) = &$filters.account_id {
+            $query = $query.filter(transactions::account_id.eq_any(account_ids.clone()));
         }
-        if let Some(category_id) = $filters.category_id {
-            $query = $query.filter(transactions::category_id.eq(category_id));
+        if let Some(cat) = &$filters.category_id {
+            match (cat.ids.is_empty(), cat.uncategorised) {
+                (false, true) => {
+                    $query = $query.filter(
+                        transactions::category_id
+                            .eq_any(cat.ids.clone())
+                            .or(transactions::category_id.is_null()),
+                    )
+                }
+                (false, false) => {
+                    $query = $query.filter(transactions::category_id.eq_any(cat.ids.clone()))
+                }
+                (true, true) => $query = $query.filter(transactions::category_id.is_null()),
+                (true, false) => {}
+            }
+        }
+        // Paid by others: a debt_transaction_metadata row exists for the transaction.
+        // A SQL fragment rather than a Diesel subquery: the list query already
+        // LEFT JOINs debt_transaction_metadata, and Diesel rejects the same table
+        // appearing twice. The fragment has no user input.
+        if let Some(paid) = $filters.paid_by_others {
+            let exists = "EXISTS (SELECT 1 FROM debt_transaction_metadata dtm_f \
+                          WHERE dtm_f.transaction_id = transactions.id)";
+            let clause = match paid {
+                crate::models::transaction::PaidByOthers::Only => exists.to_string(),
+                crate::models::transaction::PaidByOthers::Exclude => format!("NOT {}", exists),
+            };
+            $query = $query.filter(diesel::dsl::sql::<diesel::sql_types::Bool>(&clause));
         }
         if let Some(person_id) = $filters.person_id {
             let split_txn_ids = transaction_splits::table
@@ -795,6 +821,124 @@ pub async fn delete_split_by_id(pool: &DbPool, split_id: Uuid) -> Result<(), Api
                 ApiError::from(e)
             })
             .map(|_| ())
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Outcome of [`bulk_soft_delete`]: rows deleted, per-id failures, and the
+/// (transaction_id, split_id) pairs whose external split sync must be notified.
+#[derive(Debug, Default)]
+pub struct BulkSoftDeleteOutcome {
+    pub deleted_ids: Vec<Uuid>,
+    pub failed: Vec<(Uuid, String)>,
+    pub splits: Vec<(Uuid, Uuid)>,
+}
+
+/// Soft-delete many transactions in ONE database transaction. Ids the user does
+/// not own (or that do not exist) and already-deleted rows are reported as
+/// failures; a transfer leg always takes its partner leg with it.
+pub async fn bulk_soft_delete(
+    pool: &DbPool,
+    user_id: Uuid,
+    ids: Vec<Uuid>,
+) -> Result<BulkSoftDeleteOutcome, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        conn.transaction::<_, diesel::result::Error, _>(|conn| {
+            use std::collections::{HashMap, HashSet};
+
+            let rows: HashMap<Uuid, (Uuid, bool)> = transactions::table
+                .filter(transactions::id.eq_any(&ids))
+                .select((
+                    transactions::id,
+                    transactions::user_id,
+                    transactions::is_deleted,
+                ))
+                .load::<(Uuid, Uuid, bool)>(conn)?
+                .into_iter()
+                .map(|(id, owner, deleted)| (id, (owner, deleted)))
+                .collect();
+
+            let legs: Vec<(Uuid, Uuid)> = transfers::table
+                .filter(
+                    transfers::from_transaction_id
+                        .eq_any(&ids)
+                        .or(transfers::to_transaction_id.eq_any(&ids)),
+                )
+                .select((transfers::from_transaction_id, transfers::to_transaction_id))
+                .load(conn)?;
+            let mut partner: HashMap<Uuid, Uuid> = HashMap::new();
+            for (from, to) in legs {
+                partner.insert(from, to);
+                partner.insert(to, from);
+            }
+
+            let mut outcome = BulkSoftDeleteOutcome::default();
+            let mut to_delete: Vec<Uuid> = Vec::new();
+            let mut marked: HashSet<Uuid> = HashSet::new();
+            let mut seen: HashSet<Uuid> = HashSet::new();
+
+            for id in ids.iter().copied() {
+                if !seen.insert(id) || marked.contains(&id) {
+                    continue; // duplicate, or already taken as a transfer partner
+                }
+                match rows.get(&id) {
+                    Some((owner, _)) if *owner != user_id => outcome
+                        .failed
+                        .push((id, "Transaction not found".to_string())),
+                    None => outcome
+                        .failed
+                        .push((id, "Transaction not found".to_string())),
+                    Some((_, true)) => outcome
+                        .failed
+                        .push((id, "Transaction is already deleted".to_string())),
+                    Some((_, false)) => {
+                        marked.insert(id);
+                        to_delete.push(id);
+                        if let Some(other) = partner.get(&id)
+                            && marked.insert(*other)
+                        {
+                            to_delete.push(*other);
+                        }
+                    }
+                }
+            }
+
+            if !to_delete.is_empty() {
+                let now = Utc::now();
+                outcome.deleted_ids = diesel::update(
+                    transactions::table
+                        .filter(transactions::id.eq_any(&to_delete))
+                        .filter(transactions::user_id.eq(user_id))
+                        .filter(transactions::is_deleted.eq(false)),
+                )
+                .set((
+                    transactions::is_deleted.eq(true),
+                    transactions::deleted_at.eq(now),
+                ))
+                .returning(transactions::id)
+                .get_results(conn)?;
+
+                outcome.splits = transaction_splits::table
+                    .filter(transaction_splits::transaction_id.eq_any(&outcome.deleted_ids))
+                    .select((transaction_splits::transaction_id, transaction_splits::id))
+                    .load(conn)?;
+            }
+
+            Ok(outcome)
+        })
+        .map_err(|e| {
+            tracing::error!("Bulk soft delete failed for user {}: {}", user_id, e);
+            ApiError::from(e)
+        })
     })
     .await
     .map_err(|e| {

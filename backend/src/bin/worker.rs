@@ -27,7 +27,6 @@ use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
 
 use master_of_coin_backend::DbPool;
-use master_of_coin_backend::models::background_job::NewBackgroundJob;
 use master_of_coin_backend::models::bulk_sync::BulkSyncRequest;
 use master_of_coin_backend::models::drift_detection::DriftDetectionRequest;
 use master_of_coin_backend::repositories;
@@ -43,9 +42,10 @@ use master_of_coin_backend::services::split_provider::{SplitProvider, all_provid
 use master_of_coin_backend::services::split_sync_service::SplitSyncService;
 use master_of_coin_backend::services::{
     bank_sync_service, bulk_sync_service, drift_detection_service, portfolio_sync_service,
+    schedule_service,
 };
 use master_of_coin_backend::types::{
-    BankProviderType, InvestmentProviderType, JobStatus, JobType, SplitProviderType,
+    BankProviderType, InvestmentProviderType, JobType, SplitProviderType,
 };
 use master_of_coin_backend::utils::cron::compute_next_run_after;
 
@@ -561,16 +561,8 @@ async fn check_and_trigger_schedules(pool: &DbPool) {
     let now = Utc::now();
 
     for schedule in due_schedules {
-        // Build job input based on job_type and parameters
-        let job_input = build_job_input(&schedule, now);
-
-        let new_job = NewBackgroundJob {
-            user_id: schedule.user_id,
-            job_type: schedule.job_type,
-            status: JobStatus::Pending,
-            previous_job_id: None,
-            input: Some(job_input),
-        };
+        // Build the job (input from job_type and parameters) via the shared service
+        let new_job = schedule_service::new_job_for(&schedule, now);
 
         // Compute next_run_at from the cron expression
         let next_run_at = match compute_next_run_after(&schedule.cron_expr, now) {
@@ -604,88 +596,6 @@ async fn check_and_trigger_schedules(pool: &DbPool) {
                     e
                 );
             }
-        }
-    }
-}
-
-/// Build the job input JSON based on the schedule's `job_type` and `parameters`.
-///
-/// - For `DRIFT_DETECTION`: computes `start_date = now - lookback_days` and `end_date = now`,
-///   includes `schedule_id`.
-/// - For `BULK_SYNC`: includes `schedule_id` and any parameters from the schedule.
-/// - For `PORTFOLIO_SYNC`: includes `schedule_id` and any parameters (e.g., `account_id`).
-fn build_job_input(
-    schedule: &master_of_coin_backend::models::schedule::Schedule,
-    now: chrono::DateTime<Utc>,
-) -> serde_json::Value {
-    let schedule_id = schedule.id.to_string();
-
-    match schedule.job_type {
-        JobType::DriftDetection => {
-            // Extract lookback_days from parameters, default to 7
-            let lookback_days = schedule
-                .parameters
-                .as_ref()
-                .and_then(|p| p.get("lookback_days"))
-                .and_then(|v| v.as_i64())
-                .unwrap_or(7);
-
-            let start_date = now - Duration::days(lookback_days);
-            let end_date = now;
-
-            serde_json::json!({
-                "schedule_id": schedule_id,
-                "start_date": start_date.to_rfc3339(),
-                "end_date": end_date.to_rfc3339()
-            })
-        }
-        JobType::BulkSync => {
-            // Include schedule_id and merge any parameters from the schedule
-            let mut input = schedule
-                .parameters
-                .clone()
-                .unwrap_or_else(|| serde_json::json!({}));
-
-            if let Some(obj) = input.as_object_mut() {
-                obj.insert(
-                    "schedule_id".to_string(),
-                    serde_json::Value::String(schedule_id),
-                );
-            }
-
-            input
-        }
-        JobType::PortfolioSync => {
-            // Include schedule_id and merge any parameters from the schedule
-            let mut input = schedule
-                .parameters
-                .clone()
-                .unwrap_or_else(|| serde_json::json!({}));
-
-            if let Some(obj) = input.as_object_mut() {
-                obj.insert(
-                    "schedule_id".to_string(),
-                    serde_json::Value::String(schedule_id),
-                );
-            }
-
-            input
-        }
-        JobType::BankSync => {
-            // Include schedule_id and merge any parameters from the schedule
-            let mut input = schedule
-                .parameters
-                .clone()
-                .unwrap_or_else(|| serde_json::json!({}));
-
-            if let Some(obj) = input.as_object_mut() {
-                obj.insert(
-                    "schedule_id".to_string(),
-                    serde_json::Value::String(schedule_id),
-                );
-            }
-
-            input
         }
     }
 }

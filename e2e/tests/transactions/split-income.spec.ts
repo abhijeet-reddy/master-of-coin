@@ -1,165 +1,101 @@
 import { test, expect } from "../../fixtures/test-fixtures";
-import { ScreenshotHelper } from "../../helpers/screenshots";
+import type { Page } from "@playwright/test";
 import {
   collectConsoleErrors,
   expectNoConsoleErrors,
 } from "../../helpers/assertions";
+import {
+  createPerson,
+  openLedger,
+  rowButton,
+  tag,
+} from "../../helpers/transactions";
 
 /**
- * Split payment visibility tests for income and expense transactions.
- *
- * Verifies that the "Enable Split Payment" button is:
- * - Visible when transaction type is "Income" (splits allowed on income)
- * - Visible when transaction type is "Expense"
- * - Preserved when switching between Income and Expense
- *
- * GitHub Issue: #53, #59
+ * Splits on income as well as expenses (#53, #59), UI v2. The "Split with
+ * others" switch shows for both types, survives switching type, and an
+ * income split saves.
  */
 
-const screenshotHelper = new ScreenshotHelper();
-
-/** Open the Add Transaction modal from the transactions page. */
-async function openAddTransactionModal(page: import("@playwright/test").Page) {
-  await page.goto("/transactions");
-  await page.waitForLoadState("networkidle");
-
-  // Find and click the add transaction button (uses FiPlus icon or "Add" text)
-  const addButtons = page.locator("button");
-  const count = await addButtons.count();
-  for (let i = 0; i < count; i++) {
-    const button = addButtons.nth(i);
-    const text = await button.textContent();
-    const ariaLabel = await button.getAttribute("aria-label");
-    if (
-      text?.toLowerCase().includes("add") ||
-      text?.toLowerCase().includes("new") ||
-      ariaLabel?.toLowerCase().includes("add")
-    ) {
-      await button.click();
-      break;
-    }
-  }
-
-  // Wait for the modal to appear
-  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 5000 });
+async function openAdd(page: Page) {
+  await openLedger(page);
+  await page
+    .getByRole("button", { name: "Add transaction", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Add transaction" });
+  await expect(dialog).toBeVisible();
+  return dialog;
 }
 
-/** Select a transaction type in the form modal. */
-async function selectTransactionType(
-  page: import("@playwright/test").Page,
-  type: "expense" | "income",
-) {
-  const select = page.locator('select[name="transaction_type"]');
-  await select.selectOption(type);
-}
-
-test.describe("Split Payment - Income Transactions (#53, #59)", () => {
-  test("split toggle is visible when transaction type is income", async ({
-    authenticatedPage,
+test.describe("Split payment on income and expenses (#53, #59)", () => {
+  test("the split switch shows for money in", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
-
-    await openAddTransactionModal(authenticatedPage);
-
-    // Select "Income" type
-    await selectTransactionType(authenticatedPage, "income");
-    await authenticatedPage.waitForTimeout(300);
-
-    // The "Enable Split Payment" button should be visible (splits allowed on income)
-    const splitButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /split payment/i });
-    await expect(splitButton).toBeVisible({ timeout: 5000 });
-
+    const errors = collectConsoleErrors(page);
+    const d = await openAdd(page);
+    await d.getByRole("radio", { name: "Money in" }).check();
+    await expect(d.getByRole("switch", { name: "Split with others" })).toBeVisible();
     expectNoConsoleErrors(errors);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "split-income-visible",
-    );
   });
 
-  test("split toggle is visible when transaction type is expense", async ({
-    authenticatedPage,
+  test("the split switch shows for money out", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
-
-    await openAddTransactionModal(authenticatedPage);
-
-    // Default type is "Expense" — verify split toggle is visible
-    const splitButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /split payment/i });
-    await expect(splitButton).toBeVisible({ timeout: 5000 });
-
-    expectNoConsoleErrors(errors);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "split-expense-visible",
-    );
+    const d = await openAdd(page);
+    await expect(d.getByRole("radio", { name: "Money out" })).toBeChecked();
+    await expect(d.getByRole("switch", { name: "Split with others" })).toBeVisible();
   });
 
-  test("split toggle remains visible when switching from expense to income", async ({
-    authenticatedPage,
+  test("an enabled split survives switching type both ways", async ({
+    authenticatedPage: page,
   }) => {
-    await openAddTransactionModal(authenticatedPage);
+    const d = await openAdd(page);
+    const sw = d.getByRole("switch", { name: "Split with others" });
+    await sw.click();
+    await expect(sw).toBeChecked();
+    await expect(d.getByRole("button", { name: "Add person" })).toBeVisible();
 
-    // With "Expense" selected (default), click "Enable Split Payment"
-    const splitButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /split payment/i });
-    await expect(splitButton).toBeVisible({ timeout: 5000 });
-    await splitButton.click();
-    await authenticatedPage.waitForTimeout(300);
-
-    // The button should now say "Disable"
-    const disableButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /disable split/i });
-    await expect(disableButton).toBeVisible();
-
-    // Now switch to "Income"
-    await selectTransactionType(authenticatedPage, "income");
-    await authenticatedPage.waitForTimeout(300);
-
-    // Split toggle should still be visible (splits allowed on income)
-    const splitButtonAfterSwitch = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /split payment/i });
-    await expect(splitButtonAfterSwitch).toBeVisible({ timeout: 5000 });
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "split-visible-after-income-switch",
-    );
+    await d.getByRole("radio", { name: "Money in" }).check();
+    await expect(sw).toBeChecked();
+    await d.getByRole("radio", { name: "Money out" }).check();
+    await expect(sw).toBeChecked();
+    await expect(d.getByRole("button", { name: "Add person" })).toBeVisible();
   });
 
-  test("split toggle stays visible when switching between types", async ({
-    authenticatedPage,
+  test("the split switch is replaced when someone else paid", async ({
+    authenticatedPage: page,
   }) => {
-    await openAddTransactionModal(authenticatedPage);
+    const d = await openAdd(page);
+    await d.getByRole("radio", { name: "Someone else" }).check();
+    await expect(d.getByRole("switch", { name: "Split with others" })).toBeHidden();
+    await expect(d.getByLabel("Paid by")).toBeVisible();
+  });
 
-    // Switch to Income
-    await selectTransactionType(authenticatedPage, "income");
-    await authenticatedPage.waitForTimeout(300);
+  test("an income split saves and shows on the row", async ({
+    authenticatedPage: page,
+  }) => {
+    const person = await createPerson(page, tag("Split pal "));
+    const title = tag("E2E split in ");
+    const d = await openAdd(page);
+    await d.getByRole("radio", { name: "Money in" }).check();
+    await d.getByLabel("Account").click();
+    await page.getByRole("option").first().click();
+    await d.getByLabel("Title").fill(title);
+    await d.getByLabel("Amount").fill("40");
+    await d.getByRole("switch", { name: "Split with others" }).click();
+    await d.getByRole("button", { name: "Add person" }).click();
+    await d.getByRole("combobox", { name: "Person 1" }).click();
+    await page.getByRole("option", { name: person.name }).click();
+    await d.getByRole("button", { name: "Split equally" }).click();
+    await expect(d.getByLabel("Owes")).toHaveValue("20.00");
+    await d.getByRole("button", { name: "Add transaction" }).click();
+    await expect(d).toBeHidden();
 
-    // Verify split toggle is visible for income
-    const splitButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /split payment/i });
-    await expect(splitButton).toBeVisible({ timeout: 5000 });
-
-    // Switch back to Expense
-    await selectTransactionType(authenticatedPage, "expense");
-    await authenticatedPage.waitForTimeout(300);
-
-    // Split toggle should still be visible
-    await expect(splitButton).toBeVisible({ timeout: 5000 });
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "split-visible-after-type-switch",
+    await openLedger(page, `q=${encodeURIComponent(title)}`);
+    await expect(rowButton(page, title)).toBeVisible();
+    await expect(page.getByRole("region", { name: "Ledger" })).toContainText(
+      new RegExp(`Split\\s*${person.name}`, "i"),
     );
   });
 });

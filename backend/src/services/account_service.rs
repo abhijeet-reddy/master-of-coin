@@ -7,11 +7,12 @@ use crate::{
     DbPool,
     errors::ApiError,
     models::{
-        AccountResponse, CreateAccountRequest, NewAccount, NewTransaction, SetBalanceRequest,
-        UpdateAccountRequest,
+        Account, AccountResponse, CreateAccountRequest, NewAccount, NewTransaction,
+        SetBalanceRequest, UpdateAccountRequest,
     },
     repositories,
     types::AccountType,
+    utils::decimal,
 };
 
 /// Create a new account
@@ -75,16 +76,7 @@ pub async fn create_account(
     // Calculate current balance
     let balance = calculate_account_balance(pool, account.id).await?;
 
-    Ok(AccountResponse {
-        id: account.id,
-        user_id: account.user_id,
-        name: account.name,
-        account_type: account.account_type,
-        currency: account.currency,
-        balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-        is_active: true, // TODO: Add is_active field to database schema for account archiving
-        notes: account.notes,
-    })
+    to_response(account, &balance)
 }
 
 /// Get an account with its current balance
@@ -110,43 +102,30 @@ pub async fn get_account(
     // Calculate current balance
     let balance = calculate_account_balance(pool, account_id).await?;
 
-    Ok(AccountResponse {
-        id: account.id,
-        user_id: account.user_id,
-        name: account.name,
-        account_type: account.account_type,
-        currency: account.currency,
-        balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-        is_active: true, // TODO: Add is_active field to database schema
-        notes: account.notes,
-    })
+    to_response(account, &balance)
 }
 
 /// List all accounts for a user with their balances.
 /// DEBT pseudo-accounts are excluded from the list — they are system-managed
 /// accounts used for tracking expenses paid by others.
-pub async fn list_accounts(pool: &DbPool, user_id: Uuid) -> Result<Vec<AccountResponse>, ApiError> {
-    // Fetch all user accounts, excluding DEBT pseudo-accounts
-    let accounts = repositories::account::list_by_user_excluding_debt(pool, user_id).await?;
+pub async fn list_accounts(
+    pool: &DbPool,
+    user_id: Uuid,
+    include_archived: bool,
+) -> Result<Vec<AccountResponse>, ApiError> {
+    let accounts =
+        repositories::account::list_visible_by_user(pool, user_id, include_archived).await?;
+    // One grouped query for all balances (was one query per account).
+    let balances = repositories::account::balances_by_account(pool, user_id).await?;
+    let zero = BigDecimal::from(0);
 
-    // Calculate balance for each account
-    let mut responses = Vec::new();
-    for account in accounts {
-        let balance = calculate_account_balance(pool, account.id).await?;
-
-        responses.push(AccountResponse {
-            id: account.id,
-            user_id: account.user_id,
-            name: account.name,
-            account_type: account.account_type,
-            currency: account.currency,
-            balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-            is_active: true, // TODO: Add is_active field to database schema
-            notes: account.notes,
-        });
-    }
-
-    Ok(responses)
+    accounts
+        .into_iter()
+        .map(|account| {
+            let balance = balances.get(&account.id).unwrap_or(&zero).clone();
+            to_response(account, &balance)
+        })
+        .collect()
 }
 
 /// Update an account.
@@ -197,23 +176,26 @@ pub async fn update_account(
     };
 
     // Update account
-    let updated = repositories::account::update_account(pool, account_id, updates).await?;
+    let mut updated = repositories::account::update_account(pool, account_id, updates).await?;
+
+    // `is_active` maps onto archived_at (false archives, true unarchives).
+    if let Some(active) = request.is_active
+        && active == updated.archived_at.is_some()
+    {
+        let archived_at = if active {
+            None
+        } else {
+            Some(chrono::Utc::now())
+        };
+        updated = repositories::account::set_archived_at(pool, account_id, archived_at).await?;
+    }
 
     tracing::info!("Updated account {} for user {}", account_id, user_id);
 
     // Calculate current balance
     let balance = calculate_account_balance(pool, account_id).await?;
 
-    Ok(AccountResponse {
-        id: updated.id,
-        user_id: updated.user_id,
-        name: updated.name,
-        account_type: updated.account_type,
-        currency: updated.currency,
-        balance: balance.to_string().parse::<f64>().unwrap_or(0.0),
-        is_active: true, // TODO: Add is_active field to database schema if account archiving is needed
-        notes: updated.notes,
-    })
+    to_response(updated, &balance)
 }
 
 /// Delete an account (only if it has no transactions).
@@ -352,16 +334,7 @@ pub async fn set_balance(
     // Recalculate and return the updated balance
     let final_balance = calculate_account_balance(pool, account_id).await?;
 
-    Ok(AccountResponse {
-        id: account.id,
-        user_id: account.user_id,
-        name: account.name,
-        account_type: account.account_type,
-        currency: account.currency,
-        balance: final_balance.to_string().parse::<f64>().unwrap_or(0.0),
-        is_active: true,
-        notes: account.notes,
-    })
+    to_response(account, &final_balance)
 }
 
 /// Helper function to calculate account balance
@@ -370,4 +343,73 @@ async fn calculate_account_balance(
     account_id: Uuid,
 ) -> Result<BigDecimal, ApiError> {
     repositories::account::calculate_balance(pool, account_id).await
+}
+
+/// Build the API response for an account and its balance.
+pub fn to_response(account: Account, balance: &BigDecimal) -> Result<AccountResponse, ApiError> {
+    Ok(AccountResponse {
+        is_active: account.is_active(),
+        archived_at: account.archived_at,
+        id: account.id,
+        user_id: account.user_id,
+        name: account.name,
+        account_type: account.account_type,
+        currency: account.currency,
+        balance: decimal::to_f64(balance)?,
+        notes: account.notes,
+    })
+}
+
+/// Load an account the user owns, mapping another user's account to 404.
+async fn find_owned(pool: &DbPool, account_id: Uuid, user_id: Uuid) -> Result<Account, ApiError> {
+    let account = repositories::account::find_by_id(pool, account_id).await?;
+    if account.user_id != user_id || account.account_type == AccountType::Debt {
+        return Err(ApiError::NotFound("Account not found".to_string()));
+    }
+    Ok(account)
+}
+
+/// Archive an account: hidden from lists and pickers, history untouched, and it
+/// still counts toward net worth. Idempotent.
+pub async fn archive_account(
+    pool: &DbPool,
+    account_id: Uuid,
+    user_id: Uuid,
+) -> Result<AccountResponse, ApiError> {
+    let account = find_owned(pool, account_id, user_id).await?;
+    let account = if account.archived_at.is_some() {
+        account
+    } else {
+        repositories::account::set_archived_at(pool, account_id, Some(chrono::Utc::now())).await?
+    };
+    tracing::info!("Archived account {} for user {}", account_id, user_id);
+    let balance = calculate_account_balance(pool, account_id).await?;
+    to_response(account, &balance)
+}
+
+/// Unarchive an account. Idempotent.
+pub async fn unarchive_account(
+    pool: &DbPool,
+    account_id: Uuid,
+    user_id: Uuid,
+) -> Result<AccountResponse, ApiError> {
+    let account = find_owned(pool, account_id, user_id).await?;
+    let account = if account.archived_at.is_none() {
+        account
+    } else {
+        repositories::account::set_archived_at(pool, account_id, None).await?
+    };
+    tracing::info!("Unarchived account {} for user {}", account_id, user_id);
+    let balance = calculate_account_balance(pool, account_id).await?;
+    to_response(account, &balance)
+}
+
+/// Fail with 422 when the account is archived (used to refuse provider syncs).
+pub fn ensure_not_archived(account: &Account) -> Result<(), ApiError> {
+    if account.archived_at.is_some() {
+        return Err(ApiError::Validation(
+            "Account is archived; unarchive it before syncing".to_string(),
+        ));
+    }
+    Ok(())
 }

@@ -7,7 +7,6 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
-    services::investment_provider::InvestmentProvider,
     AppState,
     auth::context::AuthContext,
     errors::ApiError,
@@ -15,6 +14,7 @@ use crate::{
         ConnectInvestmentProviderRequest, InvestmentProviderResponse, NewInvestmentProvider,
     },
     repositories,
+    services::investment_provider::InvestmentProvider,
     services::investment_provider::Trading212Provider,
     types::AccountType,
     utils::encryption,

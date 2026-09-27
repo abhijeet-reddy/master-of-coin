@@ -1,0 +1,78 @@
+.panel {
+  padding: 10px 12px 12px;
+  min-width: 0;
+}
+.cal {
+  --rdp-accent-color: var(--ink);
+  --rdp-accent-background-color: var(--accent-soft);
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+  --rdp-day_button-border-radius: 0;
+  --rdp-selected-border: 1px solid var(--accent);
+  --rdp-today-color: var(--ink);
+  --rdp-nav-height: 34px;
+  --rdp-nav_button-height: 30px;
+  --rdp-nav_button-width: 30px;
+  font: 500 var(--t-small) / 1 var(--mono);
+  color: var(--ink);
+}
+.cal :global(.rdp-caption_label) {
+  font: 600 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.cal :global(.rdp-weekday) {
+  font: 600 10.5px / 1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  opacity: 1;
+}
+.cal :global(.rdp-chevron) {
+  fill: var(--ink-2);
+}
+.cal :global(.rdp-button_previous),
+.cal :global(.rdp-button_next) {
+  border-radius: 0;
+}
+.cal :global(.rdp-day_button:hover) {
+  background: var(--panel-2);
+}
+.cal :global(.rdp-today:not(.rdp-outside)) {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cal :global(.rdp-selected .rdp-day_button) {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.cal :global(.rdp-outside) {
+  color: var(--ink-3);
+  opacity: 1;
+}
+.foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--ink-2);
+}
+@media (max-width: 760px) {
+  .cal {
+    --rdp-day-height: 44px;
+    --rdp-day-width: 44px;
+    --rdp-day_button-height: 42px;
+    --rdp-day_button-width: 42px;
+  }
+}

@@ -1,11 +1,12 @@
-use axum::http::Method;
+use axum::http::{HeaderName, Method};
 use tower_http::cors::CorsLayer;
 
 /// Creates a CORS layer for the application
 ///
 /// This configuration:
 /// - Allows all origins (should be restricted in production)
-/// - Allows common HTTP methods (GET, POST, PUT, DELETE, OPTIONS)
+/// - Allows common HTTP methods (GET, POST, PUT, PATCH, DELETE, OPTIONS)
+/// - Exposes `X-Total-Count` so browser clients can read list totals
 /// - Allows all headers
 /// - Allows credentials (cookies, authorization headers)
 ///
@@ -31,9 +32,12 @@ pub fn create_cors_layer() -> CorsLayer {
             Method::GET,
             Method::POST,
             Method::PUT,
+            Method::PATCH,
             Method::DELETE,
             Method::OPTIONS,
         ])
         .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
+        // The v2 client reads list totals from this header (finding 6ecd241a).
+        .expose_headers([HeaderName::from_static("x-total-count")])
         .allow_credentials(true)
 }

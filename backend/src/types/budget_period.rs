@@ -36,6 +36,24 @@ impl BudgetPeriod {
     /// - Quarterly: first day of the current quarter → last day of the current quarter
     /// - Yearly: Jan 1 → Dec 31 of the current year
     pub fn current_window(&self, today: NaiveDate) -> (NaiveDate, NaiveDate) {
+        self.current_window_with_week_start(today, Weekday::Mon)
+    }
+
+    /// Like [`current_window`](Self::current_window), but weekly windows start on
+    /// `week_start` (the user's preference: Monday or Sunday).
+    pub fn current_window_with_week_start(
+        &self,
+        today: NaiveDate,
+        week_start: Weekday,
+    ) -> (NaiveDate, NaiveDate) {
+        if *self == BudgetPeriod::Weekly && week_start != Weekday::Mon {
+            let offset = (today.weekday().num_days_from_monday() + 7
+                - week_start.num_days_from_monday())
+                % 7;
+            let start = today.checked_sub_days(Days::new(offset as u64)).unwrap();
+            let end = start.checked_add_days(Days::new(6)).unwrap();
+            return (start, end);
+        }
         match self {
             BudgetPeriod::Daily => (today, today),
             BudgetPeriod::Weekly => {

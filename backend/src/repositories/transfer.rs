@@ -114,7 +114,10 @@ pub async fn join_transaction_into_transfer_atomic(
             Ok((transfer, new_transaction))
         })
         .map_err(|e: diesel::result::Error| {
-            tracing::error!("Failed to convert transaction to transfer atomically: {}", e);
+            tracing::error!(
+                "Failed to convert transaction to transfer atomically: {}",
+                e
+            );
             ApiError::from(e)
         })
     })

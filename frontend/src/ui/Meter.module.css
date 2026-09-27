@@ -1,0 +1,82 @@
+.wrap {
+  display: grid;
+  gap: 6px;
+}
+.meter {
+  position: relative;
+  height: 12px;
+  --mc: var(--ink);
+}
+.track,
+.fill {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--seg) 0 calc(5% - 2px),
+    transparent calc(5% - 2px) 5%
+  );
+}
+.track {
+  --seg: var(--line);
+}
+.fill {
+  --seg: var(--mc);
+  clip-path: inset(0 calc(100% - var(--p, 0%)) 0 0);
+  transition: clip-path var(--d6) var(--ease-flow);
+  animation: global(moc-clip-x) 1000ms var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 180ms + var(--i, 0) * 55ms);
+}
+.pace {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: var(--x);
+  width: 2px;
+  background: var(--ink);
+  transform: translateX(-1px);
+}
+.pace::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 8px;
+  height: 3px;
+  background: var(--ink);
+}
+.pos {
+  --mc: var(--pos);
+}
+.warn {
+  --mc: var(--warn);
+}
+.crit {
+  --mc: var(--crit);
+}
+.accent {
+  --mc: var(--accent);
+}
+:global(:root.light) .accent,
+.neutral {
+  --mc: var(--ink);
+}
+.caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font: 500 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+@media (forced-colors: active) {
+  .fill {
+    forced-color-adjust: none;
+  }
+}
+
+.pace {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 1100ms);
+}

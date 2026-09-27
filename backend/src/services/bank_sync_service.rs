@@ -266,6 +266,10 @@ pub async fn sync_bank_transactions(
         ));
     }
 
+    // Archived accounts never sync (covers scheduled runs too).
+    let account = repositories::account::find_by_id(pool, provider_record.account_id).await?;
+    crate::services::account_service::ensure_not_archived(&account)?;
+
     // Step 2: Get the provider implementation
     let provider = providers
         .get(&provider_record.provider_type)

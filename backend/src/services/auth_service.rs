@@ -5,7 +5,10 @@ use crate::{
     config::JwtConfig,
     db::DbPool,
     errors::ApiError,
-    models::user::{AuthResponse, CreateUserRequest, LoginRequest, NewUser, UserResponse},
+    models::user::{
+        AuthResponse, ChangePasswordRequest, CreateUserRequest, LoginRequest, NewUser,
+        UpdateProfileRequest, UpdateUser, UserResponse,
+    },
     repositories::user,
 };
 
@@ -163,4 +166,72 @@ pub async fn get_current_user(
 ) -> Result<UserResponse, ApiError> {
     let user = user::find_by_id(pool, user_id).await?;
     Ok(UserResponse::from(user))
+}
+
+/// Update the current user's name and/or email. A taken email is a 409.
+pub async fn update_profile(
+    pool: &DbPool,
+    user_id: uuid::Uuid,
+    request: UpdateProfileRequest,
+) -> Result<UserResponse, ApiError> {
+    request
+        .validate()
+        .map_err(|e| ApiError::Validation(format!("Invalid profile data: {}", e)))?;
+
+    let name = request.name.map(|n| n.trim().to_string());
+    if matches!(&name, Some(n) if n.is_empty()) {
+        return Err(ApiError::Validation("Name cannot be blank".to_string()));
+    }
+    let email = request.email.map(|e| e.trim().to_string());
+
+    if let Some(email) = &email {
+        match user::find_by_email(pool, email).await {
+            Ok(existing) if existing.id != user_id => {
+                return Err(ApiError::Conflict("Email already exists".to_string()));
+            }
+            Ok(_) | Err(ApiError::Database(diesel::result::Error::NotFound)) => {}
+            Err(e) => return Err(e),
+        }
+    }
+
+    let updated = user::update_user(
+        pool,
+        user_id,
+        UpdateUser {
+            username: None,
+            email,
+            name,
+        },
+    )
+    .await?;
+
+    tracing::info!("Updated profile for user {}", user_id);
+    Ok(UserResponse::from(updated))
+}
+
+/// Change the current user's password after verifying the current one.
+pub async fn change_password(
+    pool: &DbPool,
+    user_id: uuid::Uuid,
+    request: ChangePasswordRequest,
+) -> Result<(), ApiError> {
+    request
+        .validate()
+        .map_err(|e| ApiError::Validation(format!("Invalid password data: {}", e)))?;
+
+    let existing = user::find_by_id(pool, user_id).await?;
+    if !password::verify_password(&request.current_password, &existing.password_hash)? {
+        tracing::warn!(
+            "Wrong current password on change-password for user {}",
+            user_id
+        );
+        return Err(ApiError::Validation(
+            "Current password is incorrect".to_string(),
+        ));
+    }
+
+    let hash = password::hash_password(&request.new_password)?;
+    user::update_password_hash(pool, user_id, hash).await?;
+    tracing::info!("Changed password for user {}", user_id);
+    Ok(())
 }

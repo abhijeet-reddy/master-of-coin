@@ -24,3 +24,4 @@ mod test_encryption;
 mod test_relationships;
 mod test_transactions;
 mod test_user_crud;
+mod test_v2_backend;

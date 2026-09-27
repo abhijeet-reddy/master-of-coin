@@ -1,415 +1,140 @@
 import { test, expect } from "../../fixtures/test-fixtures";
-import { ScreenshotHelper } from "../../helpers/screenshots";
+import type { Page } from "@playwright/test";
 import {
   collectConsoleErrors,
   expectNoConsoleErrors,
-  expectPageTitle,
 } from "../../helpers/assertions";
-import { goToTransactions } from "../../helpers/navigation";
+import { openLedger, params } from "../../helpers/transactions";
 
 /**
- * Transaction Filter Drawer E2E tests.
- *
- * Tests the responsive filter drawer that replaced the inline filter panel:
- * - Drawer opens when filter button is clicked
- * - Drawer contains all filter controls
- * - Drawer closes via Done button, close button, and backdrop click
- * - Clear All button resets filters
- * - Filter selections persist while drawer is open
- * - Active filter count badge appears on drawer header
- * - URL filter params auto-open the drawer
+ * Filters on phones (UI v2). The rail keeps only search; the rest opens in
+ * a Filters sheet. Desktop shows the same fields inline in the rail.
  */
 
-const screenshotHelper = new ScreenshotHelper();
+const PHONE = { width: 390, height: 844 };
 
-/** Click the filter toggle button on the transactions page */
-async function openFilterDrawer(page: import("@playwright/test").Page) {
-  const filterButton = page.locator('[aria-label="Toggle filters"]');
-  await filterButton.click();
-  // Wait for drawer animation
-  await page.waitForTimeout(500);
+const filtersButton = (page: Page) =>
+  page.getByRole("button", { name: /^Filters/ });
+const sheet = (page: Page) => page.getByRole("dialog", { name: "Filters" });
+
+async function openSheet(page: Page) {
+  await filtersButton(page).click();
+  await expect(sheet(page)).toBeVisible();
+  return sheet(page);
 }
 
-/** Locate the drawer dialog element */
-function getDrawer(page: import("@playwright/test").Page) {
-  return page.locator('[role="dialog"]').filter({ hasText: /Filters/ });
-}
-
-test.describe("Transaction Filter Drawer", () => {
-  test("filter drawer opens when filter button is clicked", async ({
-    authenticatedPage,
-  }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
-
-    await goToTransactions(authenticatedPage);
-
-    // Drawer should not be visible initially
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).not.toBeVisible();
-
-    // Click filter button to open drawer
-    await openFilterDrawer(authenticatedPage);
-
-    // Drawer should now be visible
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Drawer should have "Filters" title
-    await expect(drawer.locator("text=Filters").first()).toBeVisible();
-
-    expectNoConsoleErrors(errors);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "filter-drawer-open",
-    );
+test.describe("Filters sheet on phones", () => {
+  test.beforeEach(async ({ authenticatedPage: page }) => {
+    await page.setViewportSize(PHONE);
+    await openLedger(page);
   });
 
-  test("filter drawer contains all filter controls", async ({
-    authenticatedPage,
+  test("the rail keeps search and hides the other fields", async ({
+    authenticatedPage: page,
   }) => {
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Transaction Type section
-    await expect(drawer.locator("text=Transaction Type")).toBeVisible();
-    await expect(
-      drawer.locator("button").filter({ hasText: /^All$/i }).first(),
-    ).toBeVisible();
-    await expect(
-      drawer.locator("button").filter({ hasText: /^Income$/i }),
-    ).toBeVisible();
-    await expect(
-      drawer.locator("button").filter({ hasText: /^Expense$/i }),
-    ).toBeVisible();
-
-    // Paid by Others section
-    await expect(
-      drawer.locator("p", { hasText: "Paid by Others" }),
-    ).toBeVisible();
-    await expect(
-      drawer.locator("button").filter({ hasText: /Paid by Others/i }),
-    ).toBeVisible();
-    await expect(
-      drawer.locator("button").filter({ hasText: /My Payments/i }),
-    ).toBeVisible();
-
-    // Date Range section
-    await expect(drawer.locator("text=Date Range")).toBeVisible();
-    const dateInputs = drawer.locator('input[type="date"]');
-    await expect(dateInputs).toHaveCount(2);
-
-    // Amount Range section
-    await expect(drawer.locator("text=Amount Range")).toBeVisible();
-    await expect(
-      drawer.locator('input[placeholder="Min amount"]'),
-    ).toBeVisible();
-    await expect(
-      drawer.locator('input[placeholder="Max amount"]'),
-    ).toBeVisible();
-
-    // Done button in footer
-    await expect(
-      drawer.locator("button").filter({ hasText: /^Done$/i }),
-    ).toBeVisible();
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "filter-drawer-all-controls",
-    );
+    const rail = page.getByRole("complementary", { name: "Search and filter" });
+    await expect(rail.getByLabel("Search", { exact: true })).toBeVisible();
+    await expect(rail.getByRole("group", { name: "Direction" })).toBeHidden();
+    await expect(filtersButton(page)).toBeVisible();
   });
 
-  test("filter drawer closes via Done button", async ({
-    authenticatedPage,
+  test("the sheet holds every filter control", async ({
+    authenticatedPage: page,
   }) => {
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Click Done button
-    const doneButton = drawer.locator("button").filter({ hasText: /^Done$/i });
-    await doneButton.click();
-    await authenticatedPage.waitForTimeout(500);
-
-    // Drawer should be closed
-    await expect(drawer).not.toBeVisible();
-  });
-
-  test("filter drawer closes via close button (X)", async ({
-    authenticatedPage,
-  }) => {
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Click the close button (X) in the drawer
-    const closeButton = drawer
-      .locator("button")
-      .filter({ hasText: /✕|×/ })
-      .first()
-      .or(drawer.locator('[aria-label="Close"]').first())
-      .or(
-        drawer
-          .locator('[data-scope="dialog"] [data-part="close-trigger"]')
-          .first(),
-      );
-
-    // Try clicking any close trigger
-    if (await closeButton.isVisible()) {
-      await closeButton.click();
-    } else {
-      // Fallback: press Escape key
-      await authenticatedPage.keyboard.press("Escape");
+    const s = await openSheet(page);
+    for (const label of ["Account", "Category", "Person", "From", "To", "Min amount", "Max amount", "Paid by others"]) {
+      await expect(s.getByLabel(label, { exact: true })).toBeVisible();
     }
-    await authenticatedPage.waitForTimeout(500);
-
-    // Drawer should be closed
-    await expect(drawer).not.toBeVisible();
+    await expect(s.getByRole("group", { name: "Direction" })).toBeVisible();
+    await expect(s.getByRole("switch", { name: "Has splits" })).toBeVisible();
+    await expect(s.getByRole("switch", { name: "In a transfer" })).toBeVisible();
   });
 
-  test("filter drawer closes via Escape key", async ({ authenticatedPage }) => {
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Press Escape key
-    await authenticatedPage.keyboard.press("Escape");
-    await authenticatedPage.waitForTimeout(500);
-
-    // Drawer should be closed
-    await expect(drawer).not.toBeVisible();
+  test("Show results closes the sheet", async ({ authenticatedPage: page }) => {
+    const s = await openSheet(page);
+    await s.getByRole("button", { name: "Show results" }).click();
+    await expect(s).toBeHidden();
   });
 
-  test("selecting a filter type updates the filter and URL", async ({
-    authenticatedPage,
+  test("the close button closes the sheet", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
-
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Click "Expense" filter
-    const expenseButton = drawer
-      .locator("button")
-      .filter({ hasText: /^Expense$/i });
-    await expenseButton.click();
-    await authenticatedPage.waitForTimeout(300);
-
-    // URL should contain type=expense
-    const url = new URL(authenticatedPage.url());
-    expect(url.searchParams.get("type")).toBe("expense");
-
-    expectNoConsoleErrors(errors);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "filter-drawer-expense-selected",
-    );
+    const s = await openSheet(page);
+    await s.getByRole("button", { name: "Close" }).click();
+    await expect(s).toBeHidden();
   });
 
-  test("Clear All button resets all filters", async ({ authenticatedPage }) => {
-    // Start with filters in URL so drawer auto-opens
-    await authenticatedPage.goto(
-      "/transactions?type=expense&minAmount=10&paidByOthers=only",
-    );
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Clear All button should be visible (since filters are active)
-    const clearButton = drawer
-      .locator("button")
-      .filter({ hasText: /Clear All/i });
-    await expect(clearButton).toBeVisible();
-
-    // Click Clear All
-    await clearButton.click();
-    await authenticatedPage.waitForTimeout(300);
-
-    // URL should no longer have filter params
-    const url = new URL(authenticatedPage.url());
-    expect(url.searchParams.has("type")).toBe(false);
-    expect(url.searchParams.has("minAmount")).toBe(false);
-    expect(url.searchParams.has("paidByOthers")).toBe(false);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "filter-drawer-cleared",
-    );
+  test("Escape closes the sheet", async ({ authenticatedPage: page }) => {
+    await openSheet(page);
+    await page.keyboard.press("Escape");
+    await expect(sheet(page)).toBeHidden();
   });
 
-  test("active filter count badge shows correct count", async ({
-    authenticatedPage,
+  test("a filter applies live, lands in the URL and counts on the button", async ({
+    authenticatedPage: page,
   }) => {
-    // Navigate with 3 active filter groups
-    await authenticatedPage.goto(
-      "/transactions?type=expense&minAmount=10&paidByOthers=only",
-    );
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Badge should show count of active filter groups (3: type, amount, paidByOthers)
-    const badge = drawer
-      .locator('[data-scope="badge"]')
-      .or(drawer.locator("span").filter({ hasText: /^3$/ }));
-    // At least verify the badge/count is present
-    await expect(badge.first()).toBeVisible({ timeout: 5000 });
+    const s = await openSheet(page);
+    await s.getByRole("radio", { name: "Money in" }).click();
+    await expect.poll(() => params(page).get("dir")).toBe("in");
+    await s.getByRole("switch", { name: "Has splits" }).click();
+    await expect.poll(() => params(page).get("splits")).toBe("true");
+    await s.getByRole("button", { name: "Show results" }).click();
+    await expect(filtersButton(page)).toHaveText(/Filters \(2\)/);
   });
 
-  test("filter drawer auto-opens when URL has filter params", async ({
-    authenticatedPage,
+  test("selections survive closing and reopening", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    let s = await openSheet(page);
+    await s.getByRole("radio", { name: "Money out" }).click();
+    await s.getByRole("button", { name: "Show results" }).click();
+    s = await openSheet(page);
+    await expect(s.getByRole("radio", { name: "Money out" })).toBeChecked();
+  });
 
-    // Navigate directly with filter params
-    await authenticatedPage.goto("/transactions?type=expense");
-    await authenticatedPage.waitForLoadState("networkidle");
+  test("Clear filters resets everything", async ({ authenticatedPage: page }) => {
+    await openLedger(page, "dir=out&splits=true&paid=only");
+    await expect(filtersButton(page)).toHaveText(/Filters \(3\)/);
+    const s = await openSheet(page);
+    await s.getByRole("button", { name: "Clear filters" }).click();
+    await expect.poll(() => page.url()).not.toContain("?");
+    await expect(s.getByRole("radio", { name: "All" })).toBeChecked();
+    await expect(s.getByRole("button", { name: "Clear filters" })).toBeDisabled();
+  });
 
-    // Drawer should auto-open because URL has filter params
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
+  test("amount range fields write min and max", async ({
+    authenticatedPage: page,
+  }) => {
+    const s = await openSheet(page);
+    await s.getByLabel("Min amount").fill("10");
+    await s.getByLabel("Max amount").fill("99.5");
+    await expect.poll(() => params(page).get("min")).toBe("10");
+    await expect.poll(() => params(page).get("max")).toBe("99.5");
+  });
 
-    // "Filters" title should be visible in the drawer
-    await expect(drawer.locator("text=Filters").first()).toBeVisible();
-
-    // Expense button should be visible in the drawer
-    const expenseButton = drawer
-      .locator("button")
-      .filter({ hasText: /^Expense$/i });
-    await expect(expenseButton).toBeVisible();
-
+  test("no console errors while filtering", async ({
+    authenticatedPage: page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    const s = await openSheet(page);
+    await s.getByRole("radio", { name: "Money out" }).click();
+    await s.getByLabel("Paid by others").click();
+    await page.getByRole("option", { name: "Hide them" }).click();
+    await expect.poll(() => params(page).get("paid")).toBe("exclude");
+    await s.getByRole("button", { name: "Show results" }).click();
+    await page.waitForLoadState("networkidle");
     expectNoConsoleErrors(errors);
   });
+});
 
-  test("amount range filters work inside the drawer", async ({
-    authenticatedPage,
+test.describe("Filter rail on desktop", () => {
+  test("fields sit inline and there is no Filters button", async ({
+    authenticatedPage: page,
   }) => {
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Fill in min amount
-    const minAmountInput = drawer.locator('input[placeholder="Min amount"]');
-    await minAmountInput.fill("50");
-    await authenticatedPage.waitForTimeout(300);
-
-    // Fill in max amount
-    const maxAmountInput = drawer.locator('input[placeholder="Max amount"]');
-    await maxAmountInput.fill("200");
-    await authenticatedPage.waitForTimeout(300);
-
-    // URL should contain amount params
-    const url = new URL(authenticatedPage.url());
-    expect(url.searchParams.get("minAmount")).toBe("50");
-    expect(url.searchParams.get("maxAmount")).toBe("200");
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "filter-drawer-amount-range",
-    );
-  });
-
-  test("date range filters work inside the drawer", async ({
-    authenticatedPage,
-  }) => {
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Fill in start date
-    const dateInputs = drawer.locator('input[type="date"]');
-    const startDateInput = dateInputs.first();
-    await startDateInput.fill("2026-04-01");
-    await authenticatedPage.waitForTimeout(300);
-
-    // URL should contain startDate param
-    const url = new URL(authenticatedPage.url());
-    expect(url.searchParams.get("startDate")).toBe("2026-04-01");
-  });
-
-  test("filter drawer preserves selections after close and reopen", async ({
-    authenticatedPage,
-  }) => {
-    await goToTransactions(authenticatedPage);
-    await openFilterDrawer(authenticatedPage);
-
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Select Expense filter
-    const expenseButton = drawer
-      .locator("button")
-      .filter({ hasText: /^Expense$/i });
-    await expenseButton.click();
-    await authenticatedPage.waitForTimeout(300);
-
-    // Close the drawer via Done
-    const doneButton = drawer.locator("button").filter({ hasText: /^Done$/i });
-    await doneButton.click();
-    await authenticatedPage.waitForTimeout(500);
-
-    // Reopen the drawer
-    await openFilterDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // URL should still have type=expense
-    const url = new URL(authenticatedPage.url());
-    expect(url.searchParams.get("type")).toBe("expense");
-
-    // Expense button should still be in the drawer (filter preserved)
-    await expect(expenseButton).toBeVisible();
-  });
-
-  test("no console errors during filter drawer interactions", async ({
-    authenticatedPage,
-  }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
-
-    await goToTransactions(authenticatedPage);
-
-    // Open drawer
-    await openFilterDrawer(authenticatedPage);
-    const drawer = getDrawer(authenticatedPage);
-    await expect(drawer).toBeVisible({ timeout: 5000 });
-
-    // Click various filters
-    await drawer
-      .locator("button")
-      .filter({ hasText: /^Expense$/i })
-      .click();
-    await authenticatedPage.waitForTimeout(200);
-
-    await drawer
-      .locator("button")
-      .filter({ hasText: /My Payments/i })
-      .click();
-    await authenticatedPage.waitForTimeout(200);
-
-    // Close drawer
-    await drawer
-      .locator("button")
-      .filter({ hasText: /^Done$/i })
-      .click();
-    await authenticatedPage.waitForTimeout(500);
-
-    expectNoConsoleErrors(errors);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openLedger(page);
+    const rail = page.getByRole("complementary", { name: "Search and filter" });
+    await expect(rail.getByRole("group", { name: "Direction" })).toBeVisible();
+    await expect(filtersButton(page)).toBeHidden();
   });
 });

@@ -338,3 +338,109 @@ pub async fn has_transactions(pool: &DbPool, account_id: Uuid) -> Result<bool, A
         ApiError::Internal
     })?
 }
+
+/// Sum of non-deleted transaction amounts per account for a user, in ONE grouped query.
+/// Accounts without transactions are absent from the map (callers treat as zero).
+pub async fn balances_by_account(
+    pool: &DbPool,
+    user_id: Uuid,
+) -> Result<std::collections::HashMap<Uuid, BigDecimal>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        use diesel::dsl::sum;
+
+        let rows: Vec<(Uuid, Option<BigDecimal>)> = transactions::table
+            .inner_join(accounts::table.on(accounts::id.eq(transactions::account_id)))
+            .filter(accounts::user_id.eq(user_id))
+            .filter(transactions::is_deleted.eq(false))
+            .group_by(transactions::account_id)
+            .select((transactions::account_id, sum(transactions::amount)))
+            .load(&mut conn)
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to load grouped balances for user {}: {}",
+                    user_id,
+                    e
+                );
+                ApiError::from(e)
+            })?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(id, total)| (id, total.unwrap_or_else(|| BigDecimal::from(0))))
+            .collect())
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// List a user's non-DEBT accounts, optionally including archived ones.
+pub async fn list_visible_by_user(
+    pool: &DbPool,
+    user_id: Uuid,
+    include_archived: bool,
+) -> Result<Vec<Account>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        let mut query = accounts::table
+            .filter(accounts::user_id.eq(user_id))
+            .filter(accounts::type_.ne(AccountType::Debt))
+            .into_boxed();
+        if !include_archived {
+            query = query.filter(accounts::archived_at.is_null());
+        }
+        query
+            .order(accounts::created_at.desc())
+            .load(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to list accounts for user {}: {}", user_id, e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Set or clear `archived_at` on an account.
+pub async fn set_archived_at(
+    pool: &DbPool,
+    account_id: Uuid,
+    archived_at: Option<chrono::DateTime<chrono::Utc>>,
+) -> Result<Account, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::update(accounts::table.find(account_id))
+            .set((
+                accounts::archived_at.eq(archived_at),
+                accounts::updated_at.eq(diesel::dsl::now),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to set archived_at on account {}: {}", account_id, e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}

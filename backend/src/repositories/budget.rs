@@ -220,6 +220,12 @@ pub async fn get_active_range(
                     .is_null()
                     .or(budget_ranges::end_date.ge(date)),
             )
+            // Deterministic: the latest start_date covering the date wins
+            // (ties broken by the most recently created range).
+            .order((
+                budget_ranges::start_date.desc(),
+                budget_ranges::created_at.desc(),
+            ))
             .first(&mut conn)
             .optional()
             .map_err(|e| {
@@ -252,7 +258,10 @@ pub async fn list_ranges_for_budget(
     tokio::task::spawn_blocking(move || {
         budget_ranges::table
             .filter(budget_ranges::budget_id.eq(budget_id))
-            .order(budget_ranges::start_date.desc())
+            .order((
+                budget_ranges::start_date.desc(),
+                budget_ranges::created_at.desc(),
+            ))
             .load(&mut conn)
             .map_err(|e| {
                 tracing::error!("Failed to list ranges for budget {}: {}", budget_id, e);
@@ -311,6 +320,7 @@ pub async fn calculate_spending_by_currency(
             JOIN accounts a ON a.id = t.account_id \
             WHERE t.user_id = $1 \
               AND t.amount < 0 \
+              AND t.is_deleted = false \
               AND ($2::uuid IS NULL OR t.category_id = $2) \
               AND ($3::timestamptz IS NULL OR t.date >= $3) \
               AND ($4::timestamptz IS NULL OR t.date <= $4) \
@@ -332,6 +342,158 @@ pub async fn calculate_spending_by_currency(
                 user_id,
                 e
             );
+            ApiError::from(e)
+        })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Pick the active range for `date` from ranges ordered by
+/// (start_date DESC, created_at DESC): the latest start_date covering the date.
+/// Mirrors [`get_active_range`] for callers that loaded ranges in bulk.
+pub fn pick_active_range(ranges: &[BudgetRange], date: NaiveDate) -> Option<&BudgetRange> {
+    ranges
+        .iter()
+        .filter(|r| r.start_date <= date && r.end_date.is_none_or(|end| end >= date))
+        .max_by(|a, b| {
+            a.start_date
+                .cmp(&b.start_date)
+                .then(a.created_at.cmp(&b.created_at))
+        })
+}
+
+/// Load ranges for many budgets in ONE query, ordered start_date DESC, created_at DESC.
+pub async fn list_ranges_for_budgets(
+    pool: &DbPool,
+    budget_ids: Vec<Uuid>,
+) -> Result<Vec<BudgetRange>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        budget_ranges::table
+            .filter(budget_ranges::budget_id.eq_any(&budget_ids))
+            .order((
+                budget_ranges::start_date.desc(),
+                budget_ranges::created_at.desc(),
+            ))
+            .load(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to list ranges for budgets: {}", e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Find one range of a budget (None if missing or on another budget).
+pub async fn find_range(
+    pool: &DbPool,
+    budget_id: Uuid,
+    range_id: Uuid,
+) -> Result<Option<BudgetRange>, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        budget_ranges::table
+            .filter(budget_ranges::id.eq(range_id))
+            .filter(budget_ranges::budget_id.eq(budget_id))
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| {
+                tracing::error!("Failed to find range {}: {}", range_id, e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Replace a range's editable fields.
+pub async fn update_range(
+    pool: &DbPool,
+    range_id: Uuid,
+    limit_amount: BigDecimal,
+    period: crate::types::BudgetPeriod,
+    start_date: NaiveDate,
+    end_date: Option<NaiveDate>,
+) -> Result<BudgetRange, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        diesel::update(budget_ranges::table.find(range_id))
+            .set((
+                budget_ranges::limit_amount.eq(limit_amount),
+                budget_ranges::period.eq(period),
+                budget_ranges::start_date.eq(start_date),
+                budget_ranges::end_date.eq(end_date),
+                budget_ranges::updated_at.eq(diesel::dsl::now),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| {
+                tracing::error!("Failed to update range {}: {}", range_id, e);
+                ApiError::from(e)
+            })
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {}", e);
+        ApiError::Internal
+    })?
+}
+
+/// Delete a range unless it is the budget's last one, atomically.
+/// Returns `Ok(false)` when refused because it is the last range.
+pub async fn delete_range_unless_last(
+    pool: &DbPool,
+    budget_id: Uuid,
+    range_id: Uuid,
+) -> Result<bool, ApiError> {
+    let mut conn = pool.get().map_err(|e| {
+        tracing::error!("Failed to get DB connection: {}", e);
+        ApiError::Internal
+    })?;
+
+    tokio::task::spawn_blocking(move || {
+        conn.transaction::<_, diesel::result::Error, _>(|conn| {
+            // Lock the budget's ranges so two concurrent deletes cannot both pass.
+            let ids: Vec<Uuid> = budget_ranges::table
+                .filter(budget_ranges::budget_id.eq(budget_id))
+                .select(budget_ranges::id)
+                .for_update()
+                .load(conn)?;
+            if ids.len() <= 1 {
+                return Ok(false);
+            }
+            diesel::delete(
+                budget_ranges::table
+                    .filter(budget_ranges::id.eq(range_id))
+                    .filter(budget_ranges::budget_id.eq(budget_id)),
+            )
+            .execute(conn)?;
+            Ok(true)
+        })
+        .map_err(|e| {
+            tracing::error!("Failed to delete range {}: {}", range_id, e);
             ApiError::from(e)
         })
     })

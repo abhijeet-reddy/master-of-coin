@@ -124,7 +124,7 @@ function ThemePanel() {
   const { preference, setPreference } = useTheme();
   return (
     <Panel title="Theme" actions={<span className={styles.meta}>This browser only</span>}>
-      <div className={styles.themes} role="radiogroup" aria-label="Theme">
+      <div className={`${styles.themes} moc-stagger`} role="radiogroup" aria-label="Theme">
         {Object.values(ThemePreference).map((t) => (
           <Button
             key={t}

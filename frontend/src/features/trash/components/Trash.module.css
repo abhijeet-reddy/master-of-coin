@@ -42,6 +42,9 @@
   align-items: center;
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
+  transition:
+    background-color var(--d2) var(--ease-out),
+    box-shadow var(--d2) var(--ease-out);
 }
 .row:last-child {
   border-bottom: 0;
@@ -133,4 +136,35 @@
   align-items: center;
   padding: 12px 14px;
   border-bottom: 1px solid var(--line);
+}
+
+/* ---------- motion ---------- */
+.intro {
+  animation: global(moc-drop) var(--d4) var(--ease-out) backwards;
+  animation-delay: 60ms;
+}
+/* Rows slide in from the left, one after another (timing from moc-stagger on .list). */
+.list > .row {
+  animation-name: global(moc-slide-l);
+}
+.soon {
+  animation: global(moc-pulse) 1.6s var(--ease-io) 3 backwards;
+}
+.row[data-selected='true'] {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.barLeft > .micro {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+}
+.actions > * {
+  transition: transform var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .row[data-selected='true']:hover {
+    background: var(--accent-soft);
+  }
 }

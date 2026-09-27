@@ -68,7 +68,7 @@ export function ApiKeysTab() {
           }
         >
           {(list) => (
-            <ul className={styles.list}>
+            <ul className={`${styles.list} moc-stagger`}>
               {sortKeys(list).map((k) => (
                 <ApiKeyRow
                   key={k.id}

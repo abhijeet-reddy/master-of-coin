@@ -69,7 +69,7 @@ export function BankReportPanel({ report }: { report: BankSyncReport }) {
       {report.transactions.length === 0 ? (
         <p className={styles.empty}>The bank returned no transactions for this period.</p>
       ) : (
-        <ul className={styles.items} aria-label="Bank transactions">
+        <ul className={`${styles.items} moc-stagger`} aria-label="Bank transactions">
           {report.transactions.map((t) => (
             <li
               key={t.external_id}

@@ -92,6 +92,8 @@
   fill: none;
   stroke: var(--gc, var(--accent));
   transition: stroke-dashoffset var(--d6, 600ms) var(--ease-flow, ease);
+  animation: global(moc-arc) 1100ms var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 180ms);
 }
 .gauge .pace {
   stroke: var(--ink);
@@ -256,7 +258,9 @@
   align-items: center;
   padding: 14px;
   background: var(--panel);
-  transition: background-color var(--d1, 120ms) ease;
+  transition:
+    background-color var(--d1, 120ms) ease,
+    box-shadow var(--d2) var(--ease-out);
 }
 @media (max-width: 420px) {
   .card {
@@ -277,6 +281,17 @@
 @media (hover: hover) and (pointer: fine) {
   .card:hover {
     background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .card:hover .gauge {
+    transform: scale(1.04);
+  }
+  .txList li:hover {
+    background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .seg button:not(:disabled):not([aria-pressed='true']):hover {
+    color: var(--ink);
   }
 }
 .filler {
@@ -567,4 +582,78 @@
 .ledger {
   display: grid;
   gap: 16px;
+}
+
+/* ---------- motion ---------- */
+.gauge {
+  transition: transform var(--d3) var(--ease-out);
+}
+/* Card gauges fill in the same order the cards rise (moc-stagger on .grid). */
+.card .gauge .val {
+  animation-delay: calc(var(--boot, 0ms) + 180ms + var(--si, 0) * 35ms);
+}
+.readBig,
+.readSmall {
+  animation: global(moc-pop) var(--d4) var(--ease-out) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 260ms + var(--si, 0) * 35ms);
+}
+.seg button {
+  transition:
+    background-color var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.catIcon {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 200ms;
+}
+.bigName {
+  animation: global(moc-roll-in) var(--d4) var(--ease-out) backwards;
+  animation-delay: 120ms;
+}
+.spentFig {
+  animation: global(moc-slide-l) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 180ms;
+}
+.of {
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 260ms;
+}
+.sumKv > div {
+  animation: global(moc-rise) var(--d3) var(--ease-out) backwards;
+  animation-delay: 220ms;
+}
+.sumKv > div:nth-child(2) {
+  animation-delay: 255ms;
+}
+.sumKv > div:nth-child(3) {
+  animation-delay: 290ms;
+}
+.sumKv > div:nth-child(n + 4) {
+  animation-delay: 325ms;
+}
+.txList li {
+  transition:
+    background-color var(--d2) var(--ease-out),
+    box-shadow var(--d2) var(--ease-out);
+}
+.scatter .ptLabel {
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 600ms);
+}
+.overBand {
+  animation: global(moc-fade) var(--d6) var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 200ms);
+}
+.paceLine {
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 300ms);
+}
+.notice {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+}
+.pt {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: global(moc-pop) var(--d4) var(--ease-out) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 420ms);
 }

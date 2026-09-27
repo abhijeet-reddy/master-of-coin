@@ -149,6 +149,7 @@ export function PaceChart({
             />
             <path
               d={geo.line}
+              pathLength={1}
               className={styles.line}
               style={over ? { stroke: 'var(--crit)' } : undefined}
             />

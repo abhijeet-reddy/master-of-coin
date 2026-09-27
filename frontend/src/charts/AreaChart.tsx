@@ -100,7 +100,7 @@ export function AreaChart({
           <svg className={styles.svg} width={width} height={height} aria-hidden>
             <YGrid y={geo.y} width={width - M.right} left={M.left} format={f.axis} />
             <path d={geo.area} className={styles.area} />
-            <path d={geo.line} className={styles.line} />
+            <path d={geo.line} pathLength={1} className={styles.line} />
             <XLabels
               labels={data.map((d) => d.label)}
               xs={geo.xs}

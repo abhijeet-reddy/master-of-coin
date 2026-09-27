@@ -186,7 +186,7 @@ function CategoriesBody({ list }: { list: Category[] }) {
         }
       >
         {shown.length ? (
-          <div className={styles.grid}>
+          <div className={`${styles.grid} moc-stagger`}>
             {shown.map((c) => (
               <CategoryCard
                 key={c.id}
@@ -211,7 +211,7 @@ function CategoriesBody({ list }: { list: Category[] }) {
 function ListSkeleton() {
   return (
     <Panel title="Categories" flush>
-      <div className={styles.grid}>
+      <div className={`${styles.grid} moc-stagger`}>
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className={styles.skelCard}>
             <Skeleton width={44} height={44} />

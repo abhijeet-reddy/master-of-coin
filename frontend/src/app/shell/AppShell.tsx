@@ -18,6 +18,7 @@ import { useDocumentTitleSync } from './useDocumentTitleSync';
 import { useOnline } from './useOnline';
 import { useSidebarCollapsed } from './useSidebarCollapsed';
 import { RouteErrorBoundary } from '../errors/RouteErrorBoundary';
+import { BootSplash } from './BootSplash';
 import styles from './Shell.module.css';
 
 /** Sidebar (bottom bar on phones), status strip and page frame around every signed-in route. */
@@ -60,6 +61,7 @@ function ShellLayout() {
         </div>
       </div>
       <BottomBar />
+      <BootSplash />
     </>
   );
 }

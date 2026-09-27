@@ -72,7 +72,7 @@ export function BalancePanel({ person: p }: { person: PersonWithBalance }) {
         </strong>
         <NativeAmounts balance={p.balance} />
       </div>
-      <dl className={styles.facts}>
+      <dl className={`${styles.facts} moc-stagger`}>
         {p.balance?.foreign ? (
           <div>
             <dt>By currency</dt>
@@ -139,7 +139,7 @@ export function SplitLinkPanel({ person }: { person: Person }) {
         {(c) =>
           c ? (
             <div className={styles.link}>
-              <dl className={styles.facts}>
+              <dl className={`${styles.facts} moc-stagger`}>
                 <div>
                   <dt>Provider</dt>
                   <dd>{providerLabel(c.provider_type)}</dd>
@@ -289,7 +289,7 @@ export function DebtHistoryPanel({
             ) : null}
             <div>
               <h3 className={styles.kicker}>Latest changes</h3>
-              <ul className={styles.changes}>
+              <ul className={`${styles.changes} moc-stagger`}>
                 {h.changes.slice(0, RECENT).map((c) => (
                   <li key={c.tx.id}>
                     <span className={styles.dim}>{fmt.date(c.day, DateStyle.DayMonth)}</span>

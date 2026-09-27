@@ -38,7 +38,7 @@ export function FilterRail({ f }: { f: TransactionFiltersApi }) {
           >
             Filters{n ? ` (${n})` : ''}
           </Button>
-          <div className={styles.railBody}>
+          <div className={`${styles.railBody} moc-stagger`}>
             <FilterFields f={f} />
           </div>
           <FilterChips f={f} />
@@ -59,7 +59,7 @@ export function FilterRail({ f }: { f: TransactionFiltersApi }) {
           </>
         }
       >
-        <div className={styles.sheetBody}>
+        <div className={`${styles.sheetBody} moc-stagger`}>
           <FilterFields f={f} />
         </div>
       </Sheet>

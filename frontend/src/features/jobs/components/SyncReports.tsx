@@ -42,7 +42,7 @@ export function BulkSyncReportPanel({ report }: { report: BulkSyncReport }) {
       {report.items.length === 0 ? (
         <p className={styles.empty}>No items in this sync.</p>
       ) : (
-        <ul className={styles.items} aria-label="Sync items">
+        <ul className={`${styles.items} moc-stagger`} aria-label="Sync items">
           {report.items.map((it, i) => (
             <SyncItemRow
               key={`${it.transaction_id ?? it.external_expense_id ?? ''}-${i}`}

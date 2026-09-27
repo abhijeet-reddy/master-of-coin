@@ -1,4 +1,4 @@
-import { useMemo, type PointerEvent } from 'react';
+import { useMemo, type CSSProperties, type PointerEvent } from 'react';
 import { scaleBand, scaleLinear } from 'd3-scale';
 import { ChartFrame, ChartTip } from './ChartFrame';
 import { XLabels, YGrid } from './Axis';
@@ -131,6 +131,7 @@ export function BarChart({
                   key={`${i}-${si}`}
                   d={d}
                   fill={colors[si]}
+                  style={{ '--i': i } as CSSProperties}
                   className={`${styles.bar} ${active !== null && active !== i ? styles.dim : ''}`}
                 />
               ))

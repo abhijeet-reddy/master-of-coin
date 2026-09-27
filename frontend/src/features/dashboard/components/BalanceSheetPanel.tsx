@@ -77,7 +77,7 @@ function Sheet({ sheet }: { sheet: BalanceSheet }) {
           </span>
         </p>
       </div>
-      <ul className={styles.rows}>
+      <ul className={`${styles.rows} moc-stagger`}>
         {sheet.rows.map((r) => (
           <li key={r.type} className={styles.row}>
             {r.liability ? (

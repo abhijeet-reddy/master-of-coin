@@ -1,5 +1,5 @@
 import { useContext, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { PageActionsContext, usePageMeta } from './routeMeta';
 import styles from './Shell.module.css';
 
@@ -7,9 +7,11 @@ import styles from './Shell.module.css';
 export function PageFrame({ children }: { children: ReactNode }) {
   const { title, crumbs } = usePageMeta();
   const slot = useContext(PageActionsContext);
+  const { pathname } = useLocation();
   return (
     <>
-      <header className={styles.phead}>
+      <i key={`scan-${pathname}`} className="moc-route-scan" aria-hidden />
+      <header key={pathname} className={styles.phead}>
         <div className={styles.pheadMain}>
           {crumbs.length ? (
             <nav aria-label="Breadcrumb">
@@ -30,7 +32,10 @@ export function PageFrame({ children }: { children: ReactNode }) {
               Master of Coin
             </p>
           )}
-          <h1 className={styles.title}>{title}</h1>
+          <h1 className={styles.title}>
+            {title}
+            <span className={styles.cur} aria-hidden />
+          </h1>
         </div>
         <div className={styles.actions} ref={slot?.setTarget} />
       </header>

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { BudgetHealth } from '@/api/types';
 import { cx } from '@/ui';
 import styles from './Budgets.module.css';
@@ -72,6 +72,7 @@ export function Gauge({ percent, health, size = 96, stroke = 8, pace = null, chi
           strokeWidth={stroke}
           strokeDasharray={`${arc} ${circ}`}
           strokeDashoffset={off}
+          style={{ '--arc-from': arc } as CSSProperties}
           transform={`rotate(135 ${c} ${c})`}
         />
         {paceMark}

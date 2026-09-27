@@ -174,7 +174,9 @@
   align-items: center;
   padding: 12px 14px;
   border-bottom: 1px solid var(--line);
-  transition: background-color var(--d1, 120ms) ease;
+  transition:
+    background-color var(--d1, 120ms) ease,
+    box-shadow var(--d2) var(--ease-out);
 }
 .row:last-child {
   border-bottom: 0;
@@ -182,6 +184,19 @@
 @media (hover: hover) and (pointer: fine) {
   .row:hover {
     background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .row:hover .avatar {
+    border-color: var(--accent);
+    color: var(--ink);
+    transform: translateX(2px);
+  }
+  .changes li:hover {
+    box-shadow: inset 3px 0 0 var(--accent);
+    background: var(--panel-2);
+  }
+  .seg button:not([aria-pressed='true']):hover {
+    color: var(--ink);
   }
 }
 .who {
@@ -392,4 +407,52 @@
 }
 .nativeLine {
   display: block;
+}
+
+/* ---------- motion ---------- */
+.avatar {
+  transition:
+    transform var(--d2) var(--ease-out),
+    border-color var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.row .avatar {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 80ms);
+}
+.row .balance {
+  animation: global(moc-slide-r) var(--d4) var(--ease-flow) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 120ms);
+}
+.identity .avatar {
+  animation: global(moc-pop) var(--d4) var(--ease-out) backwards;
+  animation-delay: 120ms;
+}
+.identity h2 {
+  animation: global(moc-slide-l) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 160ms;
+}
+.headline {
+  animation: global(moc-pwr) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 180ms;
+}
+.headline strong {
+  animation: global(moc-roll-in) var(--d4) var(--ease-out) backwards;
+  animation-delay: 300ms;
+}
+.changes li {
+  transition:
+    background-color var(--d2) var(--ease-out),
+    box-shadow var(--d2) var(--ease-out);
+}
+.seg button {
+  transition:
+    background-color var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.missing {
+  animation: global(moc-flash) 900ms var(--ease-out) backwards;
+}
+.notice {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
 }

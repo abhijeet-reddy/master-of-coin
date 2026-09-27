@@ -39,9 +39,15 @@
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
+  /* pathLength=1 on the element makes the dash maths size-independent. */
+  stroke-dasharray: 1;
+  animation: global(moc-draw) 1300ms var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 180ms);
 }
 .area {
   fill: var(--viz-fill);
+  animation: global(moc-clip-x) 1300ms var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 180ms);
 }
 .ref {
   fill: none;
@@ -66,12 +72,18 @@
   pointer-events: none;
 }
 .dot {
+  animation: global(moc-fade) var(--d3) ease backwards;
+  animation-delay: calc(var(--boot, 0ms) + 1380ms);
   fill: var(--viz-line);
   stroke: var(--panel);
   stroke-width: 2;
 }
 .bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
   transition: opacity var(--d1) ease;
+  animation: global(moc-grow-y) 700ms var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 180ms + var(--i, 0) * 35ms);
 }
 .dim {
   opacity: 0.45;
@@ -168,6 +180,8 @@
   stroke: var(--panel);
   stroke-width: 2;
   transition: opacity var(--d1) ease;
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 180ms + var(--i, 0) * 60ms);
 }
 .rows {
   display: grid;

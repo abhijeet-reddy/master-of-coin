@@ -51,7 +51,7 @@ The rule is one-way dependencies: `features` can import `ui`, `charts`, `api` an
 | Forms | `react-hook-form` plus `zod` (kept) | Already used, works well |
 | Server state | TanStack Query (kept) | Already used |
 | Charts | Own SVG components on `d3-scale` and `d3-shape` | The mocks' charts are hand-built SVG. Recharts is removed |
-| Motion | CSS transitions, plus `motion` (the successor to framer-motion) for enter/exit only | Drawer, sheet and toast presence animations |
+| Motion | CSS keyframes and transitions, plus a small `useCountUp` hook for headline figures. No motion library | Ported from the mock: panel power-on and sweep, chart draw-in, bar grow, meter and gauge fill, drawer content rise, count-up. Shared keyframes live in `design/global.css` and are referenced from CSS Modules as `global(moc-*)` |
 | Icons | `lucide-react` | Consistent stroke icons that suit the terminal look. Replaces react-icons |
 | Fonts | Self-hosted via `@fontsource`: JetBrains Mono (figures and labels) and Inter (body) | No network fetches, and tabular numerals |
 
@@ -66,7 +66,7 @@ These come from the Telemetry mock (`mocks/c-telemetry/style.css`). Dark is the 
 - **Type:** mono for figures, labels and the status strip. Sans for longer text. Tabular numerals everywhere.
 - **Shape and space:** radius 0, spacing on a 4px scale.
 - **Motion:** durations of 100, 200, 300, 400 and 600ms, with the flow curve `cubic-bezier(0.22,0,0.12,1)`.
-- **Reduced motion:** a `:root.rm` class mirrors `prefers-reduced-motion` and turns off every transform.
+- **Reduced motion:** a `:root.rm` class mirrors `prefers-reduced-motion` and turns off every transform. Count-ups render the final figure straight away. The e2e suite runs with reduced motion.
 
 ### 2.3 App shell
 

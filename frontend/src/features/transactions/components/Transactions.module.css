@@ -13,7 +13,7 @@
   gap: 1px;
   background: var(--line);
   border: 1px solid var(--line);
-  animation: moc-fade var(--d4) var(--ease-flow) both;
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
 }
 .monthnav {
   display: flex;
@@ -269,11 +269,17 @@
   gap: 12px;
   min-height: 62px;
   padding: 10px 14px;
-  transition: background-color var(--d1) ease;
+  transition:
+    background-color var(--d1) ease,
+    box-shadow var(--d2) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
   .lr:hover {
     background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .lr:hover .tile {
+    transform: translateX(2px);
   }
 }
 .lr.sel {
@@ -408,7 +414,7 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   transform: translate(-50%, 0);
-  animation: bulk-in var(--d3) var(--ease-out) both;
+  animation: bulk-in var(--d3) var(--ease-out) backwards;
   box-shadow: 0 8px 28px rgb(0 0 0 / 0.35);
 }
 @keyframes bulk-in {
@@ -433,8 +439,8 @@
   gap: 16px;
   align-content: start;
 }
-.dd > * {
-  animation: moc-rise var(--d3) var(--ease-out) both;
+.dd {
+  --stagger-base: 40ms;
 }
 .ddHead {
   display: flex;
@@ -684,4 +690,52 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* ---------- motion ---------- */
+.monthLabel b {
+  animation: global(moc-roll-in) var(--d4) var(--ease-out) backwards;
+  animation-delay: 80ms;
+}
+.statIcon {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 220ms;
+}
+/* Day groups rise in turn (moc-stagger on .lgBody); the header slides in behind them. */
+.lday > :first-child {
+  animation: global(moc-slide-l) var(--d4) var(--ease-flow) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 80ms);
+}
+.ldaySub > :last-child {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 160ms);
+}
+.tile {
+  transition:
+    transform var(--d2) var(--ease-out),
+    border-color var(--d2) var(--ease-out);
+}
+.chips > * {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+}
+.tape {
+  animation: global(moc-clip-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: 240ms;
+}
+.sw {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 300ms;
+}
+.banner {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+}
+.ddFig {
+  animation: global(moc-roll-in) var(--d4) var(--ease-out) backwards;
+  animation-delay: 120ms;
+}
+.detailPanel {
+  animation: global(moc-pwr) var(--d4) var(--ease-flow) backwards;
+}
+.stateBox > * {
+  animation: global(moc-drop) var(--d4) var(--ease-out) backwards;
 }

@@ -32,7 +32,7 @@ export function AuthLayout({ kicker, subtitle, children, footer }: AuthLayoutPro
       </header>
       <main className={styles.center}>
         <div className={styles.card}>
-          <div className={styles.head}>
+          <div className={`${styles.head} moc-stagger`}>
             <p className={styles.kicker}>{kicker}</p>
             <h1 className={styles.title}>Master of Coin</h1>
             <p className={styles.sub}>{subtitle}</p>

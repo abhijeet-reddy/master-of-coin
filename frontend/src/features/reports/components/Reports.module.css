@@ -130,3 +130,36 @@
     padding: 0;
   }
 }
+
+/* ---------- motion ---------- */
+.bar {
+  --stagger-base: 60ms;
+}
+.span {
+  animation: global(moc-slide-r) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 220ms;
+}
+.summary {
+  animation: global(moc-fade) var(--d6) var(--ease-flow) backwards;
+  animation-delay: 420ms;
+}
+.note {
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 480ms;
+}
+.hero {
+  animation: global(moc-slide-l) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 160ms;
+}
+.swatch {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 300ms;
+}
+.name {
+  transition: color var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .name:hover {
+    text-decoration-color: var(--accent);
+  }
+}

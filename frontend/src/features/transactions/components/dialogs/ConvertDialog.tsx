@@ -188,7 +188,7 @@ export function ConvertDialog({ open, onOpenChange, tx }: Props) {
                       : 'Suggested transactions to link.'}
                 </p>
                 <div
-                  className={styles.candidates}
+                  className={`${styles.candidates} moc-stagger`}
                   role="radiogroup"
                   aria-label="Transaction to link"
                 >

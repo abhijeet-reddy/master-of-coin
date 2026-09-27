@@ -201,7 +201,7 @@ function PeopleBody({ list }: { list: PersonWithBalance[] }) {
         actions={<span className={styles.micro}>{shown.length} shown</span>}
       >
         {shown.length ? (
-          <ul className={styles.list}>
+          <ul className={`${styles.list} moc-stagger`}>
             {shown.map((p) => (
               <PersonRow key={p.id} person={p} />
             ))}

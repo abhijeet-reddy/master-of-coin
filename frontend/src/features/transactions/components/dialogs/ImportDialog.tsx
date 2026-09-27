@@ -211,7 +211,7 @@ function PreviewStep({ imp }: { imp: ImportApi }) {
 
   return (
     <div className={styles.form}>
-      <dl className={styles.summary} aria-label="Selected rows">
+      <dl className={`${styles.summary} moc-stagger`} aria-label="Selected rows">
         <div>
           <dt>Rows</dt>
           <dd>

@@ -176,3 +176,57 @@
     padding-left: 10px;
   }
 }
+
+/* Motion: slots drop in, the sync dot pings, the alert on turn types in and a bar counts down its turn. */
+.slot,
+.alert {
+  animation: global(moc-drop) var(--d4) var(--ease-flow) backwards;
+}
+.slot:nth-child(2) {
+  animation-delay: 60ms;
+}
+.slot:nth-child(3) {
+  animation-delay: 120ms;
+}
+.slot:nth-child(4) {
+  animation-delay: 180ms;
+}
+.alert {
+  animation-delay: 240ms;
+}
+.dot,
+.dotCrit {
+  position: relative;
+}
+.dot::after,
+.dotCrit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  animation: global(moc-ping) 1.6s var(--ease-out) 3;
+}
+.on span {
+  animation: global(moc-type) 420ms steps(20, end) backwards;
+}
+.on svg {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+}
+.life {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.7;
+  transform-origin: left;
+  animation: global(moc-life) linear forwards;
+}
+:global(:root.rm) .life {
+  display: none;
+}
+.alert:hover .life,
+.alert:focus-within .life {
+  animation-play-state: paused;
+}

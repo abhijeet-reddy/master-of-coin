@@ -25,7 +25,7 @@ interface Props {
 export function JobList({ jobs, label = 'Jobs', hideSchedule = false }: Props) {
   const { fmt } = usePreferences();
   return (
-    <ul className={styles.list} aria-label={label}>
+    <ul className={`${styles.list} moc-stagger`} aria-label={label}>
       {jobs.map((job) => {
         const type = jobTypeLabel(job.job_type);
         const summary = jobSummaryText(job);

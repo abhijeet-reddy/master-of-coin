@@ -12,7 +12,7 @@ export function RangeBar({ report }: { report: ReturnType<typeof useReportParams
   const { range, preset } = report;
   const days = daysIn(range);
   return (
-    <div className={styles.bar} role="group" aria-label="Report period">
+    <div className={`${styles.bar} moc-stagger`} role="group" aria-label="Report period">
       <Field label="Period" plain>
         <Select value={preset} onValueChange={report.setPreset} options={OPTIONS} />
       </Field>

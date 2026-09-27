@@ -135,7 +135,7 @@ function ScheduleDetail({ data }: { data: ScheduleDetailResponse }) {
         </StatGroup>
       </Panel>
 
-      <div className={styles.cols}>
+      <div className={`${styles.cols} moc-stagger`}>
         <Panel title="Settings">
           <dl className={styles.kv}>
             <div className={styles.kvRow}>
@@ -166,7 +166,7 @@ function ScheduleDetail({ data }: { data: ScheduleDetailResponse }) {
           ) : upcoming.length === 0 ? (
             <p className={styles.empty}>No upcoming runs.</p>
           ) : (
-            <ol className={styles.upcoming} aria-label="Upcoming runs">
+            <ol className={`${styles.upcoming} moc-stagger`} aria-label="Upcoming runs">
               {upcoming.map((r) => (
                 <li key={r}>
                   <span>{fmt.date(r, DateStyle.DateTime)}</span>

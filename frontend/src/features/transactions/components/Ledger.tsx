@@ -63,7 +63,7 @@ export function Ledger({ f, groups, query, base, selection, onOpen }: Props) {
   let body;
   if (query.isLoading) {
     body = (
-      <div className={styles.lgBody} aria-busy>
+      <div className={`${styles.lgBody} moc-stagger`} aria-busy>
         {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className={styles.skelRow}>
             <Skeleton width={16} height={16} />
@@ -128,7 +128,7 @@ export function Ledger({ f, groups, query, base, selection, onOpen }: Props) {
     );
   } else {
     body = (
-      <div className={styles.lgBody}>
+      <div className={`${styles.lgBody} moc-stagger`}>
         {groups.map((g) => (
           <section
             key={g.day}

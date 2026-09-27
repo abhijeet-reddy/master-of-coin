@@ -94,7 +94,7 @@ function ItemList({
 }) {
   if (children.length === 0) return <p className={styles.empty}>{empty}</p>;
   return (
-    <ul className={styles.items} aria-label={label}>
+    <ul className={`${styles.items} moc-stagger`} aria-label={label}>
       {children}
     </ul>
   );

@@ -23,7 +23,7 @@ export function RegisterPage() {
         </>
       }
     >
-      <form className={styles.form} onSubmit={(e) => void onSubmit(e)} noValidate>
+      <form className={`${styles.form} moc-stagger`} onSubmit={(e) => void onSubmit(e)} noValidate>
         <AuthAlert title="Registration failed" message={serverError} />
         <div className={styles.row}>
           <Field label="Username" required error={errors.username?.message}>

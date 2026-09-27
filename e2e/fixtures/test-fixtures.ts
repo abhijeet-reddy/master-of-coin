@@ -17,9 +17,11 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  authenticatedPage: async ({ browser }, use) => {
-    // Create a new context with saved authentication state
+  authenticatedPage: async ({ browser, contextOptions }, use) => {
+    // Create a new context with saved authentication state. contextOptions carries
+    // the config's (and any test.use) settings, such as reduced motion.
     const context = await browser.newContext({
+      ...contextOptions,
       storageState: "./auth/storage-state.json",
     });
     const page = await context.newPage();

@@ -10,6 +10,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { IconButton } from '@/ui';
+import { useCountUp } from '@/ui/useCountUp';
 import { ButtonVariant, ControlSize } from '@/ui/types';
 import { SignDisplay } from '@/lib/format';
 import { usePreferences } from '@/lib/preferences';
@@ -33,19 +34,23 @@ export function StatusStrip() {
   const { fmt } = usePreferences();
   const b = data.budgets;
   const sync = data.lastSync;
+  const netWorth = useCountUp(data.netWorth ?? 0, data.netWorth !== null);
+  const monthNet = useCountUp(data.monthNet ?? 0, data.monthNet !== null);
 
   return (
     <div className={styles.strip} role="region" aria-label="Status">
       <Link className={`${styles.slot} ${styles.nw}`} to="/accounts">
         <span className={styles.k}>Net worth</span>
-        <span className={styles.v}>{data.netWorth === null ? '--' : fmt.money(data.netWorth)}</span>
+        <span className={styles.v}>
+          {data.netWorth === null ? '--' : fmt.money(netWorth ?? data.netWorth)}
+        </span>
       </Link>
       <Link className={`${styles.slot} ${styles.mn}`} to="/transactions">
         <span className={styles.k}>{data.monthLabel} net</span>
         <span className={`${styles.v} ${toneOf(data.monthNet)}`}>
           {data.monthNet === null
             ? '--'
-            : fmt.money(data.monthNet, undefined, { sign: SignDisplay.Always })}
+            : fmt.money(monthNet ?? data.monthNet, undefined, { sign: SignDisplay.Always })}
         </span>
       </Link>
       <Link className={`${styles.slot} ${styles.bd}`} to="/budgets">
@@ -102,6 +107,14 @@ function AlertSlot({ alerts }: { alerts: StripAlert[] }) {
         Alerts{n ? <b className={styles.idx}>{`${index + 1}/${n}`}</b> : null}
       </span>
       <div className={styles.win}>
+        {n > 1 && !paused ? (
+          <i
+            key={index}
+            className={styles.life}
+            style={{ animationDuration: `${ROTATE_MS}ms` }}
+            aria-hidden
+          />
+        ) : null}
         {n === 0 ? (
           <span className={`${styles.item} ${styles.on} ${styles.tPos}`}>
             <CircleCheck aria-hidden />

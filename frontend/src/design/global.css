@@ -75,6 +75,63 @@ body {
     opacity: 0.45;
   }
 }
+@keyframes moc-pwr {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes moc-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes moc-sweep {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+/* One-sided keyframes: each animates from empty to the element's own final value. */
+@keyframes moc-clip-x {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes moc-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes moc-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes moc-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes moc-arc {
+  from {
+    stroke-dashoffset: var(--arc-from);
+  }
+}
 @keyframes moc-spin {
   to {
     transform: rotate(360deg);

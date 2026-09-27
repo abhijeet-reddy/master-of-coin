@@ -37,3 +37,11 @@
   height: 13px;
   margin-top: 2px;
 }
+
+/* Motion: errors and hints drop in under the field. */
+.error {
+  animation: global(moc-drop) var(--d2) var(--ease-out) backwards;
+}
+.error svg {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+}

@@ -5,10 +5,10 @@
   background: var(--scrim);
 }
 .scrim[data-state='open'] {
-  animation: moc-fade var(--d3) ease both;
+  animation: global(moc-fade) var(--d3) ease both;
 }
 .scrim[data-state='closed'] {
-  animation: moc-fade var(--d2) ease reverse both;
+  animation: global(moc-fade) var(--d2) ease reverse both;
 }
 
 .surface {
@@ -156,4 +156,51 @@
 .hazard {
   height: 6px;
   background: repeating-linear-gradient(-45deg, var(--stripe-a) 0 8px, var(--stripe-b) 8px 16px);
+}
+/* Drawer and sheet content rises in, one block after another. */
+.drawer .body > *,
+.sheet .body > * {
+  animation: global(moc-rise) var(--d3) var(--ease-out) backwards;
+  animation-delay: calc(120ms + var(--i, 0) * 40ms);
+}
+.body > :nth-child(2) {
+  --i: 1;
+}
+.body > :nth-child(3) {
+  --i: 2;
+}
+.body > :nth-child(4) {
+  --i: 3;
+}
+.body > :nth-child(5) {
+  --i: 4;
+}
+.body > :nth-child(6) {
+  --i: 5;
+}
+.body > :nth-child(7) {
+  --i: 6;
+}
+.body > :nth-child(8) {
+  --i: 7;
+}
+.body > :nth-child(n + 9) {
+  --i: 8;
+}
+
+/* Modals stagger their content too; the hazard stripe on destructive dialogs crawls. */
+.modal .body > * {
+  animation: global(moc-rise) var(--d3) var(--ease-out) backwards;
+  animation-delay: calc(90ms + var(--i, 0) * 35ms);
+}
+.foot > * {
+  animation: global(moc-rise) var(--d3) var(--ease-out) backwards;
+  animation-delay: 200ms;
+}
+.hazard {
+  animation: global(moc-hazard) 1.2s linear 3;
+}
+.title {
+  animation: global(moc-type) 360ms steps(16, end) backwards;
+  animation-delay: 80ms;
 }

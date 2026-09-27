@@ -80,11 +80,41 @@ export function setThemePreference(pref: ThemePreference): void {
   emit();
 }
 
-/** Flip between dark and light, pinning the choice. */
+const WIPE_MS = 600;
+const WIPE_EASE = 'cubic-bezier(0.77, 0, 0.175, 1)';
+
+type ViewTransitionDoc = Document & {
+  startViewTransition?: (cb: () => void) => { ready: Promise<void> };
+};
+
+/**
+ * Flip dark/light. Where View Transitions exist, the new theme wipes down the screen
+ * behind an accent edge (as in the Telemetry mock); otherwise it switches instantly.
+ */
 export function toggleTheme(): void {
-  setThemePreference(
-    resolveTheme() === ResolvedTheme.Dark ? ThemePreference.Light : ThemePreference.Dark
-  );
+  const next = resolveTheme() === ResolvedTheme.Dark ? ThemePreference.Light : ThemePreference.Dark;
+  const doc = document as ViewTransitionDoc;
+  if (!doc.startViewTransition || prefersReducedMotion()) {
+    setThemePreference(next);
+    return;
+  }
+  const vt = doc.startViewTransition(() => setThemePreference(next));
+  vt.ready
+    .then(() => {
+      document.documentElement.animate(
+        { clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0 0)'] },
+        { duration: WIPE_MS, easing: WIPE_EASE, pseudoElement: '::view-transition-new(root)' }
+      );
+      const edge = document.createElement('i');
+      edge.className = 'moc-wipe-edge';
+      edge.setAttribute('aria-hidden', 'true');
+      document.body.append(edge);
+      edge.animate(
+        [{ transform: 'translateY(-2px)' }, { transform: `translateY(${window.innerHeight}px)` }],
+        { duration: WIPE_MS, easing: WIPE_EASE }
+      ).onfinish = () => edge.remove();
+    })
+    .catch(() => undefined);
 }
 
 let wired = false;

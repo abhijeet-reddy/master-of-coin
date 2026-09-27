@@ -95,7 +95,7 @@ export function PaceMonitor({ list }: { list: BudgetStats[] }) {
                 {placed.map(({ s, x, y, left }) => {
                   const col = s.health ? COLOR[s.health] : 'var(--accent)';
                   return (
-                    <g key={s.id}>
+                    <g key={s.id} className={styles.pt}>
                       <rect
                         x={x - 5}
                         y={y - 5}

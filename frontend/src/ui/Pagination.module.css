@@ -21,3 +21,7 @@
   text-align: center;
   color: var(--ink);
 }
+
+.current {
+  animation: global(moc-pop) var(--d2) var(--ease-out);
+}

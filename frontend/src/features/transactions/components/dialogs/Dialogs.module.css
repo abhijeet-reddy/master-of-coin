@@ -431,3 +431,47 @@
     grid-template-columns: minmax(0, 1fr) 80px 80px;
   }
 }
+
+/* ---------- motion ---------- */
+.error,
+.warn,
+.info {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+}
+.splitRow,
+.partRow {
+  animation: global(moc-slide-l) var(--d3) var(--ease-out) backwards;
+}
+.stepOn {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+}
+.dropActive {
+  animation: global(moc-flash) 900ms var(--ease-out) backwards;
+}
+.drop {
+  transition:
+    border-color var(--d2) var(--ease-out),
+    background-color var(--d2) var(--ease-out);
+}
+.drop svg {
+  transition:
+    transform var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.candidate {
+  transition:
+    background-color var(--d2) var(--ease-out),
+    box-shadow var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .drop:hover {
+    border-color: var(--accent);
+  }
+  .drop:hover svg {
+    transform: translateY(-2px);
+    color: var(--accent);
+  }
+  .candidate:hover {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+}

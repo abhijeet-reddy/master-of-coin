@@ -10,7 +10,7 @@ export function AboutTab() {
       <Panel title="About Master of Coin">
         <PanelState query={version} skeleton={<Skeleton lines={2} />}>
           {(v) => (
-            <dl className={styles.facts}>
+            <dl className={`${styles.facts} moc-stagger`}>
               <dt>Version</dt>
               <dd>
                 {v.version === 'dev' ? 'Development build' : `v${v.version.replace(/^v/, '')}`}

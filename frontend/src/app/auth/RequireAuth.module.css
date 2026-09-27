@@ -18,5 +18,5 @@
   color: var(--accent-ink);
   font: 800 14px / 1 var(--sans);
   letter-spacing: -0.04em;
-  animation: moc-pulse 1.2s var(--ease-io) infinite;
+  animation: global(moc-pulse) 1.2s var(--ease-io) infinite;
 }

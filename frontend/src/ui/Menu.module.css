@@ -53,3 +53,48 @@
     height: 44px;
   }
 }
+
+/* Motion: the menu drops open, items cascade and indent on highlight. */
+.menu[data-state='open'] {
+  animation: global(moc-pop) 150ms var(--ease-out);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin, top right);
+}
+.menu[data-state='open'] .item {
+  animation: global(moc-slide-l) var(--d2) var(--ease-out) backwards;
+  animation-delay: calc(var(--mi, 0) * 20ms);
+}
+.menu .item:nth-child(2) {
+  --mi: 1;
+}
+.menu .item:nth-child(3) {
+  --mi: 2;
+}
+.menu .item:nth-child(4) {
+  --mi: 3;
+}
+.menu .item:nth-child(5) {
+  --mi: 4;
+}
+.menu .item:nth-child(6) {
+  --mi: 5;
+}
+.menu .item:nth-child(7) {
+  --mi: 6;
+}
+.menu .item:nth-child(8) {
+  --mi: 7;
+}
+.menu .item:nth-child(9) {
+  --mi: 8;
+}
+.menu .item:nth-child(10) {
+  --mi: 9;
+}
+.item {
+  transition:
+    background-color var(--d1) ease,
+    padding-left var(--d2) var(--ease-out);
+}
+.item[data-highlighted] {
+  padding-left: 16px;
+}

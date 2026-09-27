@@ -132,7 +132,7 @@ function ListSkeleton() {
           </Panel>
         </GridCell>
       </PanelGrid>
-      <div className={styles.grid}>
+      <div className={`${styles.grid} moc-stagger`}>
         {[0, 1, 2].map((i) => (
           <div key={i} className={styles.card}>
             <Skeleton width="50%" />

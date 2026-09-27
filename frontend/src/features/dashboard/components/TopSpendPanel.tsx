@@ -32,7 +32,7 @@ function Ranked({ rows }: { rows: RankRow[] }) {
   const top = rows[0];
   return (
     <div className={styles.stack}>
-      <ol className={styles.rank}>
+      <ol className={`${styles.rank} moc-stagger`}>
         {rows.map((r, i) => (
           <li key={r.key} className={styles.rankRow}>
             <span className={styles.rankNo} aria-hidden>

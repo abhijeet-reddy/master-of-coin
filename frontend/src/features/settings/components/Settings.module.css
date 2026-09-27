@@ -70,6 +70,9 @@
   justify-content: space-between;
   padding: 12px 14px;
   border-top: 1px solid var(--line);
+  transition:
+    background-color var(--d2) var(--ease-out),
+    box-shadow var(--d2) var(--ease-out);
 }
 .row:first-child {
   border-top: 0;
@@ -209,5 +212,42 @@
   .rowActions {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+}
+
+/* ---------- motion ---------- */
+.lead {
+  animation: global(moc-drop) var(--d4) var(--ease-out) backwards;
+  animation-delay: 120ms;
+}
+.notice,
+.fieldError {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+}
+/* The new key: the box powers on, then the secret flashes once. */
+.secret {
+  animation: global(moc-pwr) var(--d4) var(--ease-flow) backwards;
+}
+.secret code {
+  animation: global(moc-flash) 1200ms var(--ease-out) backwards;
+  animation-delay: 240ms;
+}
+.warn {
+  animation: global(moc-drop) var(--d4) var(--ease-out) backwards;
+  animation-delay: 360ms;
+}
+.themes {
+  --stagger-base: 60ms;
+}
+.link {
+  transition: text-decoration-color var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .list > .row:hover {
+    background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .link:hover {
+    text-decoration-color: var(--accent);
   }
 }

@@ -24,16 +24,16 @@
   overflow: hidden;
 }
 .toast[data-state='open'] {
-  animation: moc-rise var(--d3) var(--ease-drawer) both;
+  animation: global(moc-rise) var(--d3) var(--ease-drawer) both;
 }
 .toast[data-state='closed'] {
-  animation: moc-fade var(--d2) ease reverse both;
+  animation: global(moc-fade) var(--d2) ease reverse both;
 }
 .toast[data-swipe='move'] {
   transform: translateX(var(--radix-toast-swipe-move-x));
 }
 .toast[data-swipe='end'] {
-  animation: moc-fade var(--d2) ease reverse both;
+  animation: global(moc-fade) var(--d2) ease reverse both;
 }
 .icon {
   flex: none;

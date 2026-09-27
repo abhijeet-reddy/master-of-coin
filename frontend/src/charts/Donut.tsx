@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { arc, pie, type PieArcDatum } from 'd3-shape';
 import { ChartFrame } from './ChartFrame';
 import { foldSlices, type ShareItem, type Slice } from './foldSlices';
@@ -67,6 +67,7 @@ export function Donut({ title, items, size = 168, centerLabel = 'Total', format 
                     key={a.key}
                     d={a.d}
                     fill={a.color}
+                    style={{ '--i': i } as CSSProperties}
                     className={`${styles.slice} ${active !== null && active !== i ? styles.dim : ''}`}
                     onPointerEnter={() => cursor.setIndex(i)}
                     onPointerLeave={cursor.clear}

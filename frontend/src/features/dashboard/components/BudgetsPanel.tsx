@@ -66,7 +66,7 @@ function BudgetList({ statuses }: { statuses: Parameters<typeof budgetRows>[0] }
   const rows = useMemo(() => budgetRows(statuses, new Date()), [statuses]);
   return (
     <div className={styles.stack}>
-      <ul className={styles.budgets}>
+      <ul className={`${styles.budgets} moc-stagger`}>
         {rows.map((b) => (
           <BudgetItem key={b.id} row={b} />
         ))}

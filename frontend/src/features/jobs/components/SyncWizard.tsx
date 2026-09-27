@@ -165,7 +165,7 @@ function DriftedStep({ report, state, dispatch }: StepProps) {
       {items.length === 0 ? (
         <StepEmpty>Nothing drifted. Skip to the next step.</StepEmpty>
       ) : (
-        <ul className={styles.wizList} aria-label="Drifted items">
+        <ul className={`${styles.wizList} moc-stagger`} aria-label="Drifted items">
           {items.map((d) => (
             <DriftedChoice key={d.transaction_id} item={d} state={state} dispatch={dispatch} />
           ))}
@@ -256,7 +256,7 @@ function MissingExternalStep({ report, state, dispatch }: StepProps) {
       {items.length === 0 ? (
         <StepEmpty>Every split transaction is already on the provider.</StepEmpty>
       ) : (
-        <ul className={styles.wizList} aria-label="Missing on provider">
+        <ul className={`${styles.wizList} moc-stagger`} aria-label="Missing on provider">
           {items.map((m) => {
             const on = state.missingExternal.has(m.transaction_id);
             return (
@@ -303,7 +303,7 @@ function MissingLocalStep({ report, state, dispatch }: StepProps) {
       {items.length === 0 ? (
         <StepEmpty>Every provider expense is already here.</StepEmpty>
       ) : (
-        <ul className={styles.wizList} aria-label="Missing locally">
+        <ul className={`${styles.wizList} moc-stagger`} aria-label="Missing locally">
           {items.map((m) => {
             const on = state.missingLocal.has(m.external_expense_id);
             const unmapped = m.unmapped_users ?? [];
@@ -367,7 +367,7 @@ function ReviewStep({ report, state }: { report: DriftReport; state: WizardState
         {counts.total} {counts.total === 1 ? 'item' : 'items'}: {counts.push} to push, {counts.pull}{' '}
         to pull. The sync runs in the background.
       </span>
-      <div className={styles.reviewCols}>
+      <div className={`${styles.reviewCols} moc-stagger`}>
         <ReviewCol title={`Push (${push.length})`} items={push} />
         <ReviewCol title={`Pull (${pull.length})`} items={pull} />
       </div>

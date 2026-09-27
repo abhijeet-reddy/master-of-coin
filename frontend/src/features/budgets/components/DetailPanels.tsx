@@ -255,7 +255,7 @@ export function CountingList({ s }: { s: BudgetStats }) {
   if (!list.length) return <p className={styles.micro}>Nothing counted yet this period.</p>;
   return (
     <>
-      <ul className={styles.txList}>
+      <ul className={`${styles.txList} moc-stagger`}>
         {list.map((t) => (
           <li key={t.id}>
             <span className={styles.micro}>{fmt.date(t.date, DateStyle.DayMonth)}</span>

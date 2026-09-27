@@ -32,7 +32,7 @@ function Cards({
   const dialogs = useAccountDialogs();
   const grid = useGridRemainder<HTMLDivElement>(accounts.length);
   return (
-    <div className={styles.grid} ref={grid.ref}>
+    <div className={`${styles.grid} moc-stagger`} ref={grid.ref}>
       {accounts.map((a) => (
         <AccountCard
           key={a.id}

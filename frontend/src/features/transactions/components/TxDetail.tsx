@@ -49,7 +49,7 @@ export function TxDetail({ tx, ctx }: { tx: Transaction; ctx: LedgerContext }) {
   const participants = tx.debt_metadata?.expense_participants ?? [];
 
   return (
-    <article className={styles.dd} aria-label={tx.title}>
+    <article className={`${styles.dd} moc-stagger`} aria-label={tx.title}>
       {tx.deleted_at ? (
         <div className={styles.banner} role="status">
           <span>

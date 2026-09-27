@@ -128,7 +128,7 @@ function IdentityPanel({ category: c }: { category: Category }) {
           </div>
         </div>
       </div>
-      <dl className={styles.facts}>
+      <dl className={`${styles.facts} moc-stagger`}>
         <div>
           <dt>Icon</dt>
           <dd>{c.icon || 'None'}</dd>

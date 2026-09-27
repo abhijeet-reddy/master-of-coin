@@ -51,6 +51,9 @@
   align-items: center;
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
+  transition:
+    background-color var(--d2) var(--ease-out),
+    box-shadow var(--d2) var(--ease-out);
 }
 .row:last-child {
   border-bottom: 0;
@@ -151,6 +154,9 @@
   .spin {
     animation: none;
   }
+}
+:global(:root.rm) .spin {
+  animation: none;
 }
 @media (max-width: 760px) {
   .row {
@@ -255,6 +261,11 @@
     width: 100%;
     opacity: 0.4;
   }
+}
+:global(:root.rm) .progressBar::after {
+  animation: none;
+  width: 100%;
+  opacity: 0.4;
 }
 .progressText {
   margin: 0;
@@ -558,4 +569,93 @@
 }
 .reviewCol li:last-child {
   border-bottom: 0;
+}
+
+/* ---------- motion ---------- */
+.intro {
+  animation: global(moc-drop) var(--d4) var(--ease-out) backwards;
+  animation-delay: 60ms;
+}
+/* A running job keeps a live accent edge on its row. */
+.row:has(.spin)::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  animation: global(moc-pulse) 1.4s var(--ease-io) infinite;
+}
+:global(:root.rm) .row:has(.spin)::before {
+  animation: none;
+}
+.dur {
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 120ms);
+}
+.summaryErr {
+  animation: global(moc-slide-l) var(--d4) var(--ease-out) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 160ms);
+}
+.head {
+  animation: global(moc-slide-l) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 60ms;
+}
+.progress {
+  animation: global(moc-pwr) var(--d4) var(--ease-flow) backwards;
+}
+.error,
+.warnNote {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+}
+.empty {
+  animation: global(moc-drop) var(--d4) var(--ease-out) backwards;
+  animation-delay: 80ms;
+}
+.changed {
+  animation: global(moc-flash) 900ms var(--ease-out) backwards;
+  animation-delay: 300ms;
+}
+.stepOn {
+  animation: global(moc-flash) 900ms var(--ease-out) backwards;
+}
+.item,
+.wizItem {
+  transition:
+    background-color var(--d2) var(--ease-out),
+    box-shadow var(--d2) var(--ease-out);
+}
+.choice button {
+  transition:
+    background-color var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.choice button[aria-pressed='true'] {
+  animation: global(moc-pop) var(--d2) var(--ease-out) backwards;
+}
+.schedLink {
+  transition:
+    border-color var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.schedLink svg {
+  transition: transform var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .item:hover,
+  .wizItem:hover {
+    background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .wizItem[data-on='true']:hover {
+    background: var(--accent-soft);
+  }
+  .schedLink:hover svg {
+    transform: rotate(-30deg);
+  }
+  .choice button:not([aria-pressed='true']):hover {
+    color: var(--ink);
+  }
 }

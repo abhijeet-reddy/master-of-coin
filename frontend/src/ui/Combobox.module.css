@@ -46,3 +46,16 @@
     font-size: 16px;
   }
 }
+
+.list [cmdk-item] {
+  animation: global(moc-slide-l) var(--d2) var(--ease-out) backwards;
+  transition:
+    background-color var(--d1) ease,
+    padding-left var(--d2) var(--ease-out);
+}
+.list [cmdk-item][data-selected='true'] {
+  padding-left: 14px;
+}
+.empty {
+  animation: global(moc-fade) var(--d3) ease backwards;
+}

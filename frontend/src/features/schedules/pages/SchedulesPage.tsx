@@ -55,7 +55,7 @@ export function SchedulesPage() {
           }
         >
           {(rows) => (
-            <ul className={styles.list} aria-label="Schedules">
+            <ul className={`${styles.list} moc-stagger`} aria-label="Schedules">
               {rows.map((s) => (
                 <ScheduleRow
                   key={s.id}

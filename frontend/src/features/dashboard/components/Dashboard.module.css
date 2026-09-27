@@ -1,6 +1,6 @@
 /* Dashboard panels. Tokens only; reduced motion is handled globally by :root.rm. */
 .page > * > * {
-  animation: moc-fade var(--d4) var(--ease-flow) both;
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
 }
 .page > * > :nth-child(n + 3) {
   animation-delay: 60ms;
@@ -400,4 +400,68 @@ a.rowName:hover,
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* ---------- motion ---------- */
+.tape,
+.tapeTall {
+  animation: global(moc-clip-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: 200ms;
+}
+.swatch {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 260ms;
+}
+.rankBar {
+  animation: global(moc-clip-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: calc(260ms + var(--si, 0) * 35ms);
+}
+.divergeLeft::after,
+.divergeRight::after {
+  animation: global(moc-grow-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: calc(280ms + var(--si, 0) * 35ms);
+}
+.divergeLeft::after {
+  transform-origin: right center;
+}
+.divergeRight::after {
+  transform-origin: left center;
+}
+.deltaIcon {
+  animation: global(moc-slide-l) var(--d4) var(--ease-out) backwards;
+  animation-delay: 240ms;
+}
+.dot {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 300ms;
+}
+.avatar {
+  transition:
+    border-color var(--d2) var(--ease-out),
+    color var(--d2) var(--ease-out);
+}
+.row,
+.debt,
+.link,
+.rankRow {
+  transition:
+    box-shadow var(--d2) var(--ease-out),
+    background-color var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:not(.total):hover,
+  .debt:hover,
+  .link:hover {
+    background: var(--panel-2);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .debt:hover .avatar {
+    border-color: var(--accent);
+  }
+  .rankRow:hover .rankNo {
+    color: var(--accent);
+  }
+  .budget:hover .tick {
+    background: var(--accent);
+  }
 }

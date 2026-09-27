@@ -6,7 +6,7 @@
   padding-bottom: 72px;
 }
 .page > * {
-  animation: moc-fade var(--d4) var(--ease-flow) both;
+  animation: global(moc-fade) var(--d4) var(--ease-flow) backwards;
 }
 .skeleton {
   display: grid;
@@ -164,7 +164,9 @@
   min-height: 172px;
   padding: 14px;
   background: var(--panel);
-  transition: background-color var(--d2) ease;
+  transition:
+    background-color var(--d2) ease,
+    box-shadow var(--d2) var(--ease-out);
 }
 .card.liab {
   background-image: linear-gradient(var(--crit), var(--crit));
@@ -305,6 +307,7 @@
 @media (hover: hover) and (pointer: fine) {
   .card:hover {
     background-color: var(--panel-2);
+    box-shadow: inset 0 2px 0 var(--accent);
   }
   .card:hover .corner {
     opacity: 1;
@@ -471,4 +474,53 @@
 }
 .notice.info svg {
   color: var(--accent);
+}
+
+/* ---------- motion ---------- */
+.groupHead h2 {
+  animation: global(moc-slide-l) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 60ms;
+}
+.bar i {
+  animation: global(moc-grow-x) var(--d6) var(--ease-flow) backwards;
+  animation-delay: 220ms;
+}
+.balFig {
+  animation: global(moc-roll-in) var(--d4) var(--ease-out) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 120ms);
+}
+.st i {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: calc(var(--stagger-base, 120ms) + var(--si, 0) * 35ms + 200ms);
+}
+.count {
+  display: inline-block;
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 160ms;
+}
+.deltaUp,
+.deltaDown,
+.warnLine {
+  animation: global(moc-slide-l) var(--d4) var(--ease-out) backwards;
+  animation-delay: 200ms;
+}
+.notice {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+}
+.slot svg {
+  transition: transform var(--d2) var(--ease-out);
+}
+.disclosure svg {
+  transition: color var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .slot:hover svg {
+    transform: rotate(90deg);
+  }
+  .disclosure:hover svg {
+    color: var(--accent);
+  }
+  .card:hover .kicker {
+    color: var(--ink-2);
+  }
 }

@@ -121,7 +121,7 @@ export function TrashPage() {
                     ) : null}
                   </div>
                 </div>
-                <ul className={styles.list} aria-label="Deleted transactions">
+                <ul className={`${styles.list} moc-stagger`} aria-label="Deleted transactions">
                   {d.data.map((tx) => (
                     <TrashRow
                       key={tx.id}

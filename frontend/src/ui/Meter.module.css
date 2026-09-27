@@ -24,6 +24,8 @@
   --seg: var(--mc);
   clip-path: inset(0 calc(100% - var(--p, 0%)) 0 0);
   transition: clip-path var(--d6) var(--ease-flow);
+  animation: global(moc-clip-x) 1000ms var(--ease-flow) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 180ms + var(--i, 0) * 55ms);
 }
 .pace {
   position: absolute;
@@ -72,4 +74,9 @@
   .fill {
     forced-color-adjust: none;
   }
+}
+
+.pace {
+  animation: global(moc-drop) var(--d3) var(--ease-out) backwards;
+  animation-delay: calc(var(--boot, 0ms) + 1100ms);
 }

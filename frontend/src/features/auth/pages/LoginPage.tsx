@@ -22,7 +22,7 @@ export function LoginPage() {
         </>
       }
     >
-      <form className={styles.form} onSubmit={(e) => void onSubmit(e)} noValidate>
+      <form className={`${styles.form} moc-stagger`} onSubmit={(e) => void onSubmit(e)} noValidate>
         <AuthAlert title="Login failed" message={serverError} />
         <Field label="Email" required error={errors.email?.message}>
           <Input type="email" autoComplete="email" autoFocus {...form.register('email')} />

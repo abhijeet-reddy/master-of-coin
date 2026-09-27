@@ -38,7 +38,7 @@ export function ProviderLinksPanel() {
         {([, , accounts]) => (
           <>
             {links.length ? (
-              <ul className={styles.links}>
+              <ul className={`${styles.links} moc-stagger`}>
                 {links.map((l) => (
                   <ProviderRow key={`${l.kind}-${l.id}`} link={l} />
                 ))}
@@ -113,7 +113,7 @@ function FxRates({ accounts }: { accounts: Account[] }) {
           </button>
         </p>
       ) : (
-        <dl className={styles.kv}>
+        <dl className={`${styles.kv} moc-stagger`}>
           {live.map((p) => (
             <div key={p.code}>
               <dt>

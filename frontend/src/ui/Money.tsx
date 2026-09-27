@@ -1,6 +1,7 @@
 import { usePreferences } from '@/lib/preferences';
-import { Sign, SignDisplay, signOf, type Decimalish } from '@/lib/format';
+import { Sign, SignDisplay, signOf, toNumber, type Decimalish } from '@/lib/format';
 import { cx } from './cx';
+import { useCountUp } from './useCountUp';
 import { MoneySize } from './types';
 import styles from './Money.module.css';
 
@@ -38,6 +39,8 @@ export function Money({
   const { fmt, prefs } = usePreferences();
   const code = currency ?? prefs.default_currency;
   const text = fmt.money(amount, code, { sign });
+  // Headline figures count up; inline amounts in lists and tables stay still.
+  const rolling = useCountUp(toNumber(amount), size !== MoneySize.Inline);
   const showEq = converted && converted.currency !== code;
   return (
     <span className={cx(styles.money, size !== MoneySize.Inline && styles[size], className)}>
@@ -45,7 +48,7 @@ export function Money({
         className={cx(styles.value, toneClass(signOf(amount), sign))}
         value={String(amount ?? '')}
       >
-        {text}
+        {rolling === null ? text : fmt.money(rolling, code, { sign })}
       </data>
       {showEq ? (
         <span className={styles.eq}>

@@ -66,7 +66,7 @@ function SplitPanel() {
     >
       <PanelState query={query} skeleton={rows}>
         {(list) => (
-          <ul className={styles.list}>
+          <ul className={`${styles.list} moc-stagger`}>
             <SplitProviderRow
               type={SplitProviderType.SPLITWISE}
               provider={find(list, SplitProviderType.SPLITWISE)}
@@ -123,7 +123,7 @@ function LinksPanel() {
         }
       >
         {(links) => (
-          <ul className={styles.list}>
+          <ul className={`${styles.list} moc-stagger`}>
             {links.map((l) => (
               <ProviderLinkRow key={`${l.kind}-${l.id}`} link={l} />
             ))}

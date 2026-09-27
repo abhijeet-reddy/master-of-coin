@@ -132,7 +132,7 @@ function BudgetsBody({ list, categories }: { list: Budget[]; categories: Categor
             flush
           >
             {shown.length ? (
-              <div className={styles.grid}>
+              <div className={`${styles.grid} moc-stagger`}>
                 {shown.map((s) => (
                   <BudgetCard
                     key={s.id}
@@ -160,7 +160,7 @@ function BudgetsBody({ list, categories }: { list: Budget[]; categories: Categor
         <GridCell span={4} spanMd={12}>
           <div className={styles.side}>
             {selected ? (
-              <SidePanel s={selected} categories={catMap} />
+              <SidePanel key={selected.id} s={selected} categories={catMap} />
             ) : (
               <Panel title="Budget detail">
                 <EmptyState compact title="Nothing selected" />
@@ -240,7 +240,7 @@ function ListSkeleton() {
       </GridCell>
       <GridCell span={8} spanMd={12}>
         <Panel title="Budgets" flush>
-          <div className={styles.skelCards}>
+          <div className={`${styles.skelCards} moc-stagger`}>
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className={styles.skelCard}>
                 <Skeleton height={80} width={80} />

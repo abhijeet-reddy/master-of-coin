@@ -72,3 +72,18 @@
   width: 12px;
   height: 12px;
 }
+
+/* Motion: badges and chips pop in. */
+.badge,
+.chip {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+  animation-delay: 150ms;
+}
+.remove {
+  transition:
+    transform var(--d2) var(--ease-out),
+    background-color var(--d1) ease;
+}
+.remove:hover {
+  transform: rotate(90deg);
+}

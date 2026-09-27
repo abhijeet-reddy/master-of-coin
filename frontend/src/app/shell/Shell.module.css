@@ -474,3 +474,107 @@
     outline: 2px solid CanvasText;
   }
 }
+
+/* ---------- motion ---------- */
+/* Page header (re-keyed per route): crumbs slide, the title rises with a blinking cursor, the rule draws. */
+.phead {
+  position: relative;
+  border-bottom-color: transparent;
+}
+.phead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: var(--ink);
+  transform-origin: left;
+  animation: global(moc-grow-x) var(--d6) var(--ease-io) backwards;
+}
+.crumbs {
+  animation: global(moc-slide-l) var(--d3) var(--ease-flow) backwards;
+}
+.title {
+  animation: global(moc-roll-in) var(--d4) var(--ease-flow) backwards;
+  animation-delay: 60ms;
+}
+.cur {
+  display: inline-block;
+  width: 0.42em;
+  height: 0.72em;
+  margin-left: 0.08em;
+  vertical-align: -0.02em;
+  background: var(--accent);
+  animation: global(moc-cursor) 1s linear 3 backwards;
+  animation-delay: 300ms;
+  opacity: 0;
+}
+.actions > * {
+  animation: global(moc-slide-r) var(--d3) var(--ease-flow) backwards;
+  animation-delay: 160ms;
+}
+/* Page body (all routes) fades up under the header. */
+.page > :not(header) {
+  animation: global(moc-fade) var(--d3) ease backwards;
+  animation-delay: 80ms;
+}
+
+/* Nav: items cascade in once, hover nudges the icon, the active bar grows. */
+.nav li {
+  animation: global(moc-slide-l) var(--d3) var(--ease-flow) backwards;
+  animation-delay: calc(var(--ni, 0) * 30ms);
+}
+.nav li:nth-child(2) {
+  --ni: 1;
+}
+.nav li:nth-child(3) {
+  --ni: 2;
+}
+.nav li:nth-child(4) {
+  --ni: 3;
+}
+.nav li:nth-child(5) {
+  --ni: 4;
+}
+.nav li:nth-child(6) {
+  --ni: 5;
+}
+.nav li:nth-child(7) {
+  --ni: 6;
+}
+.nav li:nth-child(8) {
+  --ni: 7;
+}
+.nav li:nth-child(9) {
+  --ni: 8;
+}
+.nav li:nth-child(10) {
+  --ni: 9;
+}
+.nav li:nth-child(11) {
+  --ni: 10;
+}
+.nav li:nth-child(12) {
+  --ni: 11;
+}
+.nav svg {
+  transition: transform var(--d2) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav a:hover svg {
+    transform: translateX(2px) scale(1.1);
+  }
+}
+.nav a[aria-current='page']::before {
+  animation: global(moc-grow-y) var(--d3) var(--ease-flow) backwards;
+}
+.nav a[aria-current='page'] svg {
+  animation: global(moc-pop) var(--d3) var(--ease-out) backwards;
+}
+.brandMark {
+  animation: global(moc-pop) var(--d4) var(--ease-out) backwards;
+}
+.offline {
+  animation: global(moc-drop) var(--d3) var(--ease-flow) backwards;
+}

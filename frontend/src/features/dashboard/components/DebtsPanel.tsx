@@ -80,7 +80,7 @@ function Totals({ totals }: { totals: DebtTotals }) {
 function People({ rows }: { rows: DebtRow[] }) {
   return (
     <div className={styles.pad}>
-      <ul className={styles.rows}>
+      <ul className={`${styles.rows} moc-stagger`}>
         {rows.map((r) => (
           <li key={r.id} className={styles.debt}>
             <span className={styles.avatar} aria-hidden>

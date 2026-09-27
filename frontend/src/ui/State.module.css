@@ -73,3 +73,36 @@
   text-transform: uppercase;
   color: var(--ink-3);
 }
+
+/* Motion: skeletons get a scan-line shimmer; empty states float, errors glitch once. */
+.skel {
+  position: relative;
+  overflow: hidden;
+}
+.skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+  animation: global(moc-shimmer) 1.4s var(--ease-io) infinite;
+}
+:global(:root.rm) .skel::after {
+  display: none;
+}
+.box {
+  animation: global(moc-rise) var(--d4) var(--ease-flow) backwards;
+}
+.glyph {
+  animation: global(moc-float) 3.2s ease-in-out 400ms 2;
+}
+.err .glyph,
+.err .title {
+  animation: global(moc-glitch) 420ms steps(2, end) 200ms 1;
+}
+.title::after {
+  content: '_' / '';
+  margin-left: 2px;
+  color: var(--accent);
+  opacity: 0;
+  animation: global(moc-cursor) 1s linear 4 backwards;
+}

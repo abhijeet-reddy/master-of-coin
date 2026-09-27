@@ -1,241 +1,93 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/test-fixtures";
-import { ScreenshotHelper } from "../../helpers/screenshots";
 import {
   collectConsoleErrors,
   expectNoConsoleErrors,
 } from "../../helpers/assertions";
+import { createAccount, openAccount, removeAccount, uniqueName } from "../../helpers/accounts";
+import { createTx, ledger, openLedger, rowButton } from "../../helpers/transactions";
+import { createBudget, openBudget, removeBudget } from "../../helpers/budgets";
 
 /**
- * Breadcrumb Navigation Source E2E tests — Issue #52.
- *
- * Verifies that the Transaction Detail page breadcrumbs reflect
- * the navigation source (Account, Category, Budget, or Transactions list).
+ * Issue #52: a transaction's full page keeps the trail it was opened from.
+ * The ledger's drawer passes its origin through router state; a direct visit
+ * falls back to Transactions.
  */
 
-const screenshotHelper = new ScreenshotHelper();
+const crumbs = (page: Page) => page.getByRole("navigation", { name: "Breadcrumb" });
 
-/**
- * Helper: Get the breadcrumb text content as an array of crumb labels.
- * Chakra Breadcrumb renders items inside a <nav> with <ol>/<li> elements.
- */
-async function getBreadcrumbLabels(
-  page: import("@playwright/test").Page,
-): Promise<string[]> {
-  // Breadcrumb.Root renders a <nav>, items are <li> elements inside <ol>
-  const breadcrumbItems = page.locator("nav ol li");
-  const count = await breadcrumbItems.count();
-  const labels: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const text = await breadcrumbItems.nth(i).textContent();
-    if (text?.trim()) {
-      labels.push(text.trim());
-    }
-  }
-  return labels;
+async function openFullPage(page: Page, title: string) {
+  await rowButton(page, title).click();
+  const drawer = page.getByRole("dialog", { name: "Transaction" });
+  await drawer.getByRole("link", { name: "Open as a full page" }).click();
+  await expect(page).toHaveURL(/\/transactions\/[^/?]+$/);
+  await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
 }
 
-test.describe("Breadcrumb Navigation Source — Issue #52", () => {
-  test("transaction detail from Transactions list shows default breadcrumbs", async ({
-    authenticatedPage,
+test.describe("Breadcrumb navigation source (#52)", () => {
+  test("from the Transactions ledger the trail is Transactions", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    const errors = collectConsoleErrors(page);
+    const title = uniqueName("E2E Crumb Tx");
+    await createTx(page, title, -3);
+    await openLedger(page);
 
-    // Go to transactions list
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Click the first transaction row (TransactionRow has role="button")
-    const firstTransaction = authenticatedPage
-      .locator('[role="button"][aria-label^="View transaction"]')
-      .first();
-
-    if (await firstTransaction.isVisible({ timeout: 5_000 })) {
-      await firstTransaction.click();
-      await authenticatedPage.waitForLoadState("networkidle");
-      await authenticatedPage.waitForTimeout(500);
-
-      // Verify we're on a transaction detail page
-      expect(authenticatedPage.url()).toMatch(/\/transactions\/[a-f0-9-]+/);
-
-      // Verify breadcrumbs: should be "Transactions > [Transaction Title]"
-      const labels = await getBreadcrumbLabels(authenticatedPage);
-      expect(labels.length).toBeGreaterThanOrEqual(2);
-      expect(labels[0]).toBe("Transactions");
-
-      // The first breadcrumb should be a link to /transactions
-      const firstCrumbLink = authenticatedPage.locator("nav ol li a").first();
-      const href = await firstCrumbLink.getAttribute("href");
-      expect(href).toBe("/transactions");
-
-      await screenshotHelper.capturePageScreenshot(
-        authenticatedPage,
-        "breadcrumb-from-transactions",
-      );
-    }
-
+    await openFullPage(page, title);
+    await expect(crumbs(page).getByRole("link", { name: "Transactions" })).toHaveAttribute(
+      "href",
+      "/transactions",
+    );
+    await expect(crumbs(page).getByRole("link", { name: "Accounts" })).toHaveCount(0);
     expectNoConsoleErrors(errors);
   });
 
-  test("transaction detail from Account Detail shows account breadcrumbs", async ({
-    authenticatedPage,
+  test("from an account the trail is Accounts then the account", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    const name = uniqueName("E2E Crumb Acc");
+    const acc = await createAccount(page, name, { type: "CASH" });
+    const title = uniqueName("E2E Crumb AccTx");
+    await createTx(page, title, -4, { account_id: acc.id });
+    await openAccount(page, acc.id, name);
+    await expect(ledger(page)).toBeVisible();
 
-    // Go to accounts list
-    await authenticatedPage.goto("/accounts");
-    await authenticatedPage.waitForLoadState("networkidle");
+    await openFullPage(page, title);
+    const nav = crumbs(page);
+    await expect(nav.getByRole("link", { name: "Accounts" })).toHaveAttribute("href", "/accounts");
+    await expect(nav.getByRole("link", { name })).toHaveAttribute("href", `/accounts/${acc.id}`);
+    await expect(nav.getByRole("link", { name: "Transactions" })).toHaveCount(0);
 
-    // Click on the first individual account card (not the Total Balance card).
-    // Account cards have a cursor:pointer style and contain a Badge with the
-    // account type (Savings, Checking, Credit Card, etc.).
-    // We find cards that have "Balance" but NOT "Total Balance".
-    const accountCards = authenticatedPage
-      .locator('[class*="chakra-card"]')
-      .filter({ hasText: /^(?!.*Total Balance).*Balance/ });
-
-    if ((await accountCards.count()) === 0) {
-      test.skip();
-      return;
-    }
-
-    // Click the first account card
-    await accountCards.first().click();
-    await authenticatedPage.waitForURL(/\/accounts\/[a-f0-9-]+/, {
-      timeout: 5_000,
-    });
-    await authenticatedPage.waitForLoadState("networkidle");
-    await authenticatedPage.waitForTimeout(500);
-
-    // Verify we're on an account detail page
-    expect(authenticatedPage.url()).toMatch(/\/accounts\/[a-f0-9-]+/);
-
-    // Capture the account name from the breadcrumb
-    const accountBreadcrumbs = await getBreadcrumbLabels(authenticatedPage);
-    const accountName =
-      accountBreadcrumbs.length >= 2 ? accountBreadcrumbs[1] : "Account";
-
-    // Now click the first transaction in the account's transaction list
-    const firstTransaction = authenticatedPage
-      .locator('[role="button"][aria-label^="View transaction"]')
-      .first();
-
-    if (!(await firstTransaction.isVisible({ timeout: 5_000 }))) {
-      // No transactions in this account — skip
-      test.skip();
-      return;
-    }
-
-    await firstTransaction.click();
-    await authenticatedPage.waitForLoadState("networkidle");
-    await authenticatedPage.waitForTimeout(500);
-
-    // Verify we're on a transaction detail page
-    expect(authenticatedPage.url()).toMatch(/\/transactions\/[a-f0-9-]+/);
-
-    // Verify breadcrumbs: should be "Accounts > [Account Name] > [Transaction Title]"
-    const labels = await getBreadcrumbLabels(authenticatedPage);
-    expect(labels.length).toBeGreaterThanOrEqual(3);
-    expect(labels[0]).toBe("Accounts");
-    expect(labels[1]).toBe(accountName);
-
-    // The first breadcrumb link should point to /accounts
-    const breadcrumbLinks = authenticatedPage.locator("nav ol li a");
-    const firstHref = await breadcrumbLinks.first().getAttribute("href");
-    expect(firstHref).toBe("/accounts");
-
-    // The second breadcrumb link should point to the account detail page
-    const secondHref = await breadcrumbLinks.nth(1).getAttribute("href");
-    expect(secondHref).toMatch(/\/accounts\/[a-f0-9-]+/);
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "breadcrumb-from-account",
-    );
-
-    expectNoConsoleErrors(errors);
+    await nav.getByRole("link", { name }).click();
+    await expect(page).toHaveURL(new RegExp(`/accounts/${acc.id}$`));
+    await removeAccount(page, acc.id);
   });
 
-  test("transaction detail via direct URL shows default breadcrumbs", async ({
-    authenticatedPage,
+  test("from a budget the trail is Budgets then the budget", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
+    const acc = await createAccount(page, uniqueName("E2E Crumb BAcc"), { type: "CASH" });
+    const name = uniqueName("E2E Crumb Bud");
+    const b = await createBudget(page, name, { accountId: acc.id });
+    const title = uniqueName("E2E Crumb BudTx");
+    await createTx(page, title, -6, { account_id: acc.id });
+    await openBudget(page, b.id, name);
+    await expect(ledger(page)).toBeVisible();
 
-    // First, discover a valid transaction URL by navigating from the list
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
+    await openFullPage(page, title);
+    const nav = crumbs(page);
+    await expect(nav.getByRole("link", { name: "Budgets" })).toHaveAttribute("href", "/budgets");
+    await expect(nav.getByRole("link", { name })).toHaveAttribute("href", `/budgets/${b.id}`);
 
-    const firstTransaction = authenticatedPage
-      .locator('[role="button"][aria-label^="View transaction"]')
-      .first();
-
-    if (!(await firstTransaction.isVisible({ timeout: 5_000 }))) {
-      test.skip();
-      return;
-    }
-
-    await firstTransaction.click();
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Capture the transaction detail URL
-    const detailUrl = authenticatedPage.url();
-    expect(detailUrl).toMatch(/\/transactions\/[a-f0-9-]+/);
-
-    // Now navigate directly to that URL (simulating bookmark/direct access)
-    await authenticatedPage.goto(detailUrl);
-    await authenticatedPage.waitForLoadState("networkidle");
-    await authenticatedPage.waitForTimeout(500);
-
-    // Verify default breadcrumbs: "Transactions > [Transaction Title]"
-    const labels = await getBreadcrumbLabels(authenticatedPage);
-    expect(labels.length).toBeGreaterThanOrEqual(2);
-    expect(labels[0]).toBe("Transactions");
-
-    // The first breadcrumb should link to /transactions
-    const firstCrumbLink = authenticatedPage.locator("nav ol li a").first();
-    const href = await firstCrumbLink.getAttribute("href");
-    expect(href).toBe("/transactions");
-
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "breadcrumb-direct-url",
-    );
-
-    expectNoConsoleErrors(errors);
+    await removeBudget(page, b.id);
+    await removeAccount(page, acc.id);
   });
 
-  test("breadcrumb link navigates back to source page", async ({
-    authenticatedPage,
-  }) => {
-    // Navigate from transactions list to a transaction detail
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    const firstTransaction = authenticatedPage
-      .locator('[role="button"][aria-label^="View transaction"]')
-      .first();
-
-    if (!(await firstTransaction.isVisible({ timeout: 5_000 }))) {
-      test.skip();
-      return;
-    }
-
-    await firstTransaction.click();
-    await authenticatedPage.waitForLoadState("networkidle");
-    await authenticatedPage.waitForTimeout(500);
-
-    // Verify we're on transaction detail
-    expect(authenticatedPage.url()).toMatch(/\/transactions\/[a-f0-9-]+/);
-
-    // Click the "Transactions" breadcrumb link to go back
-    const transactionsCrumb = authenticatedPage.locator(
-      'nav ol li a[href="/transactions"]',
-    );
-    await expect(transactionsCrumb).toBeVisible();
-    await transactionsCrumb.click();
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Verify we navigated back to the transactions list
-    expect(authenticatedPage.url()).toContain("/transactions");
-    expect(authenticatedPage.url()).not.toMatch(/\/transactions\/[a-f0-9-]+/);
+  test("a direct visit falls back to Transactions", async ({ authenticatedPage: page }) => {
+    const title = uniqueName("E2E Crumb Direct");
+    const tx = await createTx(page, title, -2);
+    await page.goto(`/transactions/${tx.id}`);
+    await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+    await expect(crumbs(page).getByRole("link", { name: "Transactions" })).toBeVisible();
   });
 });

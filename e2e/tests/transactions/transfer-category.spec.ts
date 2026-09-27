@@ -1,67 +1,44 @@
 import { test, expect } from "../../fixtures/test-fixtures";
-import { ScreenshotHelper } from "../../helpers/screenshots";
 import {
   collectConsoleErrors,
   expectNoConsoleErrors,
 } from "../../helpers/assertions";
+import { categories, openLedger } from "../../helpers/transactions";
 
 /**
- * Transfer form category auto-selection tests.
- *
- * Verifies that the "Transfer" category is automatically pre-selected
- * when opening the Transfer form modal.
- *
- * GitHub Issue: #51
+ * The Transfer dialog pre-selects the "Transfer" category when one exists
+ * (#51), UI v2.
  */
 
-const screenshotHelper = new ScreenshotHelper();
-
-test.describe("Transfer Form — Auto-select Category (#51)", () => {
-  test("transfer form auto-selects Transfer category", async ({
-    authenticatedPage,
+test.describe("Transfer form category (#51)", () => {
+  test("pre-selects the Transfer category", async ({
+    authenticatedPage: page,
   }) => {
-    const errors = collectConsoleErrors(authenticatedPage);
-
-    await authenticatedPage.goto("/transactions");
-    await authenticatedPage.waitForLoadState("networkidle");
-
-    // Click the "Transfer" button to open the transfer form modal
-    const transferButton = authenticatedPage
-      .locator("button")
-      .filter({ hasText: /transfer/i });
-    await expect(transferButton.first()).toBeVisible({ timeout: 5000 });
-    await transferButton.first().click();
-
-    // Wait for the modal to appear
-    await expect(authenticatedPage.locator('[role="dialog"]')).toBeVisible({
-      timeout: 5000,
-    });
-
-    // Check the category dropdown value
-    const categorySelect = authenticatedPage.locator(
-      'select[name="category_id"]',
+    const errors = collectConsoleErrors(page);
+    const hasTransfer = (await categories(page)).some(
+      (c) => c.name.toLowerCase() === "transfer",
     );
+    await openLedger(page);
+    await page.getByRole("button", { name: "Transfer", exact: true }).first().click();
 
-    // The category dropdown should exist
-    if (await categorySelect.isVisible()) {
-      const selectedValue = await categorySelect.inputValue();
-      const selectedText = await categorySelect
-        .locator("option:checked")
-        .textContent();
-
-      // If a "Transfer" category exists, it should be pre-selected
-      // (selectedText will contain "Transfer" if the category exists)
-      if (selectedValue && selectedValue !== "") {
-        expect(selectedText?.toLowerCase()).toContain("transfer");
-      }
-      // If no Transfer category exists, the field should be empty (graceful fallback)
-    }
-
+    const dialog = page.getByRole("dialog", { name: "Transfer" });
+    await expect(dialog).toBeVisible();
+    const category = dialog.getByLabel("Category");
+    if (hasTransfer) await expect(category).toContainText(/Transfer/);
+    else await expect(category).toContainText("Uncategorised");
     expectNoConsoleErrors(errors);
+  });
 
-    await screenshotHelper.capturePageScreenshot(
-      authenticatedPage,
-      "transfer-form-category-auto-selected",
-    );
+  test("offers From, To, Amount, Date and Time", async ({
+    authenticatedPage: page,
+  }) => {
+    await openLedger(page);
+    await page.getByRole("button", { name: "Transfer", exact: true }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Transfer" });
+    for (const label of ["From", "To", "Amount", "Date", "Time"]) {
+      await expect(dialog.getByLabel(label, { exact: true })).toBeVisible();
+    }
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
   });
 });

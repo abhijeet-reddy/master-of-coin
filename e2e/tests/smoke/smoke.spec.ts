@@ -2,123 +2,129 @@ import { test, expect } from "../../fixtures/test-fixtures";
 import { ScreenshotHelper } from "../../helpers/screenshots";
 
 /**
- * Smoke tests — verify all major pages load without errors.
+ * Smoke tests: every major page loads inside the v2 shell.
  *
- * These are the first tests to run. They validate that:
- * 1. The app is running and accessible
- * 2. Authentication works (pages load with auth state)
- * 3. Each page renders its expected content
+ * They check that:
+ * 1. The app is running and the saved auth state is accepted
+ * 2. Each page's level-one heading carries its title
+ * 3. The primary navigation reaches every page
  * 4. No JavaScript console errors occur
  *
- * The agent can run these to quickly verify the app is working:
  *   cd e2e && npx playwright test tests/smoke/smoke.spec.ts
- *
- * To take screenshots of all pages for visual verification:
  *   cd e2e && npm run screenshot
+ *
+ * Selectors are roles and accessible names only, so they survive the v2
+ * restyle page by page.
  */
 
 const screenshotHelper = new ScreenshotHelper();
 
-// Pages to test: [path, expectedTitle, screenshotName]
-const pages: [string, string, string][] = [
-  ["/dashboard", "Dashboard", "dashboard"],
-  ["/accounts", "Accounts", "accounts"],
-  ["/transactions", "Transactions", "transactions"],
-  ["/budgets", "Budgets", "budgets"],
-  ["/categories", "Categories", "categories"],
-  ["/people", "People", "people"],
-  ["/reports", "Reports", "reports"],
-  ["/jobs", "Jobs", "jobs"],
-  ["/schedules", "Schedules", "schedules"],
-  ["/settings", "Settings", "settings"],
-  ["/trash", "Trash", "trash"],
+// [path, heading, nav link name, screenshot name]
+const pages: [string, string, string, string][] = [
+  ["/dashboard", "Dashboard", "Dashboard", "dashboard"],
+  ["/accounts", "Accounts", "Accounts", "accounts"],
+  ["/transactions", "Transactions", "Transactions", "transactions"],
+  ["/budgets", "Budgets", "Budgets", "budgets"],
+  ["/categories", "Categories", "Categories", "categories"],
+  ["/people", "People", "People", "people"],
+  ["/reports", "Reports", "Reports", "reports"],
+  ["/jobs", "Jobs", "Jobs", "jobs"],
+  ["/schedules", "Schedules", "Schedules", "schedules"],
+  ["/settings", "Settings", "Settings", "settings"],
+  ["/trash", "Trash", "Trash", "trash"],
 ];
 
-test.describe("Smoke Tests — All Pages Load", () => {
-  for (const [path, expectedTitle, screenshotName] of pages) {
-    test(`${expectedTitle} page loads at ${path}`, async ({
-      authenticatedPage,
-    }) => {
-      // Collect console errors
+const BENIGN = ["favicon", "Failed to load resource", "net::ERR"];
+
+test.describe("Smoke Tests: All Pages Load", () => {
+  for (const [path, heading] of pages) {
+    test(`${heading} page loads at ${path}`, async ({ authenticatedPage: page }) => {
       const consoleErrors: string[] = [];
-      authenticatedPage.on("console", (msg) => {
-        if (msg.type() === "error") {
-          consoleErrors.push(msg.text());
-        }
+      page.on("console", (msg) => {
+        if (msg.type() === "error") consoleErrors.push(msg.text());
       });
 
-      // Navigate to the page
-      await authenticatedPage.goto(path);
-      await authenticatedPage.waitForLoadState("networkidle");
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
 
-      // Verify the page title is visible
-      const heading = authenticatedPage.locator("h1").first();
-      await expect(heading).toContainText(expectedTitle, { timeout: 10_000 });
+      await expect(page.getByRole("heading", { level: 1 })).toContainText(heading, {
+        timeout: 10_000,
+      });
+      // The shell is present around every page.
+      await expect(page.getByRole("main")).toBeVisible();
+      await expect(page.getByRole("region", { name: "Status" })).toBeVisible();
 
-      // Verify no critical console errors (filter out benign ones)
-      const realErrors = consoleErrors.filter(
-        (e) =>
-          !e.includes("favicon") &&
-          !e.includes("Failed to load resource") &&
-          !e.includes("net::ERR"),
-      );
+      const realErrors = consoleErrors.filter((e) => !BENIGN.some((b) => e.includes(b)));
       expect(realErrors).toEqual([]);
     });
   }
 });
 
-test.describe("Smoke Tests — Screenshots @screenshot", () => {
-  for (const [path, expectedTitle, screenshotName] of pages) {
-    test(`screenshot: ${expectedTitle} page`, async ({ authenticatedPage }) => {
-      await authenticatedPage.goto(path);
-      await authenticatedPage.waitForLoadState("networkidle");
-
-      // Wait a bit for any animations to settle
-      await authenticatedPage.waitForTimeout(500);
-
-      // Capture full-page screenshot
-      await screenshotHelper.capturePageScreenshot(
-        authenticatedPage,
-        screenshotName,
-      );
+test.describe("Smoke Tests: Screenshots @screenshot", () => {
+  for (const [path, heading, , screenshotName] of pages) {
+    test(`screenshot: ${heading} page`, async ({ authenticatedPage: page }) => {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("heading", { level: 1 })).toContainText(heading);
+      await screenshotHelper.capturePageScreenshot(page, screenshotName);
     });
   }
 });
 
-test.describe("Smoke Tests — Navigation", () => {
-  test("sidebar navigation works for all pages", async ({
-    authenticatedPage,
-  }) => {
-    // Start at dashboard
-    await authenticatedPage.goto("/dashboard");
-    await authenticatedPage.waitForLoadState("networkidle");
+test.describe("Smoke Tests: Navigation", () => {
+  test("primary navigation reaches every page", async ({ authenticatedPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/dashboard");
+    await page.waitForLoadState("networkidle");
 
-    // The sidebar uses NavLink (renders <a> tags) from react-router-dom.
-    // When collapsed, text labels are hidden but links still exist with href.
-    // Use href-based locators to click sidebar links reliably.
-    const sidebarLinks = [
-      { href: "/transactions", expectedUrl: "/transactions" },
-      { href: "/accounts", expectedUrl: "/accounts" },
-      { href: "/budgets", expectedUrl: "/budgets" },
-      { href: "/categories", expectedUrl: "/categories" },
-      { href: "/people", expectedUrl: "/people" },
-      { href: "/reports", expectedUrl: "/reports" },
-      { href: "/trash", expectedUrl: "/trash" },
-      { href: "/", expectedUrl: "/" },
-    ];
-
-    for (const { href, expectedUrl } of sidebarLinks) {
-      // Click the sidebar link by href — use exact match for "/" to avoid
-      // matching all links that start with "/"
-      const linkLocator =
-        href === "/"
-          ? authenticatedPage.locator(`a[href="/"]`)
-          : authenticatedPage.locator(`a[href="${href}"]`);
-      await linkLocator.first().click();
-      await authenticatedPage.waitForLoadState("networkidle");
-
-      // Verify URL changed (dashboard redirects "/" to "/dashboard")
-      expect(authenticatedPage.url()).toContain(expectedUrl);
+    const nav = page.getByRole("navigation", { name: "Primary", exact: true });
+    for (const [path, heading, linkName] of pages) {
+      await nav.getByRole("link", { name: linkName, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(page.getByRole("heading", { level: 1 })).toContainText(heading);
+      await expect(nav.getByRole("link", { name: linkName, exact: true })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
     }
+  });
+
+  test("the root path redirects to the dashboard", async ({ authenticatedPage: page }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Dashboard");
+  });
+
+  test("an unknown path shows the not found page inside the shell", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/no-such-page");
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await page.getByRole("link", { name: "Go to dashboard" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
+  test("the skip link moves focus to the page content", async ({ authenticatedPage: page }) => {
+    await page.goto("/dashboard");
+    const skip = page.getByRole("link", { name: "Skip to content" });
+    // Tab only once the shell is up; before that the loading screen has no focusable.
+    await expect(skip).toBeAttached();
+    await page.keyboard.press("Tab");
+    await expect(skip).toBeFocused();
+    await skip.press("Enter");
+    await expect(page).toHaveURL(/#page$/);
+  });
+
+  test("phones get a bottom bar with a More sheet", async ({ authenticatedPage: page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/dashboard");
+    const bar = page.getByRole("navigation", { name: "Primary, mobile" });
+    await expect(bar).toBeVisible();
+    await bar.getByRole("button", { name: "More" }).click();
+    const sheet = page.getByRole("dialog", { name: "Menu" });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole("link", { name: "Settings" }).click();
+    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Settings");
   });
 });

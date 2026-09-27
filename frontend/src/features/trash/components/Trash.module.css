@@ -1,0 +1,136 @@
+/* Trash: deleted transactions waiting to be restored or purged. Telemetry tokens only. */
+.page {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 48px;
+}
+.micro {
+  font: 500 var(--t-micro) / 1.35 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.intro {
+  margin: 0;
+  font: 400 var(--t-small) / 1.45 var(--sans);
+  color: var(--ink-2);
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.barLeft {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 140px 170px auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.row[data-selected='true'] {
+  background: var(--accent-soft);
+}
+.main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.title {
+  margin: 0;
+  font: 600 var(--t-body) / 1.25 var(--sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font: 500 var(--t-micro) / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.amount {
+  text-align: right;
+  font: 600 var(--t-data) / 1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.when {
+  display: grid;
+  gap: 2px;
+  font: 500 var(--t-micro) / 1.3 var(--mono);
+  color: var(--ink-2);
+}
+.soon {
+  color: var(--warn);
+  font-weight: 700;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+@media (max-width: 760px) {
+  .row {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'check main amount'
+      '. when when'
+      '. actions actions';
+    row-gap: 8px;
+  }
+  .row > :nth-child(1) {
+    grid-area: check;
+  }
+  .main {
+    grid-area: main;
+  }
+  .amount {
+    grid-area: amount;
+  }
+  .when {
+    grid-area: when;
+    grid-auto-flow: column;
+    justify-content: start;
+    gap: 12px;
+  }
+  .actions {
+    grid-area: actions;
+    justify-content: flex-start;
+  }
+}
+.foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+.confirmText {
+  margin: 0;
+  font: 400 var(--t-small) / 1.45 var(--sans);
+  color: var(--ink-2);
+}
+.skelRow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 100px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}

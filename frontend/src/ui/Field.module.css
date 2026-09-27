@@ -1,0 +1,39 @@
+.field {
+  display: grid;
+  /* Keep rows packed at the top: a sibling with a hint must not push this control down. */
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.req {
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 500;
+}
+.hint {
+  font: 400 var(--t-micro) / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.error {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  font: 500 var(--t-small) / 1.4 var(--mono);
+  color: var(--crit);
+}
+.error svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+}

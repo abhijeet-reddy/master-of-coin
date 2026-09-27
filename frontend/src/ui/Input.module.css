@@ -1,0 +1,33 @@
+.wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.lead {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.lead svg {
+  width: 14px;
+  height: 14px;
+}
+.withLead {
+  padding-left: 32px;
+}
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  line-height: 1.4;
+  resize: vertical;
+}

@@ -1,0 +1,91 @@
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  font: 500 var(--t-small) / 1.2 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.row:has(:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.box {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--ctl-border);
+  background: var(--bg);
+  color: var(--accent-ink);
+  cursor: inherit;
+}
+.box[data-state='checked'],
+.box[data-state='indeterminate'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+:global(:root.light) .box[data-state='checked'],
+:global(:root.light) .box[data-state='indeterminate'] {
+  border-color: var(--ink);
+}
+.box svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+.track {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--ctl-border);
+  background: var(--bg);
+  cursor: inherit;
+  transition:
+    background-color var(--d2) ease,
+    border-color var(--d2) ease;
+}
+.track[data-state='checked'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+:global(:root.light) .track[data-state='checked'] {
+  border-color: var(--ink);
+}
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--ink-2);
+  transition: transform var(--d2) var(--ease-out);
+}
+.track[data-state='checked'] .thumb {
+  transform: translateX(16px);
+  background: var(--accent-ink);
+}
+.text {
+  display: grid;
+  gap: 2px;
+}
+.desc {
+  color: var(--ink-3);
+  font-size: var(--t-micro);
+  letter-spacing: 0.02em;
+}
+@media (max-width: 760px) {
+  .row {
+    min-height: 44px;
+  }
+  .box {
+    width: 20px;
+    height: 20px;
+  }
+}

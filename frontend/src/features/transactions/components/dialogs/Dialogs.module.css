@@ -1,0 +1,433 @@
+/* Transaction dialogs: forms, split editors, import steps. */
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.error {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--crit);
+  background: var(--crit-soft);
+  color: var(--ink);
+  font: 500 var(--t-small) / 1.4 var(--mono);
+}
+.error svg,
+.warn svg,
+.info svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+.error svg {
+  color: var(--crit);
+}
+.warn,
+.info {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--warn);
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 var(--t-small) / 1.4 var(--mono);
+}
+.warn svg {
+  color: var(--warn);
+}
+.info {
+  border-left-color: var(--accent);
+}
+.info svg {
+  color: var(--accent);
+}
+.hint {
+  margin: 0;
+  font: 400 var(--t-small) / 1.45 var(--sans);
+  color: var(--ink-2);
+}
+.section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.kicker {
+  margin: 0;
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* segmented radio group */
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ctl-border);
+}
+.segLegend {
+  float: left;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 0;
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.segWrap {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.segOpt {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0 6px;
+  border-right: 1px solid var(--line-strong);
+  font: 600 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.segOpt:last-child {
+  border-right: 0;
+}
+/* The radio covers its option, so a click or tap lands on the input itself. */
+.segOpt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.segOpt input:disabled {
+  cursor: not-allowed;
+}
+.segOpt:has(input:checked) {
+  background: var(--ink);
+  color: var(--bg);
+}
+.segOpt:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.segOpt:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* split rows */
+.rowAction {
+  /* Label line height plus the field gap, so the button lines up with the inputs. */
+  padding-top: calc(var(--t-micro) * 1.2 + 6px);
+}
+.splitRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 34px;
+  gap: 8px;
+  align-items: start;
+}
+.partRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px 100px;
+  gap: 8px;
+  align-items: start;
+}
+.partName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ctl-h);
+  font: 500 var(--t-data) / 1.2 var(--mono);
+  overflow: hidden;
+}
+.totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-strong);
+  font: 500 var(--t-small) / 1.3 var(--mono);
+}
+.totals dt {
+  color: var(--ink-2);
+}
+.totals dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* convert candidates */
+.candidates {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.candidate {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 var(--t-small) / 1.3 var(--mono);
+}
+.candidate:has(input:checked) {
+  background: var(--accent-soft);
+}
+.candidate input {
+  accent-color: var(--accent);
+}
+.candMeta {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-3);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.candAmt {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.linkBtn {
+  all: unset;
+  justify-self: start;
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.linkBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* import */
+.steps {
+  display: flex;
+  gap: 1px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--panel);
+  font: 600 var(--t-micro) / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.step b {
+  color: inherit;
+}
+.stepOn {
+  background: var(--ink);
+  color: var(--bg);
+}
+.stepDone {
+  color: var(--ink);
+}
+.drop {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 16px;
+  border: 1px dashed var(--ctl-border);
+  background: var(--bg);
+  text-align: center;
+  cursor: pointer;
+  font: 500 var(--t-small) / 1.4 var(--mono);
+  color: var(--ink-2);
+}
+.drop:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.drop svg {
+  width: 22px;
+  height: 22px;
+  color: var(--ink-3);
+}
+.dropActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.fileName {
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.summary > div {
+  padding: 10px 12px;
+  background: var(--panel);
+}
+.summary dt {
+  margin-bottom: 6px;
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.summary dd {
+  margin: 0;
+  font: 600 var(--t-lead) / 1.1 var(--mono);
+}
+.tableWrap {
+  max-height: min(48dvh, 460px);
+  overflow: auto;
+  border: 1px solid var(--line);
+}
+.preview {
+  width: 100%;
+  border-collapse: collapse;
+  font: 500 var(--t-small) / 1.3 var(--mono);
+}
+.preview th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  font: 600 var(--t-micro) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: left;
+  white-space: nowrap;
+}
+.preview td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.preview tr:last-child td {
+  border-bottom: 0;
+}
+.preview .num {
+  text-align: right;
+}
+.preview input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+.preview input:hover {
+  border-color: var(--line-strong);
+}
+.preview input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg);
+}
+.preview input[aria-invalid='true'] {
+  border-color: var(--crit);
+}
+.rowOff td:not(:first-child) {
+  opacity: 0.5;
+}
+.rowBad {
+  background: var(--crit-soft);
+}
+.problem {
+  display: block;
+  margin-top: 3px;
+  color: var(--crit);
+  font-size: var(--t-micro);
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* split mismatch */
+.compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.compare > section {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 12px;
+  background: var(--panel);
+}
+
+@media (max-width: 760px) {
+  .two,
+  .compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .splitRow {
+    grid-template-columns: minmax(0, 1fr) 96px 34px;
+  }
+  .partRow {
+    grid-template-columns: minmax(0, 1fr) 80px 80px;
+  }
+}

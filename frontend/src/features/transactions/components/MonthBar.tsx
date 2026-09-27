@@ -4,6 +4,7 @@ import { IconButton, Meter, Money, SignDisplay, Skeleton, Stat, StatGroup } from
 import { useMonthTotals } from '../hooks/useTxQueries';
 import type { TransactionFiltersApi } from '../hooks/useTransactionFilters';
 import styles from './Transactions.module.css';
+import { cx } from '@/ui/cx';
 
 const MONTHS = [
   'January',
@@ -42,7 +43,7 @@ export function MonthBar({ f }: { f: TransactionFiltersApi }) {
     );
 
   return (
-    <section className={styles.monthbar} aria-label="Month">
+    <section className={cx(styles.monthbar, 'moc-sweep')} aria-label="Month">
       <MonthNav f={f} />
       <div className={styles.monthStats}>
         <StatGroup label={`${label.long} totals, all accounts, transfers excluded`}>

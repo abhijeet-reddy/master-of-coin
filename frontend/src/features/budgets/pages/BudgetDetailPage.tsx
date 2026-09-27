@@ -12,6 +12,7 @@ import { useBudgetDialogs } from '../hooks/budgetDialogs';
 import { useBudget, useCategories } from '../hooks/useBudgetQueries';
 import { budgetStats } from '../lib/budgetsModel';
 import styles from '../components/Budgets.module.css';
+import { cx } from '@/ui/cx';
 
 /** `/budgets/:id`: the current period, its pace, every range, and what is counting toward it. */
 export function BudgetDetailPage() {
@@ -77,7 +78,7 @@ function BudgetDetailView() {
         </GridCell>
       </PanelGrid>
       {s.active && s.start && s.end ? (
-        <section aria-label="Transactions this period" className={styles.ledger}>
+        <section aria-label="Transactions this period" className={cx(styles.ledger, 'moc-sweep')}>
           <BudgetLedger
             budget={b}
             start={s.start}

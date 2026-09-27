@@ -31,6 +31,7 @@ import { useCategoryDialogs } from '../hooks/categoryDialogs';
 import { useCategory, useSpend } from '../hooks/useCategoryQueries';
 import { monthlySpend, monthTick, spendStats, vsAverageLabel } from '../lib/categoriesModel';
 import styles from '../components/Categories.module.css';
+import { cx } from '@/ui/cx';
 
 const MONTHS = 12;
 
@@ -105,7 +106,7 @@ function CategoryDetailView() {
           <SpendPanel category={c} />
         </GridCell>
       </PanelGrid>
-      <section aria-label={`Transactions in ${c.name}`} className={styles.ledger}>
+      <section aria-label={`Transactions in ${c.name}`} className={cx(styles.ledger, 'moc-sweep')}>
         <CategoryLedger category={c} />
       </section>
     </div>

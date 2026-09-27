@@ -515,7 +515,7 @@
   animation-delay: 160ms;
 }
 /* Page body (all routes) fades up under the header. */
-.page > :not(header) {
+.page > :not(header):not(:global(.moc-route-scan)) {
   animation: global(moc-fade) var(--d3) ease backwards;
   animation-delay: 80ms;
 }

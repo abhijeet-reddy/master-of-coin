@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { Layers, Tag } from 'lucide-react';
 import type { BudgetHealth, Category } from '@/api/types';
+import { isSingleGlyph } from '@/lib/emoji';
 import { Badge } from '@/ui';
 import { HEALTH } from '../lib/health';
 import styles from './Budgets.module.css';
@@ -36,13 +37,7 @@ export function CategoryTag({
         style={c?.color ? ({ '--c': c.color } as CSSProperties) : undefined}
         aria-hidden
       >
-        {!categoryId ? (
-          <Layers size={12} />
-        ) : icon && [...icon].length <= 2 ? (
-          icon
-        ) : (
-          <Tag size={12} />
-        )}
+        {!categoryId ? <Layers size={12} /> : isSingleGlyph(icon) ? icon : <Tag size={12} />}
       </span>
       <span className={styles.catName}>{name}</span>
     </span>

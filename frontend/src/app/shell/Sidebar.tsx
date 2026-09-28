@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { IconButton } from '@/ui';
 import { ControlSize } from '@/ui/types';
-import { NAV_DIVIDER_AFTER, NAV_ITEMS } from './navItems';
+import { NAV_ITEMS } from './navItems';
 import { UserBlock } from './UserBlock';
 import { useVersionLabel } from './useVersionLabel';
 import styles from './Shell.module.css';
@@ -36,7 +36,6 @@ export function NavList({ onNavigate }: { onNavigate?: () => void }) {
               <Icon aria-hidden />
               <span className={styles.lbl}>{item.label}</span>
             </NavLink>
-            {i === NAV_DIVIDER_AFTER ? <hr aria-hidden className={styles.rule} /> : null}
           </li>
         );
       })}

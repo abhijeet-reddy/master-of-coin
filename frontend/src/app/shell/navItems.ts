@@ -21,7 +21,7 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
-/** The 11 primary destinations, in sidebar order. A rule is drawn after the fourth. */
+/** The 11 primary destinations, in sidebar order. */
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', short: 'Dash', icon: LayoutGrid },
   { to: '/transactions', label: 'Transactions', short: 'Txns', icon: ArrowLeftRight },
@@ -36,6 +36,5 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export const NAV_DIVIDER_AFTER = 3;
 /** The first four live on the phone bottom bar; the rest are in "More". */
 export const BOTTOM_BAR_COUNT = 4;

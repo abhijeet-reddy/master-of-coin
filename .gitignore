@@ -46,3 +46,8 @@ memory-bank/
 
 # Feature screenshots and mock renders (local review artefacts)
 .agents/features/**/*.png
+
+# Release and operations scratch space. release-rules.md already assumes this
+# is ignored, and it collects prod pg_dumps (real user emails) and captured
+# infrastructure config (plaintext webhook secrets). Never commit it.
+/tmp/

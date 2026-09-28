@@ -159,7 +159,8 @@ impl InvestmentProvider for Trading212Provider {
         })?;
 
         // Holdings at market value plus cash already committed to pies;
-        // free cash and anything else in totalValue stay out.
+        // free cash and anything else in totalValue stay out. This sits
+        // cash.inPies (cents) above the app's Investments tile, by design.
         let stock_value_f64 = summary.investments.current_value + summary.cash.in_pies;
 
         let stock_value =

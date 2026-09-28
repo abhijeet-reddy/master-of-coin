@@ -3,8 +3,12 @@
 //! Uses the `authWithSecretKey` scheme (HTTP Basic Auth with API Key as username
 //! and API Secret as password) to call the Trading 212 Public API.
 //!
-//! Endpoint: `GET /api/v0/equity/account/cash`
-//! Stock value calculation: `total - free + pieCash`
+//! Endpoint: `GET /api/v0/equity/account/summary`
+//! Stock value calculation: `investments.currentValue + cash.inPies`
+//!
+//! `totalValue` is not used: it includes the account's other cash wallets
+//! (card EUR, GBP), which MOC tracks as their own accounts. `total - free`
+//! on the old `/cash` endpoint counted that cash as stock value too.
 
 use async_trait::async_trait;
 use base64::Engine;
@@ -19,18 +23,30 @@ use crate::types::InvestmentProviderType;
 use super::InvestmentProvider;
 use super::types::{InvestmentProviderError, PortfolioSnapshot};
 
-/// Trading 212 API response for `/equity/account/cash`
+/// Trading 212 API response for `/equity/account/summary` (fields used here).
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CashResponse {
-    /// Total account value (stocks + cash)
-    total: f64,
-    /// Uninvested cash available
-    free: f64,
-    /// Original amount invested (cost basis)
-    invested: f64,
-    /// Cash allocated to pies but not yet invested
-    pie_cash: f64,
+struct SummaryResponse {
+    /// Account primary currency, e.g. "EUR"
+    currency: String,
+    cash: SummaryCash,
+    investments: SummaryInvestments,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SummaryCash {
+    /// Cash allocated to pies but not yet invested; counted with the pie
+    in_pies: f64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SummaryInvestments {
+    /// Current market value of all positions
+    current_value: f64,
+    /// Cost basis of the positions
+    total_cost: f64,
 }
 
 /// Trading 212 investment provider.
@@ -103,8 +119,8 @@ impl InvestmentProvider for Trading212Provider {
         let base_url = Self::base_url(environment);
         let auth_header = Self::build_auth_header(api_key, api_secret);
 
-        // Call GET /api/v0/equity/account/cash
-        let url = format!("{}/api/v0/equity/account/cash", base_url);
+        // Call GET /api/v0/equity/account/summary
+        let url = format!("{}/api/v0/equity/account/summary", base_url);
 
         let response = self
             .client
@@ -135,17 +151,16 @@ impl InvestmentProvider for Trading212Provider {
         }
 
         // Parse response
-        let cash: CashResponse = response.json().await.map_err(|e| {
+        let summary: SummaryResponse = response.json().await.map_err(|e| {
             InvestmentProviderError::InvalidResponse(format!(
-                "Failed to parse Trading 212 cash response: {}",
+                "Failed to parse Trading 212 summary response: {}",
                 e
             ))
         })?;
 
-        // Calculate stock value: total - free + pieCash
-        // This gives us the current market value of stock positions only,
-        // excluding uninvested cash sitting in the brokerage account.
-        let stock_value_f64 = cash.total - cash.free + cash.pie_cash;
+        // Holdings at market value plus cash already committed to pies;
+        // free cash and anything else in totalValue stay out.
+        let stock_value_f64 = summary.investments.current_value + summary.cash.in_pies;
 
         let stock_value =
             BigDecimal::from_str(&format!("{:.2}", stock_value_f64)).map_err(|e| {
@@ -156,20 +171,19 @@ impl InvestmentProvider for Trading212Provider {
             })?;
 
         let invested_amount =
-            BigDecimal::from_str(&format!("{:.2}", cash.invested)).map_err(|e| {
-                InvestmentProviderError::InvalidResponse(format!(
-                    "Failed to convert invested amount to BigDecimal: {}",
-                    e
-                ))
-            })?;
+            BigDecimal::from_str(&format!("{:.2}", summary.investments.total_cost)).map_err(
+                |e| {
+                    InvestmentProviderError::InvalidResponse(format!(
+                        "Failed to convert invested amount to BigDecimal: {}",
+                        e
+                    ))
+                },
+            )?;
 
         Ok(PortfolioSnapshot {
             stock_value,
             invested_amount,
-            // Trading 212 returns values in the account's primary currency
-            // We don't know the currency from this endpoint, so we use a placeholder
-            // that will be matched against the account's currency in the sync service
-            currency: "EUR".to_string(),
+            currency: summary.currency,
             timestamp: Utc::now(),
         })
     }

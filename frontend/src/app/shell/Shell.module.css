@@ -33,6 +33,7 @@
   height: 100vh;
   height: 100dvh;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr auto;
   border-right: 1px solid var(--line);
   background: var(--bg);
@@ -141,11 +142,6 @@
   color: var(--ink);
   background: var(--accent);
   padding: 1px 2px;
-}
-.rule {
-  border: 0;
-  border-top: 1px solid var(--line);
-  margin: 8px 14px;
 }
 .sideFoot {
   border-top: 1px solid var(--line);

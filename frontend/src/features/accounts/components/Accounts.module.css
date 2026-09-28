@@ -244,6 +244,11 @@
   gap: 6px;
   min-width: 0;
 }
+/* The action keeps its full label; the status text wraps instead. */
+.foot > button,
+.foot > a {
+  flex: none;
+}
 .st i {
   flex: none;
   width: 7px;

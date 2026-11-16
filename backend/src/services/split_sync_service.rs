@@ -49,6 +49,22 @@ impl SplitSyncService {
         }
     }
 
+    /// Create a SplitSyncService with an explicit provider registry.
+    ///
+    /// Production code must use [`SplitSyncService::new`], which wires the canonical
+    /// registry. This constructor exists so integration tests can drive the matcher
+    /// against [`StubSplitProvider`](crate::services::split_provider::StubSplitProvider)
+    /// instead of making real HTTP calls.
+    pub fn with_providers(
+        pool: DbPool,
+        providers: HashMap<SplitProviderType, Arc<dyn SplitProvider>>,
+    ) -> Self {
+        Self {
+            pool,
+            providers: Arc::new(providers),
+        }
+    }
+
     /// Sync when a split is deleted
     ///
     /// If no splits remain for a provider, delete the expense
@@ -803,24 +819,22 @@ impl SplitSyncService {
         }
 
         // Group by provider
-        let grouped = self.group_splits_by_provider(splits_with_configs.clone());
-
-        // Collect already-linked external expense IDs to filter them out
-        let mut linked_expense_ids: std::collections::HashSet<String> =
-            std::collections::HashSet::new();
-        for (split, _config) in &splits_with_configs {
-            if let Ok(records) = SplitSyncRecordRepository::find_by_split_id(&self.pool, split.id) {
-                for record in records {
-                    if let Some(ext_id) = record.external_expense_id {
-                        linked_expense_ids.insert(ext_id);
-                    }
-                }
-            }
-        }
+        let grouped = self.group_splits_by_provider(splits_with_configs);
 
         let mut all_matches: Vec<ExternalExpenseDetail> = Vec::new();
 
         for (provider_id, splits_group) in grouped {
+            // An external expense may back at most ONE local transaction, so drop any
+            // candidate another transaction has already claimed. Mirrors the inbound
+            // guard in `sync_external_expense`. This transaction's own linked expense
+            // stays eligible, which keeps re-sync after an edit working.
+            let claimed_by_others =
+                SplitSyncRecordRepository::find_expense_ids_linked_to_other_transactions(
+                    &self.pool,
+                    transaction.id,
+                    provider_id,
+                )?;
+
             // Fetch provider credentials
             let mut conn = self.pool.get().map_err(|e| {
                 tracing::error!("Failed to get DB connection: {}", e);
@@ -877,7 +891,8 @@ impl SplitSyncService {
                 .await
             {
                 Ok(expenses) => {
-                    // Filter by matching total amount (numeric) and exclude already-linked
+                    // Filter by matching total amount (numeric) and exclude expenses
+                    // already claimed by another transaction
                     let tx_abs_amount = transaction.amount.abs();
                     for expense in expenses {
                         let cost_matches = expense
@@ -885,8 +900,7 @@ impl SplitSyncService {
                             .parse::<BigDecimal>()
                             .map(|c| c == tx_abs_amount)
                             .unwrap_or(false);
-                        if cost_matches
-                            && !linked_expense_ids.contains(&expense.external_expense_id)
+                        if cost_matches && !claimed_by_others.contains(&expense.external_expense_id)
                         {
                             all_matches.push(expense);
                         }
@@ -2330,18 +2344,14 @@ impl SplitSyncService {
             .first()
             .map(|(_, config)| config.external_user_id.clone());
 
-        // Collect already-linked external expense IDs to filter them out
-        let mut linked_expense_ids: std::collections::HashSet<String> =
-            std::collections::HashSet::new();
-        for (split, _config) in splits_group {
-            if let Ok(records) = SplitSyncRecordRepository::find_by_split_id(&self.pool, split.id) {
-                for record in records {
-                    if let Some(ext_id) = record.external_expense_id {
-                        linked_expense_ids.insert(ext_id);
-                    }
-                }
-            }
-        }
+        // Drop candidates another transaction has already claimed (see the note in
+        // `find_split_match`). This transaction's own linked expense stays eligible.
+        let claimed_by_others =
+            SplitSyncRecordRepository::find_expense_ids_linked_to_other_transactions(
+                &self.pool,
+                transaction.id,
+                provider_id,
+            )?;
 
         // Search for expenses around the transaction date (±3 days)
         let tx_date = transaction.date;
@@ -2370,7 +2380,7 @@ impl SplitSyncService {
                 // where the user's share is EUR 40). Instead, we'll compare in
                 // compare_debt_splits() which checks the user's owed_share.
                 for expense in expenses {
-                    if !linked_expense_ids.contains(&expense.external_expense_id) {
+                    if !claimed_by_others.contains(&expense.external_expense_id) {
                         all_matches.push(expense);
                     }
                 }

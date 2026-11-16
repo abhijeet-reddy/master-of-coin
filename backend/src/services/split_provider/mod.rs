@@ -1,10 +1,12 @@
 pub mod splitpro;
 pub mod splitwise;
+pub mod stub;
 pub mod superjson;
 pub mod types;
 
 pub use splitpro::SplitProProvider;
 pub use splitwise::SplitwiseProvider;
+pub use stub::StubSplitProvider;
 pub use types::{
     CreateExternalExpense, ExpenseUser, ExternalExpenseDetail, ExternalExpenseResult,
     ExternalExpenseUser, SplitProviderError, UpdateExternalExpense,

@@ -14,8 +14,21 @@
 //! error cases that don't require external API calls.
 
 use crate::common::*;
+use bigdecimal::BigDecimal;
+use chrono::DateTime;
 use chrono::Utc;
 use diesel::prelude::*;
+use master_of_coin_backend::DbPool;
+use master_of_coin_backend::models::transaction_split::NewTransactionSplit;
+use master_of_coin_backend::repositories::split_sync_record::SplitSyncRecordRepository;
+use master_of_coin_backend::schema::transaction_splits;
+use master_of_coin_backend::services::split_provider::{
+    ExternalExpenseDetail, ExternalExpenseUser, SplitProvider as SplitProviderImpl,
+    StubSplitProvider,
+};
+use master_of_coin_backend::services::split_sync_service::SplitSyncService;
+use master_of_coin_backend::types::CurrencyCode;
+use master_of_coin_backend::utils::encryption;
 use master_of_coin_backend::{
     models::{
         NewSplitProvider, SplitProvider,
@@ -26,6 +39,9 @@ use master_of_coin_backend::{
     types::SplitProviderType,
 };
 use serde_json::json;
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::sync::Arc;
 use uuid::Uuid;
 
 // ============================================================================
@@ -1159,5 +1175,459 @@ async fn test_sync_income_transaction_no_splits_returns_400() {
         body.to_lowercase().contains("no splits"),
         "Error should mention no splits, got: {}",
         body
+    );
+}
+
+// ============================================================================
+// Matcher tests: an expense may back only ONE transaction
+// ============================================================================
+//
+// These drive `SplitSyncService` against `StubSplitProvider` instead of the real
+// HTTP providers, so the matcher itself is under test. Transactions and splits are
+// inserted directly in the DB (not through the API) so that no implicit sync runs
+// against the real provider registry.
+//
+// The defect they cover: `find_split_match` used to build its exclusion set from the
+// CURRENT transaction's own sync records, so an expense already claimed by a
+// DIFFERENT transaction stayed an eligible candidate. The matcher keys on exact
+// transaction total within +/-3 days, so the later of two same-total rows linked onto
+// the earlier one's expense, reported "linked" plus sync_status synced, and silently
+// lost the second share. Measured cost in the live realm: 5 collisions, EUR 31.31,
+// across both providers.
+
+/// Full environment for one matcher test: a user with an account, a split person
+/// mapped to a provider, and a `SplitSyncService` wired to a stub provider.
+struct MatcherFixture {
+    pool: DbPool,
+    account_id: Uuid,
+    category_id: Uuid,
+    person_id: Uuid,
+    payer_external_id: String,
+    friend_external_id: String,
+    service: SplitSyncService,
+    stub: Arc<StubSplitProvider>,
+    user_id: Uuid,
+    _cleanup: UserCleanup,
+}
+
+impl MatcherFixture {
+    /// Insert a transaction with a single split for the fixture's person.
+    ///
+    /// `amount` is the signed transaction total (e.g. `"-39.20"`), `share` is the
+    /// person's absolute owed share (e.g. `"19.60"`), `date` is RFC 3339.
+    fn add_transaction(&self, title: &str, amount: &str, share: &str, date: &str) -> Uuid {
+        let mut conn = self.pool.get().expect("Failed to get DB connection");
+
+        let parsed_date = DateTime::parse_from_rfc3339(date)
+            .expect("Test date must be valid RFC 3339")
+            .with_timezone(&Utc);
+
+        let transaction = TransactionFactory::new(self.user_id, self.account_id)
+            .category_id(self.category_id)
+            .title(title)
+            .amount(amount)
+            .date(parsed_date)
+            .build(&mut conn);
+
+        let new_split = NewTransactionSplit {
+            transaction_id: transaction.id,
+            person_id: self.person_id,
+            amount: BigDecimal::from_str(share).expect("Test share must parse"),
+            sync_skipped: false,
+        };
+        diesel::insert_into(transaction_splits::table)
+            .values(&new_split)
+            .execute(&mut conn)
+            .expect("Failed to create transaction split");
+
+        transaction.id
+    }
+
+    /// The external expense ID recorded against a transaction, if any.
+    fn linked_expense_id(&self, transaction_id: Uuid) -> Option<String> {
+        SplitSyncRecordRepository::find_by_transaction_id(&self.pool, transaction_id)
+            .expect("Failed to load sync records")
+            .into_iter()
+            .find_map(|record| record.external_expense_id)
+    }
+
+    /// Build an expense the stub will offer as a candidate, shaped the way a provider
+    /// returns one the user paid in full.
+    fn seed_unlinked_expense(&self, external_expense_id: &str, cost: &str, friend_share: &str) {
+        let total = BigDecimal::from_str(cost).expect("Test cost must parse");
+        let friend_owes = BigDecimal::from_str(friend_share).expect("Test share must parse");
+        let payer_owes = &total - &friend_owes;
+
+        self.stub.seed_expense(ExternalExpenseDetail {
+            external_expense_id: external_expense_id.to_string(),
+            description: "Seeded candidate".to_string(),
+            cost: cost.to_string(),
+            currency_code: "EUR".to_string(),
+            date: "2026-10-03T12:00:00+00:00".to_string(),
+            users: vec![
+                ExternalExpenseUser {
+                    external_user_id: self.payer_external_id.clone(),
+                    first_name: "Stub".to_string(),
+                    last_name: "Payer".to_string(),
+                    paid_share: cost.to_string(),
+                    owed_share: payer_owes.to_string(),
+                },
+                ExternalExpenseUser {
+                    external_user_id: self.friend_external_id.clone(),
+                    first_name: "Stub".to_string(),
+                    last_name: "Friend".to_string(),
+                    paid_share: "0.00".to_string(),
+                    owed_share: friend_owes.to_string(),
+                },
+            ],
+            provider_type: self.stub.provider_type(),
+        });
+    }
+}
+
+/// Build a fixture whose provider row and credentials match `provider_type`.
+///
+/// Needs a real `ENCRYPTION_KEY` in the environment, the same one the other provider
+/// integration tests need.
+fn setup_matcher_fixture(provider_type: SplitProviderType) -> MatcherFixture {
+    let pool = get_test_db_pool();
+    let mut conn = pool.get().expect("Failed to get DB connection");
+
+    let user = UserFactory::new().build(&mut conn);
+    let account = AccountFactory::new(user.id)
+        .name("Matcher Account")
+        .currency(CurrencyCode::Eur)
+        .build(&mut conn);
+    let category = CategoryFactory::new(user.id)
+        .name("Matcher Category")
+        .build(&mut conn);
+    let person = PersonFactory::new(user.id)
+        .name("Matcher Friend")
+        .build(&mut conn);
+
+    let payer_external_id = "900001".to_string();
+    let friend_external_id = format!("friend-{}", Uuid::new_v4());
+
+    let credentials = match provider_type {
+        SplitProviderType::Splitwise => json!({
+            "splitwise_user_id": 900001,
+            "splitwise_user_name": "Matcher Payer",
+            "api_key": "stub-token",
+        }),
+        SplitProviderType::SplitPro => json!({
+            "splitpro_user_id": 900001,
+            "splitpro_user_name": "Matcher Payer",
+            "api_key": "stub-token",
+        }),
+    };
+    let encrypted = encryption::encrypt_credentials(&credentials)
+        .expect("ENCRYPTION_KEY must be set for matcher tests");
+
+    let new_provider = NewSplitProvider {
+        user_id: user.id,
+        provider_type,
+        credentials: json!({"encrypted": encrypted}),
+        is_active: true,
+    };
+    let provider = diesel::insert_into(split_providers::table)
+        .values(&new_provider)
+        .get_result::<SplitProvider>(&mut conn)
+        .expect("Failed to create split provider");
+    drop(conn);
+
+    create_person_split_config(&pool, person.id, provider.id, &friend_external_id);
+
+    let stub = Arc::new(StubSplitProvider::new(provider_type));
+    let mut providers: HashMap<SplitProviderType, Arc<dyn SplitProviderImpl>> = HashMap::new();
+    let provider_impl: Arc<dyn SplitProviderImpl> = stub.clone();
+    providers.insert(provider_type, provider_impl);
+
+    MatcherFixture {
+        pool: pool.clone(),
+        account_id: account.id,
+        category_id: category.id,
+        person_id: person.id,
+        payer_external_id,
+        friend_external_id,
+        service: SplitSyncService::with_providers(pool.clone(), providers),
+        stub,
+        user_id: user.id,
+        _cleanup: UserCleanup {
+            pool,
+            user_id: user.id,
+        },
+    }
+}
+
+/// Two transactions with the identical total must each get their OWN expense.
+///
+/// Regression: KLIA Ekspres 3 Oct and 4 Oct, both -39.20. The second linked onto the
+/// first's expense `4776926754` and EUR 19.60 of share was lost.
+#[tokio::test]
+async fn test_two_same_total_transactions_each_get_their_own_expense() {
+    let fx = setup_matcher_fixture(SplitProviderType::Splitwise);
+
+    let first = fx.add_transaction("KLIA Ekspres", "-39.20", "19.60", "2026-10-03T12:00:00Z");
+    let first_result = fx
+        .service
+        .sync_transaction(first)
+        .await
+        .expect("First sync should succeed");
+    assert_eq!(first_result["status"], "created");
+
+    let second = fx.add_transaction("KLIA Ekspres", "-39.20", "19.60", "2026-10-04T12:00:00Z");
+    let second_result = fx
+        .service
+        .sync_transaction(second)
+        .await
+        .expect("Second sync should succeed");
+
+    assert_eq!(
+        second_result["status"], "created",
+        "A second same-total transaction must create its own expense, not link onto the first's"
+    );
+    assert_eq!(
+        fx.stub.created_count(),
+        2,
+        "Both transactions should have pushed an expense"
+    );
+
+    let first_id = fx.linked_expense_id(first).expect("First should be linked");
+    let second_id = fx
+        .linked_expense_id(second)
+        .expect("Second should be linked");
+    assert_ne!(
+        first_id, second_id,
+        "Two transactions must never share one external expense"
+    );
+}
+
+/// A THIRD transaction with the same total also gets its own expense.
+///
+/// The old exclusion set was scoped to the current transaction, so N same-total rows
+/// all piled onto the first one's expense.
+#[tokio::test]
+async fn test_third_same_total_transaction_also_gets_its_own_expense() {
+    let fx = setup_matcher_fixture(SplitProviderType::Splitwise);
+
+    let mut linked_ids = Vec::new();
+    for (index, date) in ["2026-10-03", "2026-10-04", "2026-10-05"]
+        .iter()
+        .enumerate()
+    {
+        let transaction = fx.add_transaction(
+            &format!("Grab ride {}", index + 1),
+            "-2.40",
+            "1.20",
+            &format!("{}T12:00:00Z", date),
+        );
+        let result = fx
+            .service
+            .sync_transaction(transaction)
+            .await
+            .expect("Sync should succeed");
+        assert_eq!(
+            result["status"],
+            "created",
+            "Transaction {} should create its own expense",
+            index + 1
+        );
+        linked_ids.push(fx.linked_expense_id(transaction).expect("Should be linked"));
+    }
+
+    assert_eq!(fx.stub.created_count(), 3);
+    linked_ids.sort();
+    linked_ids.dedup();
+    assert_eq!(
+        linked_ids.len(),
+        3,
+        "Three same-total transactions must hold three distinct expenses"
+    );
+}
+
+/// The transaction's OWN linked expense stays an eligible candidate.
+///
+/// Guards against the over-blunt fix of excluding every expense that has any sync
+/// record: that also hides a transaction's own expense and breaks re-sync after an
+/// edit, because the update path re-pushes unconditionally.
+#[tokio::test]
+async fn test_matcher_keeps_the_transactions_own_linked_expense() {
+    let fx = setup_matcher_fixture(SplitProviderType::Splitwise);
+
+    let transaction = fx.add_transaction("Uno Pizza", "-68.00", "34.00", "2026-10-03T12:00:00Z");
+    fx.service
+        .sync_transaction(transaction)
+        .await
+        .expect("Sync should succeed");
+    let own_expense_id = fx
+        .linked_expense_id(transaction)
+        .expect("Should be linked after sync");
+
+    let candidates = fx
+        .service
+        .find_split_match(transaction)
+        .await
+        .expect("Matching should succeed");
+
+    assert!(
+        candidates
+            .iter()
+            .any(|c| c.external_expense_id == own_expense_id),
+        "A transaction must still see its own expense as a candidate"
+    );
+}
+
+/// An expense claimed by a DIFFERENT transaction is not a candidate.
+#[tokio::test]
+async fn test_matcher_excludes_an_expense_claimed_by_another_transaction() {
+    let fx = setup_matcher_fixture(SplitProviderType::Splitwise);
+
+    let owner = fx.add_transaction("The Manor Complex", "-1.10", "0.55", "2026-10-02T12:00:00Z");
+    fx.service
+        .sync_transaction(owner)
+        .await
+        .expect("Sync should succeed");
+    let owned_expense_id = fx.linked_expense_id(owner).expect("Should be linked");
+
+    let other = fx.add_transaction("Grab", "-1.10", "0.55", "2026-10-05T12:00:00Z");
+    let candidates = fx
+        .service
+        .find_split_match(other)
+        .await
+        .expect("Matching should succeed");
+
+    assert!(
+        !candidates
+            .iter()
+            .any(|c| c.external_expense_id == owned_expense_id),
+        "An expense already linked to another transaction must not be a candidate"
+    );
+    assert!(
+        candidates.is_empty(),
+        "The only same-total expense is claimed, so there should be no candidates"
+    );
+}
+
+/// With one claimed and one unclaimed candidate at the same cost, the matcher links
+/// onto the unclaimed one.
+///
+/// This is the live acceptance case: two Splitwise expenses at EUR 17.43, one already
+/// linked to another transaction and one free. A plain sync must land on the free one.
+#[tokio::test]
+async fn test_matcher_links_onto_the_unclaimed_candidate() {
+    let fx = setup_matcher_fixture(SplitProviderType::Splitwise);
+
+    // Another transaction already owns an expense at this cost.
+    let claimer = fx.add_transaction("Earlier charge", "-17.43", "8.71", "2026-10-03T12:00:00Z");
+    fx.service
+        .sync_transaction(claimer)
+        .await
+        .expect("Sync should succeed");
+    let claimed_expense_id = fx.linked_expense_id(claimer).expect("Should be linked");
+
+    // A second expense at the same cost exists on the provider and is unlinked.
+    fx.seed_unlinked_expense("stub-free-17-43", "17.43", "8.71");
+
+    let target = fx.add_transaction("Later charge", "-17.43", "8.71", "2026-10-04T12:00:00Z");
+    let result = fx
+        .service
+        .sync_transaction(target)
+        .await
+        .expect("Sync should succeed");
+
+    assert_eq!(
+        result["status"], "linked",
+        "An unclaimed same-cost expense should still be linked, not duplicated"
+    );
+    assert_eq!(
+        result["external_expense_id"], "stub-free-17-43",
+        "Must link onto the unclaimed expense"
+    );
+    assert_eq!(
+        fx.linked_expense_id(target).as_deref(),
+        Some("stub-free-17-43")
+    );
+    assert_ne!(
+        fx.linked_expense_id(target),
+        Some(claimed_expense_id),
+        "Must not steal the expense another transaction owns"
+    );
+    assert_eq!(
+        fx.stub.created_count(),
+        1,
+        "Only the first transaction needed a new expense"
+    );
+}
+
+/// One cent of difference must keep matching off: the negative controls.
+///
+/// `MO4GZW2H` -39.21 and `GQZD7P5J` -2.41 correctly got their own expenses next to
+/// -39.20 and -2.40 rows that shared their SHARE but not their total. A fix that
+/// over-matches or over-excludes shows up here.
+#[tokio::test]
+async fn test_one_cent_difference_never_shares_an_expense() {
+    let fx = setup_matcher_fixture(SplitProviderType::Splitwise);
+
+    let rows = [
+        ("KLIA Ekspres", "-39.20", "19.60", "2026-10-03T12:00:00Z"),
+        ("Grab to airport", "-39.21", "19.60", "2026-10-04T12:00:00Z"),
+        ("Bolt", "-2.40", "1.20", "2026-10-04T12:00:00Z"),
+        ("Grab", "-2.41", "1.20", "2026-10-05T12:00:00Z"),
+    ];
+
+    let mut linked_ids = Vec::new();
+    for (title, amount, share, date) in rows {
+        let transaction = fx.add_transaction(title, amount, share, date);
+        let result = fx
+            .service
+            .sync_transaction(transaction)
+            .await
+            .expect("Sync should succeed");
+        assert_eq!(
+            result["status"], "created",
+            "{} should create its own expense",
+            title
+        );
+        linked_ids.push(fx.linked_expense_id(transaction).expect("Should be linked"));
+    }
+
+    assert_eq!(fx.stub.created_count(), 4);
+    linked_ids.sort();
+    linked_ids.dedup();
+    assert_eq!(
+        linked_ids.len(),
+        4,
+        "All four transactions must hold distinct expenses"
+    );
+}
+
+/// The fix is provider-agnostic: SplitPro collided too (Centra 13 Jul / 16 Jul, both
+/// -10.00, and Airlink / Ashers Ice Cream, both -9.92).
+#[tokio::test]
+async fn test_splitpro_same_total_transactions_each_get_their_own_expense() {
+    let fx = setup_matcher_fixture(SplitProviderType::SplitPro);
+
+    let first = fx.add_transaction("Centra", "-10.00", "5.00", "2026-07-13T12:00:00Z");
+    fx.service
+        .sync_transaction(first)
+        .await
+        .expect("First sync should succeed");
+
+    let second = fx.add_transaction("Centra", "-10.00", "5.00", "2026-07-16T12:00:00Z");
+    let second_result = fx
+        .service
+        .sync_transaction(second)
+        .await
+        .expect("Second sync should succeed");
+
+    assert_eq!(
+        second_result["status"], "created",
+        "SplitPro must behave the same as Splitwise"
+    );
+    assert_ne!(
+        fx.linked_expense_id(first).expect("First should be linked"),
+        fx.linked_expense_id(second)
+            .expect("Second should be linked"),
+        "Two SplitPro transactions must never share one expense"
     );
 }

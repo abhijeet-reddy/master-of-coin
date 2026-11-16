@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::DbPool;
@@ -164,6 +165,39 @@ impl SplitSyncRecordRepository {
             .load::<SplitSyncRecord>(&mut conn)?;
 
         Ok(records)
+    }
+
+    /// Find external expense IDs that are already linked to a transaction **other**
+    /// than `transaction_id`, for a single provider.
+    ///
+    /// This is the outbound mirror of the inbound idempotency guard in
+    /// `SplitSyncService::sync_external_expense`: one external expense may back at most
+    /// one local transaction. The matcher uses this to drop candidate expenses another
+    /// transaction has already claimed.
+    ///
+    /// The transaction's **own** linked expense is deliberately NOT returned, so that
+    /// re-syncing an edited transaction still resolves to the expense it already owns.
+    pub fn find_expense_ids_linked_to_other_transactions(
+        pool: &DbPool,
+        transaction_id: Uuid,
+        split_provider_id: Uuid,
+    ) -> ApiResult<HashSet<String>> {
+        use crate::schema::transaction_splits;
+
+        let mut conn = pool.get().map_err(|e| {
+            tracing::error!("Failed to get DB connection: {}", e);
+            ApiError::Internal
+        })?;
+
+        let ids = split_sync_records::table
+            .inner_join(transaction_splits::table)
+            .filter(split_sync_records::split_provider_id.eq(split_provider_id))
+            .filter(split_sync_records::external_expense_id.is_not_null())
+            .filter(transaction_splits::transaction_id.ne(transaction_id))
+            .select(split_sync_records::external_expense_id)
+            .load::<Option<String>>(&mut conn)?;
+
+        Ok(ids.into_iter().flatten().collect())
     }
 
     /// Delete all sync records for a transaction split

@@ -48,7 +48,9 @@ jobs:
       PGPASSWORD: test
       # base64 of a 32-byte throwaway key; AES-256 rejects anything shorter
       ENCRYPTION_KEY: bW9jLXRlc3QtZW5jcnlwdGlvbi1rZXktMzItYnl0ZSE=
-      JWT_SECRET: ci-jwt-secret-not-a-real-secret
+      # common::auth_helpers asserts the secret is at least 32 characters, so keep this
+      # padded; a shorter throwaway fails test_create_test_jwt_config and nothing else.
+      JWT_SECRET: ci-jwt-secret-not-a-real-secret-0123456789
       JWT_EXPIRATION_HOURS: "24"
       RUST_LOG: warn
       CARGO_TERM_COLOR: always

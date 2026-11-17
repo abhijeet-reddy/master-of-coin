@@ -1,0 +1,101 @@
+name: Backend Tests
+
+# Until now nothing ran the backend suite on a push or a PR, so a backend change could
+# land on main with zero tests behind it. This runs the two integration binaries against
+# a throwaway postgres service on every backend change.
+#
+# The values below are deliberately fake and only ever reach the service container, so
+# none of them are secrets and none belong in repository secrets.
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: backend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: fmt, clippy and integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: moc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://test:test@localhost:5432/moc_test
+      PGPASSWORD: test
+      # base64 of a 32-byte throwaway key; AES-256 rejects anything shorter
+      ENCRYPTION_KEY: bW9jLXRlc3QtZW5jcnlwdGlvbi1rZXktMzItYnl0ZSE=
+      # common::auth_helpers asserts the secret is at least 32 characters, so keep this
+      # padded; a shorter throwaway fails test_create_test_jwt_config and nothing else.
+      JWT_SECRET: ci-jwt-secret-not-a-real-secret-0123456789
+      JWT_EXPIRATION_HOURS: "24"
+      RUST_LOG: warn
+      CARGO_TERM_COLOR: always
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libpq and the psql client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpq-dev postgresql-client
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Build the test binaries
+        run: cargo test --no-run --tests
+
+      - name: Apply migrations
+        run: ./scripts/ci-apply-migrations.sh
+
+      # Each API test builds its own r2d2 pool and the suite has ~455 of them, which
+      # exhausts the service container's default max_connections=100 when cargo runs
+      # them all at once. A service container's command cannot be overridden in the
+      # workflow syntax, so bound the test threads instead.
+      - name: Integration tests (API)
+        run: cargo test --test integration_api -- --test-threads=4
+
+      - name: Integration tests (database)
+        run: cargo test --test integration_database
+
+      # The tree has a backlog of clippy warnings that predate this workflow, so this
+      # reports without gating. Tighten to `-D warnings` once the backlog is cleared.
+      - name: Clippy (non-blocking)
+        continue-on-error: true
+        run: cargo clippy --all-targets
